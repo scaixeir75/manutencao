@@ -1,26 +1,6 @@
 {
-  "exported": "2026-06-11T21:07:11.564Z",
+  "exported": "2026-06-11T21:09:14.189Z",
   "logs": {
-    "19": [
-      {
-        "id": "mq9z4zacuesxg",
-        "date": "2026-06-11",
-        "week": 24,
-        "status": "Concluído",
-        "tech": "",
-        "note": "Teste",
-        "created": 1781211165349
-      },
-      {
-        "id": "mq9znin20c1u1",
-        "date": "2026-06-10",
-        "week": 24,
-        "status": "Concluído",
-        "tech": "",
-        "note": "Xpto",
-        "created": 1781212030238
-      }
-    ],
     "33": [
       {
         "id": "mq9z6tdqyoffx",
