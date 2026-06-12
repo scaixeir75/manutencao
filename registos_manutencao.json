@@ -1,4 +1,16 @@
 {
-  "exported": "2026-06-12T19:04:11.510Z",
-  "logs": {}
+  "exported": "2026-06-12T19:06:16.061Z",
+  "logs": {
+    "27": [
+      {
+        "id": "mqbarutd5j2al",
+        "date": "2026-06-11",
+        "week": 24,
+        "status": "Concluído",
+        "tech": "Scaixeirinho",
+        "note": "Substituição de um bloco autonomo na sala da caldeira",
+        "created": 1781291174596
+      }
+    ]
+  }
 }
