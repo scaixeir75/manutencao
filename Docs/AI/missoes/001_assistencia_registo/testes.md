@@ -133,9 +133,9 @@ O teste ponta a ponta da versão v0.1 foi concluído com sucesso. A validação 
 
 ## Estado atual
 
-**Versão:** v0.5
+**Versão:** v0.6
 
-**Estado:** Inteligência simulada melhorada.
+**Estado:** Painel Assistente IA refinado.
 
 ## Testes de inteligência simulada v0.5
 
@@ -164,3 +164,32 @@ O teste ponta a ponta da versão v0.1 foi concluído com sucesso. A validação 
 ### Resultado
 
 Todos os cenários automatizados da Missão 001 foram concluídos com sucesso.
+
+## Validação do refinamento visual v0.6
+
+**Commit:** `4442e7ca8443156112cf2375e37684eecfcad9cb`
+
+### Resultado
+
+- Tipo, Prioridade e Risco apresentados com badges.
+- Informação em falta apresentada de forma mais legível.
+- Resumo e Próxima ação apresentados em blocos próprios.
+- Botões pequenos disponíveis para copiar Resumo e Próxima ação.
+- Fallback defensivo previsto quando a cópia não está disponível.
+- Ajustes móveis limitados ao painel Assistente IA.
+
+### Limites validados
+
+- O layout global da aplicação não foi alterado.
+- Navegação, formulário, cards exteriores e lógica de gravação mantidos.
+- O texto do técnico permanece inalterado.
+- Não foram acrescentadas dependências.
+
+### Verificações técnicas
+
+- TypeScript sem erros.
+- Teste da Missão 001 concluído com sucesso.
+- Desktop validado.
+- Móvel 390x844 validado.
+- Sem overflow horizontal.
+- Browser sem erros ou warnings.

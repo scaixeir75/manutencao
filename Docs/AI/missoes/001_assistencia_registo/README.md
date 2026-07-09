@@ -6,9 +6,9 @@ Apoiar o técnico na preparação de um registo de manutenção claro, classific
 
 ## Estado atual
 
-**Versão:** v0.5
+**Versão:** v0.6
 
-**Estado:** Inteligência simulada melhorada.
+**Estado:** Painel Assistente IA refinado.
 
 ## Integração
 
@@ -19,6 +19,10 @@ A missão está disponível como apoio no ecrã de Registos Diários:
 - são apresentados tipo, prioridade, resumo, risco, próxima ação, informação em falta e confirmação humana;
 - a prioridade `media` é apresentada como `Média`;
 - o risco `indeterminado` é apresentado como `Indeterminado`;
+- o tipo, a prioridade e o risco são apresentados com badges;
+- o resumo e a próxima ação têm blocos próprios;
+- existem botões pequenos para copiar o resumo e a próxima ação;
+- existe fallback defensivo quando a cópia não está disponível;
 - a informação em falta é apresentada como lista;
 - a confirmação é apresentada como `Confirmação do técnico necessária`;
 - o texto escrito pelo técnico nunca é alterado;
@@ -40,6 +44,8 @@ A missão está disponível como apoio no ecrã de Registos Diários:
 - Sem alteração da lógica de gravação.
 - Sem importação direta de `initialRecords` pela IA.
 - Sem persistência nova.
+- Sem alteração do layout global da aplicação.
+- Sem alteração da navegação, formulário, cards exteriores ou lógica de gravação.
 
 ## Validação
 
@@ -48,6 +54,8 @@ A missão está disponível como apoio no ecrã de Registos Diários:
 - Apresentação validada em desktop e móvel.
 - Sem sobreposições ou deslocamento horizontal.
 - Sem erros no browser.
+- Sem warnings no browser.
+- Móvel 390x844 validado sem overflow horizontal.
 - Teste da Missão 001 concluído com sucesso.
 - `git diff --check` sem problemas.
 - Risco médio quando existe uma ocorrência semelhante.

@@ -42,6 +42,8 @@ A missão atualmente definida é a **Missão 001 — Assistência ao Registo Té
 
 Na versão v0.5, esta missão dispõe de inteligência simulada melhorada, com correspondência técnica no histórico, avaliação de risco por repetição e próxima ação ajustada ao sintoma.
 
+Na versão v0.6, o painel visual do Assistente IA foi refinado sem alterar o layout global da aplicação.
+
 ## Agentes
 
 Os agentes são componentes especializados com uma única responsabilidade principal. Na Missão 001 existem:
@@ -132,6 +134,11 @@ Existe uma implementação técnica simulada da Missão 001 em `SRC/features/ai/
 - propõe uma próxima ação específica para sintomas mecânicos, fuga de água, falha de aquecimento ou falha de alimentação;
 - usa uma lista vazia como fallback quando o histórico não é fornecido;
 - prevê uma mensagem simples de indisponibilidade;
+- apresenta badges para tipo, prioridade e risco;
+- apresenta resumo e próxima ação em blocos próprios;
+- inclui botões pequenos para copiar o resumo e a próxima ação;
+- usa fallback defensivo quando a cópia não está disponível;
+- mantém ajustes móveis restritos ao painel IA;
 - não grava dados nem altera a lógica de gravação;
 - não acrescenta dependências.
 
@@ -139,12 +146,14 @@ O teste ponta a ponta encontra-se em `SRC/features/ai/tests/assistTechnicalRecor
 
 ## Estado técnico
 
-**Versão:** v0.5
+**Versão:** v0.6
 
-**Estado:** Inteligência simulada melhorada.
+**Estado:** Painel Assistente IA refinado.
 
 O cenário validado classifica um ruído durante a centrifugação como `Anomalia / Corretiva`, atribui prioridade média e mantém o risco indeterminado por ausência de histórico. O resultado identifica modelo, fotografia e histórico como informação em falta e exige confirmação humana.
 
 Sem histórico relevante, o risco permanece indeterminado. Uma ocorrência semelhante resulta em risco médio e duas ou mais ocorrências semelhantes resultam em risco alto. A validação humana continua obrigatória.
 
 Não existe persistência nova: os dados continuam a ser os registos em memória já fornecidos pela aplicação. Não foram alterados `seed.ts`, `package.json` ou `package-lock.json`, não existem chamadas externas e não foram acrescentadas dependências.
+
+Na v0.6, o commit `4442e7ca8443156112cf2375e37684eecfcad9cb` refinou apenas a apresentação interna do painel Assistente IA. Não foram alterados a navegação, o formulário, os cards exteriores, a lógica de gravação ou o layout global da aplicação.
