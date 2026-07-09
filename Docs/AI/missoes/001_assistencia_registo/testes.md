@@ -133,9 +133,9 @@ O teste ponta a ponta da versão v0.1 foi concluído com sucesso. A validação 
 
 ## Estado atual
 
-**Versão:** v0.6
+**Versão:** v0.7
 
-**Estado:** Painel Assistente IA refinado.
+**Estado:** Controlo manual melhorado.
 
 ## Testes de inteligência simulada v0.5
 
@@ -193,3 +193,32 @@ Todos os cenários automatizados da Missão 001 foram concluídos com sucesso.
 - Móvel 390x844 validado.
 - Sem overflow horizontal.
 - Browser sem erros ou warnings.
+
+## Validação do controlo manual v0.7
+
+### Resultado
+
+- Botões existentes para copiar Resumo e Próxima ação mantidos.
+- Botão "Copiar sugestão completa" adicionado ao painel Assistente IA.
+- Sugestão completa inclui tipo, prioridade, resumo, risco, próxima ação, informação em falta e nota de confirmação humana.
+- Função de cópia existente reutilizada com fallback defensivo.
+- Feedback visual curto apresentado após a ação de cópia.
+
+### Limites validados
+
+- Nenhum campo do formulário é alterado automaticamente.
+- Não foram criados campos novos.
+- O formulário foi preservado.
+- A descrição original do técnico permanece inalterada.
+- O tipo não é alterado pela IA.
+- A lógica de gravação não foi alterada.
+- O layout global da aplicação não foi alterado.
+- A IA continua apenas a sugerir.
+
+### Verificações técnicas
+
+- TypeScript sem erros.
+- Teste da Missão 001 concluído com sucesso.
+- Desktop sem erros no browser.
+- Móvel 390x844 sem overflow horizontal.
+- `git diff --check` sem problemas.

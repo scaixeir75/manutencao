@@ -23,6 +23,27 @@ const riskLabels: Record<RiskLevel, string> = {
   indeterminado: 'Indeterminado',
 };
 
+function formatCompleteSuggestion(result: AssistTechnicalRecordMissionResult) {
+  const missingInformation = result.response.missingInformation.length > 0
+    ? result.response.missingInformation.map((item) => `- ${item}`).join('\n')
+    : '- Nenhuma identificada';
+
+  return [
+    'Assistente IA — Sugestão para Registo Técnico',
+    '',
+    `Tipo: ${result.response.suggestedType}`,
+    `Prioridade: ${priorityLabels[result.response.plan.suggestedPriority]}`,
+    `Resumo: ${result.response.technicalSummary}`,
+    `Risco: ${riskLabels[result.response.risk.level]}`,
+    `Próxima ação: ${result.response.plan.actions[0]}`,
+    '',
+    'Informação em falta:',
+    missingInformation,
+    '',
+    'Nota: Confirmação do técnico necessária.',
+  ].join('\n');
+}
+
 type DailyRecordsScreenProps = {
   records: MaintenanceRecord[];
 };
@@ -235,6 +256,22 @@ export function DailyRecordsScreen({ records }: DailyRecordsScreenProps) {
                 <dd>
                   <span className="ai-validation-note">Confirmação do técnico necessária</span>
                 </dd>
+              </div>
+              <div className="wide ai-manual-actions">
+                <button
+                  className="ai-copy-complete-button"
+                  type="button"
+                  onClick={() => copySuggestion('complete', formatCompleteSuggestion(assistantResult))}
+                >
+                  {copiedSuggestion === 'complete' ? (
+                    <Check size={15} aria-hidden="true" />
+                  ) : (
+                    <Copy size={15} aria-hidden="true" />
+                  )}
+                  {copiedSuggestion === 'complete'
+                    ? 'Sugestão copiada'
+                    : 'Copiar sugestão completa'}
+                </button>
               </div>
             </dl>
           )}

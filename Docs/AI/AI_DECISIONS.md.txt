@@ -167,3 +167,35 @@ Validação concluída:
 - móvel 390x844 validado;
 - sem overflow horizontal;
 - browser sem erros ou warnings.
+
+09/07/2026
+
+Registado o marco v0.7 do Sistema Operativo de IA.
+
+A Missão 001 — Assistência ao Registo Técnico passou ao estado "Controlo manual melhorado".
+
+Decisão técnica:
+
+- foi adicionado o botão "Copiar sugestão completa";
+- a sugestão completa inclui tipo, prioridade, resumo, risco, próxima ação, informação em falta e nota de confirmação humana;
+- a função de cópia existente foi reutilizada, incluindo fallback defensivo;
+- a ação depende sempre de clique explícito do técnico;
+- nenhum campo do formulário é alterado automaticamente;
+- não foram criados novos campos;
+- o formulário foi preservado;
+- o layout global da aplicação não foi alterado.
+
+Limites mantidos:
+
+- a IA continua apenas a sugerir;
+- sem chamadas externas;
+- sem dependências novas;
+- sem alteração da lógica de gravação.
+
+Validação prevista:
+
+- TypeScript sem erros;
+- teste da Missão 001 concluído com sucesso;
+- desktop sem erros no browser;
+- móvel 390x844 sem overflow horizontal;
+- `git diff --check` sem problemas.

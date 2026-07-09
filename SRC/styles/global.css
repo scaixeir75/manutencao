@@ -476,6 +476,32 @@ textarea {
   font-weight: 700;
 }
 
+.ai-manual-actions {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid #d7e0e5;
+  padding-top: 12px;
+}
+
+.ai-copy-complete-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  border: 1px solid #bfd0d8;
+  border-radius: 8px;
+  padding: 0 12px;
+  color: #253d49;
+  background: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.ai-copy-complete-button:hover {
+  background: #eef5f7;
+}
+
 .record-stack,
 .history-list {
   display: grid;
@@ -646,6 +672,14 @@ textarea {
   .ai-badge {
     max-width: 100%;
     white-space: normal;
+  }
+
+  .ai-manual-actions {
+    justify-content: stretch;
+  }
+
+  .ai-copy-complete-button {
+    width: 100%;
   }
 
   .history-item {
