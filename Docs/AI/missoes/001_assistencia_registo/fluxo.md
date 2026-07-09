@@ -43,7 +43,15 @@ Produz um resumo fiel, separando observações, ações realizadas, incertezas e
 
 ### 6. Ferramenta Consultar Histórico
 
-Consulta registos anteriores relevantes com base no contexto disponível. O resultado deve indicar a origem e não pode alterar o histórico.
+A missão recebe opcionalmente `historyRecords` através das dependências. O orquestrador encaminha esses dados para a ferramenta Consultar Histórico.
+
+A ferramenta:
+
+- recebe `readonly MaintenanceRecord[]`;
+- converte os registos da aplicação em entradas de histórico para a IA;
+- identifica a origem como `records`;
+- não altera o array nem os objetos recebidos;
+- devolve uma lista vazia quando `historyRecords` não é fornecido.
 
 Quando existir equipamento identificado ou fotografias disponíveis, o Orquestrador pode recorrer às ferramentas complementares Consultar Equipamento e Consultar Fotografias.
 
@@ -68,7 +76,7 @@ O técnico revê, corrige e confirma o conteúdo. A missão termina com a aprese
 - **Data em falta:** pedir o preenchimento antes de considerar o registo completo.
 - **Descrição insuficiente:** apresentar as lacunas e solicitar clarificação.
 - **Equipamento não identificado:** continuar sem associação, indicando essa ausência.
-- **Histórico indisponível:** continuar com os restantes resultados e declarar que a consulta não foi concluída.
+- **Histórico não fornecido:** continuar com uma lista vazia e manter o risco indeterminado quando não existirem evidências suficientes.
 - **Resultados contraditórios:** não ocultar o conflito; pedir validação ao técnico.
 - **Risco elevado:** destacar o alerta e recomendar escalamento humano.
 
@@ -76,3 +84,10 @@ O técnico revê, corrige e confirma o conteúdo. A missão termina com a aprese
 
 O fluxo fica concluído quando o técnico recebe uma sugestão rastreável, com as incertezas visíveis e pronta para confirmação.
 
+## Estado atual
+
+**Versão:** v0.4  
+**Commit:** `26625bb03ce68cde079e95b1ff1ccccdd0dedf93`  
+**Estado:** Ligação ao histórico em memória concluída.
+
+Esta versão não adiciona persistência nem chamadas externas. O histórico utilizado corresponde aos registos em memória já fornecidos pela aplicação.

@@ -40,7 +40,7 @@ Uma missão representa um objetivo completo do utilizador. Cada missão define:
 
 A missão atualmente definida é a **Missão 001 — Assistência ao Registo Técnico**.
 
-Na versão v0.3, esta missão dispõe de uma implementação técnica simulada, de um teste ponta a ponta e de um painel visual refinado no ecrã de Registos Diários.
+Na versão v0.4, esta missão dispõe de uma implementação técnica simulada, de um painel visual refinado e de acesso aos registos em memória da aplicação para consulta de histórico.
 
 ## Agentes
 
@@ -63,6 +63,8 @@ As ferramentas permitem consultar informação interna do PMP de forma controlad
 - Consultar Fotografias.
 
 As ferramentas são apenas de leitura: não criam, editam ou eliminam registos.
+
+Na versão v0.4, a ferramenta Consultar Histórico recebe os registos da aplicação por injeção de dependências. Não importa diretamente os dados seed nem altera o array recebido.
 
 ## Base de Conhecimento
 
@@ -120,6 +122,10 @@ Existe uma implementação técnica simulada da Missão 001 em `SRC/features/ai/
 - apresenta a informação em falta como lista;
 - indica de forma explícita que é necessária confirmação do técnico;
 - apresenta apenas sugestões e nunca altera o texto do técnico;
+- recebe o histórico em memória através de `historyRecords`;
+- trata o histórico como `readonly MaintenanceRecord[]`;
+- converte os registos recebidos em entradas de histórico para a IA;
+- usa uma lista vazia como fallback quando o histórico não é fornecido;
 - prevê uma mensagem simples de indisponibilidade;
 - não grava dados nem altera a lógica de gravação;
 - não acrescenta dependências.
@@ -128,10 +134,12 @@ O teste ponta a ponta encontra-se em `SRC/features/ai/tests/assistTechnicalRecor
 
 ## Estado técnico
 
-**Versão:** v0.3  
-**Commit:** `aae35d750067265e681f5c3f44a7d629b46a10d2`  
-**Estado:** Refinamento visual concluído.
+**Versão:** v0.4  
+**Commit:** `26625bb03ce68cde079e95b1ff1ccccdd0dedf93`  
+**Estado:** Ligação ao histórico em memória concluída.
 
 O cenário validado classifica um ruído durante a centrifugação como `Anomalia / Corretiva`, atribui prioridade média e mantém o risco indeterminado por ausência de histórico. O resultado identifica modelo, fotografia e histórico como informação em falta e exige confirmação humana.
 
-A integração foi validada em desktop e móvel, sem sobreposições, sem deslocamento horizontal e sem erros no browser. O TypeScript, o teste da Missão 001 e o `git diff --check` passaram sem problemas.
+Quando existe uma ocorrência semelhante no histórico, o risco pode passar a médio. Sem histórico, o risco permanece indeterminado. O TypeScript e o teste da Missão 001 passaram sem erros, e a aplicação foi validada no browser sem erros.
+
+Não existe persistência nova: os dados continuam a ser os registos em memória já fornecidos pela aplicação. Não foram alterados `seed.ts`, `package.json` ou `package-lock.json`, e não existem chamadas externas.

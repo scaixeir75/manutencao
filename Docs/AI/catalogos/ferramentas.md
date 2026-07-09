@@ -6,10 +6,15 @@ As ferramentas da Missão 001 são operações de consulta. Não criam, editam o
 
 - **Identificador:** `consultar_historico`
 - **Responsabilidade:** obter registos anteriores relevantes para o contexto técnico recebido.
-- **Entrada:** critérios disponíveis, como equipamento, tipo, data ou termos do registo.
-- **Saída:** registos encontrados e respetiva origem.
+- **Entrada:** contexto técnico e `historyRecords` recebidos por injeção de dependências.
+- **Tipo de dados:** `readonly MaintenanceRecord[]`.
+- **Saída:** registos convertidos em entradas de histórico e origem `records`.
 - **Missão associada:** Missão 001 — Assistência ao Registo Técnico.
-- **Estado:** Planeada.
+- **Estado:** Ligação ao histórico em memória concluída.
+- **Versão:** v0.4.
+- **Commit:** `26625bb03ce68cde079e95b1ff1ccccdd0dedf93`.
+- **Garantias:** não altera os registos recebidos e devolve uma lista vazia quando não existe histórico.
+- **Limites:** sem persistência, chamadas externas ou importação direta dos dados seed.
 - **Especificação:** `../ferramentas/consultar_historico/especificacao.md`.
 
 ## Consultar Equipamento
@@ -31,4 +36,3 @@ As ferramentas da Missão 001 são operações de consulta. Não criam, editam o
 - **Missão associada:** Missão 001 — Assistência ao Registo Técnico.
 - **Estado:** Planeada.
 - **Especificação:** `../ferramentas/consultar_fotografias/especificacao.md`.
-

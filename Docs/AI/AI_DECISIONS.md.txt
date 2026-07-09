@@ -77,3 +77,32 @@ Validação concluída:
 - teste da Missão 001 concluído com sucesso;
 - git diff --check sem problemas;
 - browser sem erros.
+
+09/07/2026
+
+Registado o marco v0.4 do Sistema Operativo de IA.
+
+Commit:
+
+26625bb03ce68cde079e95b1ff1ccccdd0dedf93
+
+A Missão 001 — Assistência ao Registo Técnico passou ao estado "Ligação ao histórico em memória concluída".
+
+Decisão técnica:
+
+- a ferramenta Consultar Histórico deixou de devolver apenas histórico simulado;
+- os registos são recebidos em `historyRecords` por injeção de dependências;
+- o contrato usa `readonly MaintenanceRecord[]`;
+- os registos da aplicação são convertidos em entradas de histórico para a IA;
+- os dados recebidos não são alterados;
+- a ausência de histórico usa uma lista vazia como fallback;
+- `initialRecords` não é importado diretamente pela camada de IA.
+
+Validação concluída:
+
+- TypeScript sem erros;
+- teste da Missão 001 com risco médio quando existe ocorrência semelhante;
+- risco indeterminado quando não existe histórico;
+- browser sem erros;
+- sem alterações em `seed.ts`, `package.json` ou `package-lock.json`;
+- sem chamadas externas ou dependências novas.

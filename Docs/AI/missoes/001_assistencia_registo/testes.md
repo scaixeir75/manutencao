@@ -73,7 +73,7 @@ O teste ponta a ponta da versão v0.1 foi concluído com sucesso. A validação 
 - Sem deslocamento horizontal.
 - Sem erros no browser.
 
-## Estado atual
+## Estado v0.3
 
 **Versão:** v0.3  
 **Commit:** `aae35d750067265e681f5c3f44a7d629b46a10d2`  
@@ -96,3 +96,43 @@ O teste ponta a ponta da versão v0.1 foi concluído com sucesso. A validação 
 - Teste da Missão 001 concluído com sucesso.
 - `git diff --check` sem problemas.
 - Browser sem erros.
+
+## Validação da ligação ao histórico v0.4
+
+### Cenário com histórico semelhante
+
+1. Fornecer à missão um registo histórico com ruído durante a centrifugação.
+2. Executar a Missão 001 com `historyRecords`.
+3. Confirmar que a ferramenta devolve origem `records`.
+4. Confirmar que o registo foi convertido numa entrada de histórico.
+
+**Resultado:** risco médio.
+
+### Cenário sem histórico
+
+1. Executar a Missão 001 sem dependências.
+2. Confirmar que a ferramenta devolve uma lista vazia.
+
+**Resultado:** risco indeterminado.
+
+### Garantias validadas
+
+- Os dados recebidos são tratados como `readonly MaintenanceRecord[]`.
+- A ferramenta não altera os registos recebidos.
+- Não existe importação direta de `initialRecords`.
+- Não existe persistência nova.
+- Não existem chamadas externas.
+- Não foram acrescentadas dependências.
+- `seed.ts`, `package.json` e `package-lock.json` permaneceram inalterados.
+
+### Verificações técnicas
+
+- TypeScript sem erros.
+- Teste da Missão 001 concluído com sucesso.
+- Browser sem erros.
+
+## Estado atual
+
+**Versão:** v0.4  
+**Commit:** `26625bb03ce68cde079e95b1ff1ccccdd0dedf93`  
+**Estado:** Ligação ao histórico em memória concluída.
