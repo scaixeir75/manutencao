@@ -372,6 +372,17 @@ textarea {
   color: #263540;
 }
 
+.ai-missing-list {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.ai-missing-list li::marker {
+  color: #4b7185;
+}
+
 .ai-suggestion-grid .confirmation {
   border-top: 1px solid #d7e0e5;
   padding-top: 12px;
@@ -521,6 +532,23 @@ textarea {
   .ai-assistant-heading span {
     width: 100%;
     margin-left: 26px;
+  }
+
+  .ai-assistant-panel {
+    gap: 18px;
+    padding: 18px 16px;
+  }
+
+  .ai-suggestion-grid {
+    gap: 18px;
+  }
+
+  .ai-suggestion-grid .wide {
+    grid-column: auto;
+  }
+
+  .ai-suggestion-grid .confirmation {
+    padding-top: 16px;
   }
 
   .history-item {

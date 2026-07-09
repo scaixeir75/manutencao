@@ -2,8 +2,26 @@ import { useEffect, useState } from 'react';
 import { Camera, Plus, Sparkles } from 'lucide-react';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { assistTechnicalRecord } from '../features/ai';
-import type { AssistTechnicalRecordMissionResult } from '../features/ai';
+import type {
+  AssistTechnicalRecordMissionResult,
+  RiskLevel,
+  SuggestedPriority,
+} from '../features/ai';
 import type { MaintenanceRecord } from '../shared/types/domain';
+
+const priorityLabels: Record<SuggestedPriority, string> = {
+  baixa: 'Baixa',
+  media: 'Média',
+  alta: 'Alta',
+  urgente: 'Urgente',
+};
+
+const riskLabels: Record<RiskLevel, string> = {
+  baixo: 'Baixo',
+  medio: 'Médio',
+  alto: 'Alto',
+  indeterminado: 'Indeterminado',
+};
 
 type DailyRecordsScreenProps = {
   records: MaintenanceRecord[];
@@ -118,7 +136,9 @@ export function DailyRecordsScreen({ records }: DailyRecordsScreenProps) {
               </div>
               <div>
                 <dt>Prioridade</dt>
-                <dd>{assistantResult.response.plan.suggestedPriority}</dd>
+                <dd>
+                  {priorityLabels[assistantResult.response.plan.suggestedPriority]}
+                </dd>
               </div>
               <div className="wide">
                 <dt>Resumo</dt>
@@ -126,7 +146,7 @@ export function DailyRecordsScreen({ records }: DailyRecordsScreenProps) {
               </div>
               <div>
                 <dt>Risco</dt>
-                <dd>{assistantResult.response.risk.level}</dd>
+                <dd>{riskLabels[assistantResult.response.risk.level]}</dd>
               </div>
               <div className="wide">
                 <dt>Próxima ação</dt>
@@ -136,13 +156,19 @@ export function DailyRecordsScreen({ records }: DailyRecordsScreenProps) {
                 <dt>Informação em falta</dt>
                 <dd>
                   {assistantResult.response.missingInformation.length > 0
-                    ? assistantResult.response.missingInformation.join(', ')
+                    ? (
+                        <ul className="ai-missing-list">
+                          {assistantResult.response.missingInformation.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      )
                     : 'Nenhuma identificada'}
                 </dd>
               </div>
               <div className="wide confirmation">
                 <dt>Confirmação humana</dt>
-                <dd>{assistantResult.response.confirmationMessage}</dd>
+                <dd>Confirmação do técnico necessária</dd>
               </div>
             </dl>
           )}
