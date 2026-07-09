@@ -359,6 +359,10 @@ textarea {
 }
 
 .ai-suggestion-grid dt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 3px;
   color: #667582;
   font-size: 0.78rem;
@@ -372,11 +376,90 @@ textarea {
   color: #263540;
 }
 
+.ai-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border: 1px solid #cbd8de;
+  border-radius: 999px;
+  padding: 0 10px;
+  color: #253d49;
+  background: #ffffff;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.ai-badge.priority {
+  color: #735014;
+  background: #fff4d8;
+  border-color: #ead08b;
+}
+
+.ai-badge.risk-baixo {
+  color: #1c5c3f;
+  background: #e4f6ea;
+  border-color: #b7dec5;
+}
+
+.ai-badge.risk-medio,
+.ai-badge.risk-indeterminado {
+  color: #735014;
+  background: #fff4d8;
+  border-color: #ead08b;
+}
+
+.ai-badge.risk-alto {
+  color: #8f2f2f;
+  background: #fde8e8;
+  border-color: #efb8b8;
+}
+
+.ai-text-block {
+  border-left: 2px solid #cbd8de;
+  padding-left: 10px;
+  line-height: 1.5;
+}
+
+.ai-copy-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #cbd8de;
+  border-radius: 8px;
+  color: #365161;
+  background: #ffffff;
+}
+
+.ai-copy-button:hover {
+  background: #eef5f7;
+}
+
 .ai-missing-list {
   display: grid;
-  gap: 5px;
+  gap: 7px;
   margin: 0;
-  padding-left: 20px;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-missing-list li {
+  position: relative;
+  padding-left: 18px;
+  line-height: 1.45;
+}
+
+.ai-missing-list li::before {
+  position: absolute;
+  left: 0;
+  top: 0.58em;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #4b7185;
+  content: "";
 }
 
 .ai-missing-list li::marker {
@@ -386,6 +469,11 @@ textarea {
 .ai-suggestion-grid .confirmation {
   border-top: 1px solid #d7e0e5;
   padding-top: 12px;
+}
+
+.ai-validation-note {
+  color: #344250;
+  font-weight: 700;
 }
 
 .record-stack,
@@ -540,7 +628,7 @@ textarea {
   }
 
   .ai-suggestion-grid {
-    gap: 18px;
+    gap: 16px;
   }
 
   .ai-suggestion-grid .wide {
@@ -549,6 +637,15 @@ textarea {
 
   .ai-suggestion-grid .confirmation {
     padding-top: 16px;
+  }
+
+  .ai-suggestion-grid dt {
+    align-items: flex-start;
+  }
+
+  .ai-badge {
+    max-width: 100%;
+    white-space: normal;
   }
 
   .history-item {

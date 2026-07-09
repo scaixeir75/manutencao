@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Camera, Plus, Sparkles } from 'lucide-react';
+import { Camera, Check, Copy, Plus, Sparkles } from 'lucide-react';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { assistTechnicalRecord } from '../features/ai';
 import type {
@@ -35,8 +35,32 @@ export function DailyRecordsScreen({ records }: DailyRecordsScreenProps) {
   const [assistantStatus, setAssistantStatus] = useState<
     'idle' | 'loading' | 'success' | 'error'
   >('idle');
+  const [copiedSuggestion, setCopiedSuggestion] = useState<string | null>(null);
 
   const hasEnoughDescription = description.trim().length >= 12;
+
+  const copySuggestion = async (key: string, value: string) => {
+    if (!value) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      const copyTarget = document.createElement('textarea');
+      copyTarget.value = value;
+      copyTarget.setAttribute('readonly', 'true');
+      copyTarget.style.position = 'fixed';
+      copyTarget.style.opacity = '0';
+      document.body.appendChild(copyTarget);
+      copyTarget.select();
+      document.execCommand('copy');
+      document.body.removeChild(copyTarget);
+    }
+
+    setCopiedSuggestion(key);
+    window.setTimeout(() => setCopiedSuggestion(null), 1800);
+  };
 
   useEffect(() => {
     if (!hasEnoughDescription) {
@@ -134,25 +158,63 @@ export function DailyRecordsScreen({ records }: DailyRecordsScreenProps) {
             <dl className="ai-suggestion-grid">
               <div>
                 <dt>Tipo</dt>
-                <dd>{assistantResult.response.suggestedType}</dd>
+                <dd>
+                  <span className="ai-badge">{assistantResult.response.suggestedType}</span>
+                </dd>
               </div>
               <div>
                 <dt>Prioridade</dt>
                 <dd>
-                  {priorityLabels[assistantResult.response.plan.suggestedPriority]}
+                  <span className="ai-badge priority">
+                    {priorityLabels[assistantResult.response.plan.suggestedPriority]}
+                  </span>
                 </dd>
               </div>
               <div className="wide">
-                <dt>Resumo</dt>
-                <dd>{assistantResult.response.technicalSummary}</dd>
+                <dt>
+                  Resumo
+                  <button
+                    className="ai-copy-button"
+                    type="button"
+                    onClick={() => copySuggestion('summary', assistantResult.response.technicalSummary)}
+                    aria-label="Copiar resumo"
+                    title="Copiar resumo"
+                  >
+                    {copiedSuggestion === 'summary' ? (
+                      <Check size={14} aria-hidden="true" />
+                    ) : (
+                      <Copy size={14} aria-hidden="true" />
+                    )}
+                  </button>
+                </dt>
+                <dd className="ai-text-block">{assistantResult.response.technicalSummary}</dd>
               </div>
               <div>
                 <dt>Risco</dt>
-                <dd>{riskLabels[assistantResult.response.risk.level]}</dd>
+                <dd>
+                  <span className={`ai-badge risk-${assistantResult.response.risk.level}`}>
+                    {riskLabels[assistantResult.response.risk.level]}
+                  </span>
+                </dd>
               </div>
               <div className="wide">
-                <dt>Próxima ação</dt>
-                <dd>{assistantResult.response.plan.actions[0]}</dd>
+                <dt>
+                  Próxima ação
+                  <button
+                    className="ai-copy-button"
+                    type="button"
+                    onClick={() => copySuggestion('action', assistantResult.response.plan.actions[0])}
+                    aria-label="Copiar próxima ação"
+                    title="Copiar próxima ação"
+                  >
+                    {copiedSuggestion === 'action' ? (
+                      <Check size={14} aria-hidden="true" />
+                    ) : (
+                      <Copy size={14} aria-hidden="true" />
+                    )}
+                  </button>
+                </dt>
+                <dd className="ai-text-block">{assistantResult.response.plan.actions[0]}</dd>
               </div>
               <div className="wide">
                 <dt>Informação em falta</dt>
@@ -170,7 +232,9 @@ export function DailyRecordsScreen({ records }: DailyRecordsScreenProps) {
               </div>
               <div className="wide confirmation">
                 <dt>Confirmação humana</dt>
-                <dd>Confirmação do técnico necessária</dd>
+                <dd>
+                  <span className="ai-validation-note">Confirmação do técnico necessária</span>
+                </dd>
               </div>
             </dl>
           )}
