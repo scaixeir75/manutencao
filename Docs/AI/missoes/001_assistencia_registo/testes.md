@@ -133,6 +133,34 @@ O teste ponta a ponta da versão v0.1 foi concluído com sucesso. A validação 
 
 ## Estado atual
 
-**Versão:** v0.4  
-**Commit:** `26625bb03ce68cde079e95b1ff1ccccdd0dedf93`  
-**Estado:** Ligação ao histórico em memória concluída.
+**Versão:** v0.5
+
+**Estado:** Inteligência simulada melhorada.
+
+## Testes de inteligência simulada v0.5
+
+### Cenários de risco
+
+1. Ruído sem histórico relevante resulta em risco indeterminado.
+2. Ruído com uma ocorrência semelhante resulta em risco médio.
+3. Ruído com duas ocorrências semelhantes resulta em risco alto.
+
+### Cenários de planeamento
+
+1. Fuga de água recomenda verificar mangueiras, uniões, vedantes e drenagem.
+2. Falha de aquecimento recomenda verificar resistência, termóstato, sensor e alimentação.
+3. Falha de alimentação recomenda verificar alimentação elétrica, disjuntor, cabo, ficha e painel.
+4. Sintoma mecânico recomenda verificar rolamentos, fixações, carga e transmissão.
+
+### Garantias
+
+- A validação humana continua obrigatória.
+- A ferramenta devolve apenas histórico relevante.
+- Os registos históricos não são alterados.
+- Não existem chamadas externas.
+- Não foram acrescentadas dependências.
+- `seed.ts`, `package.json` e `package-lock.json` permanecem inalterados.
+
+### Resultado
+
+Todos os cenários automatizados da Missão 001 foram concluídos com sucesso.

@@ -40,7 +40,7 @@ Uma missão representa um objetivo completo do utilizador. Cada missão define:
 
 A missão atualmente definida é a **Missão 001 — Assistência ao Registo Técnico**.
 
-Na versão v0.4, esta missão dispõe de uma implementação técnica simulada, de um painel visual refinado e de acesso aos registos em memória da aplicação para consulta de histórico.
+Na versão v0.5, esta missão dispõe de inteligência simulada melhorada, com correspondência técnica no histórico, avaliação de risco por repetição e próxima ação ajustada ao sintoma.
 
 ## Agentes
 
@@ -65,6 +65,8 @@ As ferramentas permitem consultar informação interna do PMP de forma controlad
 As ferramentas são apenas de leitura: não criam, editam ou eliminam registos.
 
 Na versão v0.4, a ferramenta Consultar Histórico recebe os registos da aplicação por injeção de dependências. Não importa diretamente os dados seed nem altera o array recebido.
+
+Na versão v0.5, a ferramenta devolve apenas ocorrências relevantes através de grupos simples de palavras-chave equivalentes para sintomas mecânicos, centrifugação, fuga de água, erro ou avaria, aquecimento e alimentação elétrica.
 
 ## Base de Conhecimento
 
@@ -125,6 +127,9 @@ Existe uma implementação técnica simulada da Missão 001 em `SRC/features/ai/
 - recebe o histórico em memória através de `historyRecords`;
 - trata o histórico como `readonly MaintenanceRecord[]`;
 - converte os registos recebidos em entradas de histórico para a IA;
+- seleciona apenas ocorrências com grupos técnicos equivalentes ao texto atual;
+- atribui risco indeterminado sem ocorrências relevantes, médio com uma ocorrência e alto com duas ou mais;
+- propõe uma próxima ação específica para sintomas mecânicos, fuga de água, falha de aquecimento ou falha de alimentação;
 - usa uma lista vazia como fallback quando o histórico não é fornecido;
 - prevê uma mensagem simples de indisponibilidade;
 - não grava dados nem altera a lógica de gravação;
@@ -134,12 +139,12 @@ O teste ponta a ponta encontra-se em `SRC/features/ai/tests/assistTechnicalRecor
 
 ## Estado técnico
 
-**Versão:** v0.4  
-**Commit:** `26625bb03ce68cde079e95b1ff1ccccdd0dedf93`  
-**Estado:** Ligação ao histórico em memória concluída.
+**Versão:** v0.5
+
+**Estado:** Inteligência simulada melhorada.
 
 O cenário validado classifica um ruído durante a centrifugação como `Anomalia / Corretiva`, atribui prioridade média e mantém o risco indeterminado por ausência de histórico. O resultado identifica modelo, fotografia e histórico como informação em falta e exige confirmação humana.
 
-Quando existe uma ocorrência semelhante no histórico, o risco pode passar a médio. Sem histórico, o risco permanece indeterminado. O TypeScript e o teste da Missão 001 passaram sem erros, e a aplicação foi validada no browser sem erros.
+Sem histórico relevante, o risco permanece indeterminado. Uma ocorrência semelhante resulta em risco médio e duas ou mais ocorrências semelhantes resultam em risco alto. A validação humana continua obrigatória.
 
-Não existe persistência nova: os dados continuam a ser os registos em memória já fornecidos pela aplicação. Não foram alterados `seed.ts`, `package.json` ou `package-lock.json`, e não existem chamadas externas.
+Não existe persistência nova: os dados continuam a ser os registos em memória já fornecidos pela aplicação. Não foram alterados `seed.ts`, `package.json` ou `package-lock.json`, não existem chamadas externas e não foram acrescentadas dependências.

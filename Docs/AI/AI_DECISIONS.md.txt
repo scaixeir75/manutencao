@@ -106,3 +106,29 @@ Validação concluída:
 - browser sem erros;
 - sem alterações em `seed.ts`, `package.json` ou `package-lock.json`;
 - sem chamadas externas ou dependências novas.
+
+09/07/2026
+
+Registado o marco v0.5 do Sistema Operativo de IA.
+
+A Missão 001 — Assistência ao Registo Técnico passou ao estado "Inteligência simulada melhorada".
+
+Decisões técnicas:
+
+- a ferramenta Consultar Histórico devolve apenas ocorrências relevantes;
+- a correspondência usa grupos simples de palavras-chave técnicas equivalentes;
+- o risco é indeterminado sem histórico relevante;
+- uma ocorrência semelhante resulta em risco médio;
+- duas ou mais ocorrências semelhantes resultam em risco alto;
+- a próxima ação é ajustada a sintomas mecânicos, fuga de água, falha de aquecimento e falha de alimentação;
+- sintomas desconhecidos originam uma recomendação de inspeção técnica e recolha de informação;
+- a validação humana continua obrigatória;
+- os registos históricos permanecem imutáveis.
+
+Validação prevista e executada:
+
+- TypeScript sem erros;
+- testes reforçados para risco, ações e imutabilidade;
+- sem chamadas externas;
+- sem dependências novas;
+- sem alterações em `seed.ts`, `package.json` ou `package-lock.json`.

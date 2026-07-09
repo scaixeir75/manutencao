@@ -7,13 +7,14 @@
 - **Objetivo:** coordenar a transformação de uma descrição livre numa sugestão técnica pronta para validação.
 - **Início:** o técnico escreve um registo e pede assistência.
 - **Fim:** o técnico recebe uma sugestão consolidada para confirmar ou corrigir.
-- **Estado:** Ligação ao histórico em memória concluída.
-- **Versão:** v0.4.
-- **Commit:** `26625bb03ce68cde079e95b1ff1ccccdd0dedf93`.
+- **Estado:** Inteligência simulada melhorada.
+- **Versão:** v0.5.
 - **Integração:** painel de apoio no ecrã de Registos Diários após 12 caracteres.
-- **Histórico:** registos em memória recebidos por injeção de dependências e tratados como dados apenas de leitura.
+- **Histórico:** registos em memória recebidos por injeção de dependências, tratados como dados apenas de leitura e filtrados por grupos de palavras-chave técnicas.
+- **Risco:** indeterminado sem correspondências, médio com uma ocorrência e alto com duas ou mais.
+- **Planeamento:** próxima ação ajustada ao sintoma identificado.
 - **Fallback:** lista vazia quando `historyRecords` não é fornecido.
-- **Validação:** risco médio com ocorrência semelhante e indeterminado sem histórico; TypeScript, teste e browser sem erros.
+- **Validação:** cenários de risco, ações por sintoma, confirmação humana e imutabilidade cobertos por teste.
 - **Limites:** a IA apenas sugere, não altera dados, não cria persistência, não realiza chamadas externas e não usa dependências novas.
 - **Teste:** `../../../SRC/features/ai/tests/assistTechnicalRecordMission.test.ts`.
 - **Definição:** `../missoes/001_assistencia_registo/fluxo.md`.

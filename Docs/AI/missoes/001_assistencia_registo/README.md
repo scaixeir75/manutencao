@@ -6,9 +6,9 @@ Apoiar o técnico na preparação de um registo de manutenção claro, classific
 
 ## Estado atual
 
-**Versão:** v0.4  
-**Commit:** `26625bb03ce68cde079e95b1ff1ccccdd0dedf93`  
-**Estado:** Ligação ao histórico em memória concluída.
+**Versão:** v0.5
+
+**Estado:** Inteligência simulada melhorada.
 
 ## Integração
 
@@ -24,6 +24,9 @@ A missão está disponível como apoio no ecrã de Registos Diários:
 - o texto escrito pelo técnico nunca é alterado;
 - os registos em memória são fornecidos à missão através de `historyRecords`;
 - a ferramenta Consultar Histórico converte esses registos sem os alterar;
+- apenas ocorrências com palavras-chave técnicas equivalentes são devolvidas;
+- o risco varia entre indeterminado, médio e alto conforme o número de ocorrências semelhantes;
+- a próxima ação é ajustada ao sintoma identificado;
 - sem histórico disponível, a missão continua com uma lista vazia;
 - a IA apenas sugere e não grava dados;
 - em caso de falha, é apresentada uma mensagem de indisponibilidade.
@@ -49,6 +52,9 @@ A missão está disponível como apoio no ecrã de Registos Diários:
 - `git diff --check` sem problemas.
 - Risco médio quando existe uma ocorrência semelhante.
 - Risco indeterminado quando não existe histórico.
+- Risco alto quando existem duas ou mais ocorrências semelhantes.
+- Ações específicas validadas para sintomas mecânicos, fuga de água, aquecimento e alimentação elétrica.
+- Imutabilidade dos registos históricos validada.
 - Sem alterações em `seed.ts`, `package.json` ou `package-lock.json`.
 
 ## Documentos relacionados

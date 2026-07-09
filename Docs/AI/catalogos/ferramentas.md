@@ -10,9 +10,10 @@ As ferramentas da Missão 001 são operações de consulta. Não criam, editam o
 - **Tipo de dados:** `readonly MaintenanceRecord[]`.
 - **Saída:** registos convertidos em entradas de histórico e origem `records`.
 - **Missão associada:** Missão 001 — Assistência ao Registo Técnico.
-- **Estado:** Ligação ao histórico em memória concluída.
-- **Versão:** v0.4.
-- **Commit:** `26625bb03ce68cde079e95b1ff1ccccdd0dedf93`.
+- **Estado:** Correspondência simples com histórico concluída.
+- **Versão:** v0.5.
+- **Correspondência:** grupos equivalentes para ruído ou vibração, centrifugação, fuga de água, erro ou avaria, aquecimento e alimentação elétrica.
+- **Resultado:** apenas ocorrências relevantes para o texto atual.
 - **Garantias:** não altera os registos recebidos e devolve uma lista vazia quando não existe histórico.
 - **Limites:** sem persistência, chamadas externas ou importação direta dos dados seed.
 - **Especificação:** `../ferramentas/consultar_historico/especificacao.md`.

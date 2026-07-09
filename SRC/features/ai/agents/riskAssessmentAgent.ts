@@ -7,9 +7,9 @@ import type {
 } from '../types/aiTypes';
 
 export async function runRiskAssessmentAgent(
-  context: TechnicalRecordContext,
+  _context: TechnicalRecordContext,
   _classification: ClassificationResult,
-  summary: TechnicalSummaryResult,
+  _summary: TechnicalSummaryResult,
   history: HistoryToolResult,
 ): Promise<RiskAssessmentResult> {
   if (history.entries.length === 0) {
@@ -24,37 +24,21 @@ export async function runRiskAssessmentAgent(
     };
   }
 
-  const relevantTerms = ['ruído', 'ruido', 'barulho', 'centrifug'];
-  const similarOccurrences = history.entries.filter((entry) => {
-    const description = entry.description.toLocaleLowerCase('pt-PT');
-    return relevantTerms.some((term) => description.includes(term));
-  });
-
-  if (similarOccurrences.length >= 2 && context.equipmentCritical) {
+  if (history.entries.length >= 2) {
     return {
       level: 'alto',
       evidence: [
-        `${similarOccurrences.length} ocorrências semelhantes`,
-        'Equipamento identificado como crítico',
+        `${history.entries.length} ocorrências semelhantes indicam repetição do sintoma`,
       ],
       requiresEscalation: true,
       missingInformation: [],
     };
   }
 
-  if (similarOccurrences.length > 0) {
-    return {
-      level: 'medio',
-      evidence: [`${similarOccurrences.length} ocorrência(s) semelhante(s)`],
-      requiresEscalation: false,
-      missingInformation: [],
-    };
-  }
-
   return {
-    level: 'indeterminado',
-    evidence: [`Sem ocorrências semelhantes a "${summary.summary}"`],
+    level: 'medio',
+    evidence: ['Existe uma ocorrência semelhante no histórico'],
     requiresEscalation: false,
-    missingInformation: ['Histórico recente de ocorrências semelhantes'],
+    missingInformation: [],
   };
 }

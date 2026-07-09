@@ -49,6 +49,8 @@ A ferramenta:
 
 - recebe `readonly MaintenanceRecord[]`;
 - converte os registos da aplicação em entradas de histórico para a IA;
+- identifica grupos de palavras-chave técnicas no texto atual e nas descrições históricas;
+- devolve apenas registos que partilham pelo menos um grupo técnico relevante;
 - identifica a origem como `records`;
 - não altera o array nem os objetos recebidos;
 - devolve uma lista vazia quando `historyRecords` não é fornecido.
@@ -57,11 +59,23 @@ Quando existir equipamento identificado ou fotografias disponíveis, o Orquestra
 
 ### 7. Agente de Avaliação de Risco
 
-Combina a descrição, o resumo e o contexto consultado para identificar riscos de segurança, ambiente, operação e agravamento.
+Avalia a quantidade de ocorrências relevantes devolvidas pela ferramenta:
+
+- zero ocorrências: risco indeterminado;
+- uma ocorrência: risco médio;
+- duas ou mais ocorrências: risco alto.
+
+A justificação indica a ausência, existência ou repetição de ocorrências semelhantes.
 
 ### 8. Agente de Planeamento
 
-Propõe ações ordenadas e proporcionais ao risco, distinguindo contenção, diagnóstico, intervenção e validação.
+Propõe uma próxima ação de acordo com o sintoma:
+
+- ruído, barulho, vibração ou centrifugação: verificar componentes mecânicos e transmissão;
+- fuga de água: verificar mangueiras, uniões, vedantes e drenagem;
+- falha de aquecimento: verificar resistência, termóstato, sensor e alimentação;
+- falha de alimentação: verificar circuito elétrico, cabo, ficha e painel;
+- sintoma desconhecido: realizar inspeção técnica e recolher mais informação.
 
 ### 9. Agente de Composição da Resposta
 
@@ -86,8 +100,8 @@ O fluxo fica concluído quando o técnico recebe uma sugestão rastreável, com 
 
 ## Estado atual
 
-**Versão:** v0.4  
-**Commit:** `26625bb03ce68cde079e95b1ff1ccccdd0dedf93`  
-**Estado:** Ligação ao histórico em memória concluída.
+**Versão:** v0.5
+
+**Estado:** Inteligência simulada melhorada.
 
 Esta versão não adiciona persistência nem chamadas externas. O histórico utilizado corresponde aos registos em memória já fornecidos pela aplicação.
