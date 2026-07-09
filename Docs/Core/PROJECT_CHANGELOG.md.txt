@@ -1,0 +1,35 @@
+# PROJECT_CHANGELOG.md
+
+# Histórico de Alterações do Projeto PMP
+
+Este documento regista a evolução do projeto.
+
+Não contém decisões técnicas (essas pertencem a AI_DECISIONS.md).
+
+Não contém memória do projeto (essa pertence a AI_MEMORY.md).
+
+Regista apenas alterações relevantes da aplicação.
+
+---
+
+# Formato
+
+## Data
+
+### Versão
+
+Alterações efetuadas
+
+Motivo
+
+Estado
+
+---
+
+# Histórico
+
+## 2026-07-04
+
+### Versão 1.0
+
+Cr

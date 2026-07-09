@@ -1,0 +1,53 @@
+04/07/2026
+
+Criada documentação do projeto.
+
+Criado START_HERE.md.
+
+Criado AI_COPILOT_MASTER_PROMPT v2.0.
+
+09/07/2026
+
+Registado o marco técnico v0.1 do Sistema Operativo de IA.
+
+A Missão 001 — Assistência ao Registo Técnico passou ao estado "Implementação simulada validada".
+
+Validado o fluxo ponta a ponta através da missão e do orquestrador com o teste:
+
+SRC/features/ai/tests/assistTechnicalRecordMission.test.ts
+
+Resultado validado:
+
+- Tipo: Anomalia / Corretiva.
+- Prioridade: média.
+- Risco: indeterminado por ausência de histórico.
+- Informação em falta: modelo do equipamento, fotografia e histórico.
+- Confirmação humana obrigatória.
+
+A versão v0.1 não realiza chamadas externas, não tem integração visual e não altera os ecrãs da aplicação.
+
+09/07/2026
+
+Registado o marco v0.2 do Sistema Operativo de IA.
+
+A Missão 001 — Assistência ao Registo Técnico passou ao estado "Integração visual controlada concluída".
+
+A integração foi realizada no ecrã de Registos Diários com o seguinte comportamento:
+
+- painel discreto após 12 caracteres na descrição;
+- execução da Missão 001 simulada;
+- texto do técnico nunca alterado;
+- IA limitada a sugestões;
+- mensagem de indisponibilidade prevista;
+- sem chamadas externas;
+- sem dependências novas;
+- sem alteração da lógica de gravação.
+
+Validação concluída:
+
+- TypeScript sem erros;
+- desktop validado;
+- móvel validado;
+- sem sobreposições;
+- sem deslocamento horizontal;
+- sem erros no browser.

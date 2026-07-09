@@ -1,0 +1,74 @@
+C:\Users\Sílvio Caixeirinho\Desktop\Copilot PMP\PMP
+
+Docs/
+│
+├── Core/
+│   ├── START_HERE.md
+│   ├── README.md
+│   ├── PROJECT_INDEX.md
+│   ├── PROJECT_CHANGELOG.md
+│   ├── PMP_MASTER_CONTEXT.md
+│   ├── DOMAIN_MODEL.md
+│   ├── BUSINESS_RULES.md
+│   ├── SYSTEM_ARCHITECTURE.md
+│   ├── APPLICATION_MAP.md
+│   └── AI_IMPLEMENTATION_GUIDE.md
+│
+├── AI/
+│   ├── AI_INDEX.md
+│   ├── AI_COPILOT_MASTER_PROMPT.md
+│   ├── AI_SESSION_TEMPLATE.md
+│   ├── AI_MEMORY.md
+│   ├── AI_DECISIONS.md
+│   ├── AI_FEATURES.md
+│   └── AI_ROADMAP.md
+│
+├── Screens/
+│   ├── Dashboard.md
+│   ├── Plano_Semanal.md
+│   ├── Ficha_Manutencao.md
+│   ├── Registos_Diarios.md
+│   └── Historico_Registos.md
+│
+└── Images/
+│
+├── index.html
+├── firebase.json
+├── manifest.json
+├── service-worker.js
+└── CONTINUAR_COM_IA.md
+
+
+Porque esta organização?
+
+Core
+→ Documentação principal do sistema.
+→ Contém a arquitetura, regras de negócio, modelo de dados, contexto do projeto, implementação e documentação base que qualquer IA ou programador deve conhecer.
+
+AI
+→ Toda a documentação relacionada com o Copiloto Inteligente.
+→ Inclui o comportamento da IA, memória do projeto, decisões tomadas, funcionalidades de IA, roadmap e templates para iniciar novas sessões.
+
+Screens
+→ Documentação funcional de cada ecrã da aplicação.
+→ Cada ficheiro descreve um ecrã específico (objetivo, componentes, ações, fluxos, regras de negócio e relações com outros módulos).
+
+Images
+→ Capturas de ecrã, diagramas, fluxogramas e outras imagens utilizadas para documentar ou explicar o funcionamento da aplicação.
+
+index.html
+→ Aplicação principal do PMP.
+→ Contém toda a interface, estilos e lógica da aplicação.
+
+firebase.json
+→ Configuração do Firebase.
+
+manifest.json
+→ Configuração da Progressive Web App (PWA).
+
+service-worker.js
+→ Gestão do funcionamento offline e cache da aplicação.
+
+CONTINUAR_COM_IA.md
+→ Ponto de entrada para qualquer nova Inteligência Artificial.
+→ Indica que deve começar por ler o START_HERE.md antes de analisar ou alterar qualquer parte do projeto.

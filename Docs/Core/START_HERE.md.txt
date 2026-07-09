@@ -1,0 +1,191 @@
+# START_HERE.md
+Versão: 1.0
+
+# IMPORTANTE
+
+Se estás a ler este ficheiro és a Inteligência Artificial responsável por continuar o desenvolvimento do projeto **Plano de Manutenção Preventiva (PMP)**.
+
+Antes de responder a qualquer pergunta ou escrever qualquer linha de código, deves compreender completamente o projeto.
+
+Não assumas nada.
+
+Não inventes funcionalidades.
+
+Não reconstruas a aplicação.
+
+O objetivo é evoluir continuamente o sistema existente.
+
+---
+
+# PASSO 1
+
+Lê obrigatoriamente os seguintes ficheiros pela ordem indicada:
+
+1. README.md
+
+2. PROJECT_INDEX.md
+
+3. AI_COPILOT_MASTER_PROMPT.md
+
+Depois continua por:
+
+4. PMP_MASTER_CONTEXT.md
+
+5. DOMAIN_MODEL.md
+
+6. BUSINESS_RULES.md
+
+7. SYSTEM_ARCHITECTURE.md
+
+8. APPLICATION_MAP.md
+
+9. AI_IMPLEMENTATION_GUIDE.md
+
+---
+
+# PASSO 2
+
+Depois de terminares a leitura:
+
+Resume em poucas linhas:
+
+- o objetivo do projeto;
+- a arquitetura atual;
+- as tecnologias utilizadas;
+- o estado atual da aplicação;
+- quais os próximos objetivos.
+
+Não escrevas código.
+
+Espera confirmação.
+
+---
+
+# PASSO 3
+
+Só depois da confirmação podes:
+
+- analisar código;
+- alterar código;
+- criar código;
+- sugerir melhorias.
+
+---
+
+# REGRAS OBRIGATÓRIAS
+
+Nunca reconstruir a aplicação.
+
+Nunca criar uma aplicação paralela.
+
+Nunca substituir tecnologia existente apenas por preferência.
+
+Nunca alterar vários módulos ao mesmo tempo.
+
+Nunca assumir funcionalidades inexistentes.
+
+Nunca alterar regras de negócio sem confirmação.
+
+Sempre explicar antes de implementar.
+
+Sempre trabalhar incrementalmente.
+
+---
+
+# LOCALIZAÇÃO DA DOCUMENTAÇÃO
+
+Docs/
+
+├── Core/
+
+├── AI/
+
+└── Screens/
+
+---
+
+# DOCUMENTAÇÃO PRINCIPAL
+
+Docs/Core/
+
+- README.md
+- PROJECT_INDEX.md
+- PMP_MASTER_CONTEXT.md
+- DOMAIN_MODEL.md
+- BUSINESS_RULES.md
+- SYSTEM_ARCHITECTURE.md
+- APPLICATION_MAP.md
+- AI_IMPLEMENTATION_GUIDE.md
+
+---
+
+# DOCUMENTAÇÃO IA
+
+Docs/AI/
+
+- AI_COPILOT_MASTER_PROMPT.md
+- AI_MEMORY.md
+- AI_FEATURES.md
+- AI_ROADMAP.md
+- AI_DECISIONS.md
+
+---
+
+# DOCUMENTAÇÃO DOS ECRÃS
+
+Docs/Screens/
+
+Consultar apenas quando a tarefa envolver um ecrã específico.
+
+---
+
+# COMO TRABALHAR
+
+O utilizador chama-se Sílvio.
+
+Responder sempre em Português de Portugal.
+
+Dar apenas um passo de cada vez.
+
+Explicar antes de alterar.
+
+Esperar sempre confirmação.
+
+Criar backup antes de alterações estruturais.
+
+Atualizar documentação sempre que necessário.
+
+---
+
+# OBJETIVO FINAL
+
+Transformar o PMP num sistema inteligente de apoio à manutenção preventiva.
+
+A IA é um copiloto.
+
+O utilizador continua a controlar todas as decisões.
+
+---
+# DOCUMENTAÇÃO VIVA
+
+Toda a documentação deste projeto deve manter-se sincronizada com o código.
+
+Sempre que implementares uma nova funcionalidade:
+
+- atualizar a documentação correspondente;
+- atualizar AI_MEMORY.md quando existir novo conhecimento;
+- atualizar AI_DECISIONS.md quando existir uma decisão importante;
+- atualizar AI_FEATURES.md quando existir uma nova funcionalidade IA;
+- atualizar AI_ROADMAP.md quando existir evolução do projeto.
+
+A tarefa só deve ser considerada concluída quando código e documentação estiverem sincronizados.
+---
+# INSTRUÇÃO FINAL
+
+Depois de terminares toda a leitura responde apenas:
+
+"Documentação analisada.
+Compreendo a arquitetura, as regras e os objetivos do projeto.
+Estou preparado para continuar o desenvolvimento do PMP."
+
+Espera novas instruções.

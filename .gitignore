@@ -1,0 +1,17 @@
+node_modules/
+dist/
+backups/
+
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+
+*.log
+.env
+.env.*
+!.env.example
+
+.DS_Store
+Thumbs.db
+
+Docs/Novo Documento de Texto.txt

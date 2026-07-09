@@ -1,0 +1,110 @@
+# AI_INDEX.md
+
+# Índice da Documentação de Inteligência Artificial
+
+Versão: 1.0
+
+---
+
+# Objetivo
+
+Este diretório contém toda a documentação relacionada com a Inteligência Artificial do projeto PMP.
+
+Qualquer IA deve consultar estes ficheiros sempre que a tarefa envolver funcionalidades de IA, memória do projeto, decisões ou evolução do Copiloto.
+
+---
+
+# Estrutura
+
+## AI_COPILOT_MASTER_PROMPT.md
+
+Documento principal.
+
+Define:
+
+- comportamento da IA;
+- regras do projeto;
+- forma de trabalhar;
+- princípios;
+- integração da IA;
+- gestão da documentação.
+
+Este é o documento mais importante da pasta AI.
+
+---
+
+## AI_SESSION_TEMPLATE.md
+
+Modelo para iniciar qualquer nova sessão.
+
+Define:
+
+- sequência de trabalho;
+- ordem de leitura;
+- validações;
+- implementação;
+- encerramento da sessão.
+
+---
+
+## AI_MEMORY.md
+
+Memória permanente do projeto.
+
+Registar:
+
+- conhecimento importante;
+- contexto;
+- decisões que deverão ser recordadas em futuras sessões;
+- preferências do utilizador.
+
+Nunca apagar informação anterior.
+
+Acrescentar apenas novos registos.
+
+---
+
+## AI_DECISIONS.md
+
+Histórico das decisões.
+
+Cada decisão deverá indicar:
+
+- data;
+- decisão;
+- motivo;
+- impacto.
+
+---
+
+## AI_FEATURES.md
+
+Lista das funcionalidades de Inteligência Artificial.
+
+Para cada funcionalidade indicar:
+
+- estado;
+- descrição;
+- módulos envolvidos.
+
+---
+
+## AI_ROADMAP.md
+
+Plano de evolução do Copiloto.
+
+Cada fase deverá indicar:
+
+- objetivo;
+- estado;
+- funcionalidades previstas.
+
+---
+
+# Regras
+
+Sempre que uma tarefa terminar verificar se algum destes documentos necessita de atualização.
+
+A documentação faz parte integrante do projeto.
+
+Nunca deixar código atualizado

@@ -1,0 +1,99 @@
+# AI Implementation Guide - PMP
+
+## Objetivo
+
+Este documento explica a qualquer Inteligência Artificial como continuar o desenvolvimento do sistema PMP (Plataforma de Manutenção Preventiva).
+
+Serve como guia técnico e conceptual para manter consistência, estrutura e evolução do sistema.
+
+---
+
+## Princípio fundamental
+
+Qualquer IA que leia este projeto deve seguir sempre:
+
+1. Não inventar funcionalidades não observadas
+2. Basear-se apenas em documentação existente
+3. Respeitar estrutura de domínio definida
+4. Manter consistência entre módulos
+5. Evoluir apenas com base em novos ecrãs reais
+
+---
+
+## Estrutura do projeto
+
+O PMP está dividido em:
+
+- PMP_MASTER_CONTEXT.md → visão geral do sistema
+- DOMAIN_MODEL.md → entidades e relações
+- BUSINESS_RULES.md → regras de funcionamento
+- APPLICATION_MAP.md → ecrãs da aplicação (em evolução)
+- SYSTEM_ARCHITECTURE.md → arquitetura conceptual
+- PROJECT_INDEX.md → índice global
+- README.md → entrada principal do projeto
+
+---
+
+## Como continuar o desenvolvimento
+
+Qualquer IA deve seguir obrigatoriamente este fluxo:
+
+1. Ler Docs/Core/START_HERE.md
+
+2. Seguir rigorosamente todas as instruções existentes nesse documento.
+
+3. Ler toda a documentação indicada pela ordem definida.
+
+4. Não escrever código durante a fase de leitura.
+
+5. Quando terminar a leitura, apresentar um resumo contendo:
+
+- objetivo do projeto;
+- arquitetura atual;
+- tecnologias utilizadas;
+- estado atual do sistema;
+- objetivo da sessão.
+
+6. Esperar confirmação do utilizador.
+
+7. Só depois analisar o código existente.
+
+8. Explicar a solução proposta.
+
+9. Identificar os ficheiros que serão alterados.
+
+10. Esperar confirmação.
+
+11. Implementar.
+
+12. Testar.
+
+13. Atualizar a documentação afetada.
+
+14. Apenas considerar a tarefa concluída quando código e documentação estiverem sincronizados.
+---
+
+## Regras de evolução
+
+- Não criar entidades sem evidência visual
+- Não criar fluxos sem base em interface real
+- Não assumir backend inexistente
+- Não assumir automações não observadas
+- Toda evolução deve ser incremental
+
+---
+
+## Integração futura com IA
+
+O sistema está preparado para:
+
+- Assistente inteligente (Copiloto)
+- Geração de relatórios automáticos
+- Análise de manutenção
+- Sugestões baseadas em histórico
+
+---
+
+## Nota final
+
+Este documento garante que qualquer IA consegue continuar o PMP sem perder coerência estrutural ou introduzir funcionalidades fictícias.

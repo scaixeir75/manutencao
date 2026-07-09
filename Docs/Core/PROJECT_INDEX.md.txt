@@ -1,0 +1,69 @@
+# Project Index - PMP
+
+## Objetivo
+
+Este ficheiro serve como ponto de entrada e mapa geral do projeto PMP.
+
+---
+
+## Estrutura do projeto
+
+### 📌 Core do sistema
+
+- PMP_MASTER_CONTEXT.md → visão geral e contexto
+- DOMAIN_MODEL.md → entidades e relações
+- BUSINESS_RULES.md → regras de funcionamento
+- SYSTEM_ARCHITECTURE.md → arquitetura do sistema
+
+---
+
+### 📌 Funcionalidade e análise
+
+- APPLICATION_MAP.md → mapeamento de ecrãs (em evolução)
+- AI_IMPLEMENTATION_GUIDE.md → guia para IA continuar o projeto
+
+---
+
+### 📌 Base do projeto
+
+- README.md → entrada principal e descrição do sistema
+
+### 📌 Documentação adicional
+
+- START_HERE.md → ponto de entrada para qualquer IA
+- PROJECT_VISION.md → visão estratégica e objetivos de longo prazo
+- PROJECT_CHANGELOG.md → histórico de alterações do projeto
+
+### 📌 Inteligência Artificial
+
+- Docs/AI/AI_INDEX.md → índice da documentação de IA
+- Docs/AI/AI_COPILOT_MASTER_PROMPT.md → regras de funcionamento da IA
+- Docs/AI/AI_SESSION_TEMPLATE.md → modelo para iniciar novas sessões
+- Docs/AI/AI_MEMORY.md → memória permanente do projeto
+- Docs/AI/AI_DECISIONS.md → histórico das decisões técnicas
+- Docs/AI/AI_FEATURES.md → funcionalidades de IA
+- Docs/AI/AI_ROADMAP.md → plano de evolução do Copiloto
+
+### 📌 Continuidade
+
+- CONTINUAR_COM_IA.md → ponto de entrada para continuar o projeto em qualquer IA
+---
+
+## Fluxo conceptual
+
+Plano da Semana  
+→ Ficha de Manutenção  
+→ Registos Diários  
+→ Histórico de Registos  
+
+---
+
+## Estado do projeto
+
+O PMP encontra-se estruturado e documentado a nível funcional, conceptual e arquitetural.
+
+---
+
+## Nota
+
+Este índice garante navegação rápida e compreensão global do sistema por qualquer programador ou IA.

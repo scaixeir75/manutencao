@@ -1,0 +1,59 @@
+# Domain Model - PMP
+
+## Objetivo
+
+Definir todas as entidades principais do sistema PMP, suas relações e regras fundamentais de estrutura de dados.
+
+---
+
+## Entidades principais
+
+### Ficha de Manutenção
+- Identifica um conjunto de intervenções planeadas ou executadas.
+- Pode conter vários registos.
+
+### Registo de Manutenção
+- Representa uma ocorrência individual.
+- Pode ser diário ou associado a uma ficha.
+- Pode conter texto, estado, data e fotografias.
+
+### Equipamento
+- Unidade física sujeita a manutenção.
+- Pertence a uma localização (futuro: edifício/zona).
+- Pode ter múltiplos registos.
+
+### Histórico de Registos
+- Lista cronológica de todos os registos criados.
+- Permite consulta e filtragem.
+
+---
+
+## Relações entre entidades
+
+- Ficha de Manutenção → contém → Registos de Manutenção
+- Equipamento → pode estar associado → Registos de Manutenção
+- Registos de Manutenção → aparecem → no Histórico
+- Equipamentos → pertencem a → localização (futuro)
+
+---
+
+## Regras estruturais
+
+- Um registo pertence sempre a uma data.
+- Um registo pode ou não estar associado a equipamento.
+- Uma ficha pode conter múltiplos registos.
+- O histórico agrega todos os registos independentemente da origem.
+
+---
+
+## Estado do modelo
+
+Modelo em evolução baseado em observação funcional da aplicação.
+
+Ainda não existe base de dados formal definida.
+
+---
+
+## Nota importante
+
+Este modelo é o núcleo estrutural do PMP e serve como base para qualquer implementação futura.

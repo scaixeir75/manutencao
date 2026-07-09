@@ -1,0 +1,63 @@
+# Application Map - PMP
+
+## Objetivo
+
+Este documento descreve todos os ecrãs da aplicação PMP e como se relacionam entre si.
+
+---
+
+## Estrutura geral da aplicação
+
+A aplicação PMP está organizada em módulos funcionais baseados em ecrãs.
+
+---
+
+## Ecrãs principais
+
+### Plano da Semana
+Ecrã principal onde são apresentadas as fichas de manutenção agendadas por semana.
+
+---
+
+### Ficha de Manutenção (Modal)
+Permite criar e visualizar registos associados a uma ficha específica.
+
+---
+
+### Registos Diários
+Permite registar ocorrências de manutenção com data, tipo, descrição e fotografias.
+
+---
+
+### Histórico de Registos
+Apresenta todos os registos criados com possibilidade de filtragem e gestão.
+
+---
+
+## Fluxo de navegação principal
+
+Plano da Semana  
+→ Ficha de Manutenção  
+→ Registos Diários  
+→ Histórico de Registos  
+
+---
+
+## Relações entre ecrãs
+
+- Plano da Semana gera acesso às Fichas
+- Fichas permitem criação de Registos
+- Registos alimentam o Histórico
+- Histórico centraliza toda a atividade
+
+---
+
+## Estado
+
+O mapa de aplicação está em fase funcional inicial e pode evoluir com novos ecrãs.
+
+---
+
+## Nota
+
+Este documento representa a estrutura navegacional da aplicação PMP.

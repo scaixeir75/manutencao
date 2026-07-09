@@ -1,0 +1,20 @@
+# CONTINUAR_COM_IA.md
+
+Se és uma Inteligência Artificial e vais continuar o desenvolvimento deste projeto:
+
+## NÃO COMECES A PROGRAMAR.
+
+Primeiro lê obrigatoriamente:
+
+Docs/Core/START_HERE.md
+
+Segue rigorosamente todas as instruções desse ficheiro.
+
+Só depois de terminares a leitura de toda a documentação deves responder.
+
+Quando terminares responde apenas:
+
+"Documentação analisada.
+Estou preparado para continuar o desenvolvimento do projeto PMP."
+
+Não escrevas código antes disso.

@@ -1,0 +1,79 @@
+# System Architecture - PMP
+
+## Objetivo
+
+Definir a arquitetura conceptual do sistema PMP, incluindo módulos, relações e fluxo de informação.
+
+---
+
+## Visão geral
+
+O PMP é uma aplicação de gestão de manutenção preventiva baseada em registos estruturados e fichas de manutenção.
+
+O sistema organiza toda a atividade em torno de:
+
+- planos semanais
+- fichas de manutenção
+- registos operacionais
+- histórico centralizado
+
+---
+
+## Módulos principais
+
+### Plano da Semana
+Responsável pela organização semanal de fichas de manutenção.
+
+### Ficha de Manutenção
+Agrupa intervenções e registos associados a uma atividade específica.
+
+### Registos Diários
+Permite criação de registos operacionais com data, tipo e descrição.
+
+### Histórico de Registos
+Centraliza todos os registos criados no sistema.
+
+---
+
+## Fluxo de dados
+
+Plano da Semana  
+→ Ficha de Manutenção  
+→ Registo Diário  
+→ Histórico de Registos  
+
+---
+
+## Modelo arquitetural
+
+- Interface baseada em ecrãs modulares
+- Dados organizados por entidades (registos, fichas, equipamentos)
+- Histórico central como agregador de eventos
+
+---
+
+## Extensibilidade
+
+O sistema está preparado para evolução futura para:
+
+- IA Copiloto
+- automação de manutenção
+- análise preditiva
+- gestão de equipamentos
+
+---
+
+## Princípios arquiteturais
+
+- Simplicidade funcional
+- Base em eventos (registos)
+- Rastreabilidade total
+- Modularidade por ecrã
+
+---
+
+## Estado
+
+Arquitetura definida com base em observação funcional da aplicação PMP.
+
+Ainda em evolução conforme novos módulos são analisados.

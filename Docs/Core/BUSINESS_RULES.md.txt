@@ -1,0 +1,70 @@
+# Business Rules - PMP
+
+## Objetivo
+
+Definir todas as regras de funcionamento da aplicação PMP com base em comportamento real observado.
+
+---
+
+## Regras gerais do sistema
+
+- O sistema baseia-se em registos de manutenção.
+- Toda a informação deve ser rastreável.
+- Não existem dados sem origem (tudo vem de um registo).
+
+---
+
+## Regras de Registos
+
+- Um registo pode ser criado diariamente.
+- Um registo pode ou não estar associado a um equipamento.
+- Um registo pode conter fotografia.
+- Um registo pode conter descrição textual livre.
+- Um registo pode ser classificado por tipo (Tarefa, Visita, Importante).
+
+---
+
+## Regras de Ficha de Manutenção
+
+- Uma ficha agrupa vários registos.
+- Uma ficha representa um conjunto de atividades de manutenção.
+- Uma ficha pertence a uma semana do plano.
+- Cada ficha pode ser executada parcialmente ou totalmente.
+
+---
+
+## Regras de Histórico
+
+- O histórico contém todos os registos criados.
+- O histórico pode ser filtrado por tipo.
+- O histórico permite edição e eliminação de registos.
+
+---
+
+## Regras de Fotografias
+
+- Um registo pode ter zero ou mais fotografias.
+- Fotografias são associadas ao registo após gravação.
+- Fotografias são apresentadas como miniaturas no histórico.
+
+---
+
+## Regras de consistência
+
+- Não podem existir registos órfãos sem data.
+- Todo registo pertence a uma entidade temporal (data obrigatória).
+- O sistema deve manter coerência entre ficha, registo e histórico.
+
+---
+
+## Estado
+
+Regras baseadas em observação funcional da aplicação PMP.
+
+Ainda em evolução conforme novos ecrãs são analisados.
+
+---
+
+## Nota final
+
+Estas regras definem o comportamento real do sistema e são usadas para validação lógica da aplicação.

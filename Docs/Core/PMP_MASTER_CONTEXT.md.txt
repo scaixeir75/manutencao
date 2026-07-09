@@ -1,0 +1,63 @@
+# PMP - Master Context
+
+## Objetivo do Sistema
+
+O PMP (Plataforma de Manutenção Preventiva) é um sistema de gestão de manutenção técnica que organiza, regista e acompanha o ciclo de vida de equipamentos, edifícios e intervenções.
+
+O objetivo principal é transformar operações de manutenção em conhecimento estruturado e reutilizável.
+
+---
+
+## Princípio Central
+
+Toda a informação no PMP deve cumprir três regras:
+
+1. Ser observável na aplicação
+2. Ser rastreável no histórico
+3. Não depender de memória humana
+
+---
+
+## Módulos principais da aplicação
+
+- Plano da Semana
+- Registos Diários
+- Ficha de Manutenção
+- Histórico de Registos
+- Equipamentos (futuro)
+- Edifícios (futuro)
+- Documentos (futuro)
+- Fotografias (futuro)
+
+---
+
+## Fluxo geral do sistema
+
+Plano da Semana  
+→ Ficha de Manutenção  
+→ Registos Diários  
+→ Histórico de Registos  
+
+---
+
+## Tipos de dados principais
+
+- Registos de manutenção
+- Fichas de manutenção
+- Equipamentos
+- Fotografias
+- Documentos
+
+---
+
+## Estado do sistema
+
+O sistema encontra-se em fase inicial de implementação funcional.
+
+Alguns módulos estão operacionais (registos e fichas), outros ainda em evolução.
+
+---
+
+## Nota importante
+
+Este documento é o ponto de entrada para qualquer IA ou programador que venha a continuar o desenvolvimento do PMP.
