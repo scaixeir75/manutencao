@@ -40,7 +40,7 @@ Uma missão representa um objetivo completo do utilizador. Cada missão define:
 
 A missão atualmente definida é a **Missão 001 — Assistência ao Registo Técnico**.
 
-Na versão v0.2, esta missão dispõe de uma implementação técnica simulada, de um teste ponta a ponta e de integração visual controlada no ecrã de Registos Diários.
+Na versão v0.3, esta missão dispõe de uma implementação técnica simulada, de um teste ponta a ponta e de um painel visual refinado no ecrã de Registos Diários.
 
 ## Agentes
 
@@ -116,6 +116,9 @@ Existe uma implementação técnica simulada da Missão 001 em `SRC/features/ai/
 - não realiza chamadas externas;
 - não utiliza modelos ou fornecedores de IA;
 - apresenta um painel discreto no ecrã de Registos Diários após 12 caracteres de descrição;
+- apresenta prioridade e risco com etiquetas legíveis em Português de Portugal;
+- apresenta a informação em falta como lista;
+- indica de forma explícita que é necessária confirmação do técnico;
 - apresenta apenas sugestões e nunca altera o texto do técnico;
 - prevê uma mensagem simples de indisponibilidade;
 - não grava dados nem altera a lógica de gravação;
@@ -125,9 +128,10 @@ O teste ponta a ponta encontra-se em `SRC/features/ai/tests/assistTechnicalRecor
 
 ## Estado técnico
 
-**Versão:** v0.2  
-**Estado:** Integração visual controlada concluída.
+**Versão:** v0.3  
+**Commit:** `aae35d750067265e681f5c3f44a7d629b46a10d2`  
+**Estado:** Refinamento visual concluído.
 
 O cenário validado classifica um ruído durante a centrifugação como `Anomalia / Corretiva`, atribui prioridade média e mantém o risco indeterminado por ausência de histórico. O resultado identifica modelo, fotografia e histórico como informação em falta e exige confirmação humana.
 
-A integração foi validada em desktop e móvel, sem sobreposições, sem deslocamento horizontal e sem erros no browser. O TypeScript permanece sem erros.
+A integração foi validada em desktop e móvel, sem sobreposições, sem deslocamento horizontal e sem erros no browser. O TypeScript, o teste da Missão 001 e o `git diff --check` passaram sem problemas.

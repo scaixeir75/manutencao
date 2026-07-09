@@ -75,5 +75,24 @@ O teste ponta a ponta da versão v0.1 foi concluído com sucesso. A validação 
 
 ## Estado atual
 
-**Versão:** v0.2  
-**Estado:** Integração visual controlada concluída.
+**Versão:** v0.3  
+**Commit:** `aae35d750067265e681f5c3f44a7d629b46a10d2`  
+**Estado:** Refinamento visual concluído.
+
+## Validação do refinamento visual v0.3
+
+### Resultado
+
+- A prioridade é apresentada como `Média`.
+- O risco é apresentado como `Indeterminado`.
+- A confirmação é apresentada como `Confirmação do técnico necessária`.
+- A informação em falta é apresentada como lista.
+- O layout móvel não apresenta sobreposições.
+- O texto original do técnico permanece inalterado.
+
+### Verificações técnicas
+
+- TypeScript sem erros.
+- Teste da Missão 001 concluído com sucesso.
+- `git diff --check` sem problemas.
+- Browser sem erros.

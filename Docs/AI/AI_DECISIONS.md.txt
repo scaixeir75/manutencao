@@ -51,3 +51,29 @@ Validação concluída:
 - sem sobreposições;
 - sem deslocamento horizontal;
 - sem erros no browser.
+
+09/07/2026
+
+Registado o marco v0.3 do Sistema Operativo de IA.
+
+Commit:
+
+aae35d750067265e681f5c3f44a7d629b46a10d2
+
+A Missão 001 — Assistência ao Registo Técnico passou ao estado "Refinamento visual concluído".
+
+Alterações no painel Assistente IA:
+
+- prioridade apresentada como "Média";
+- risco apresentado como "Indeterminado";
+- confirmação apresentada como "Confirmação do técnico necessária";
+- informação em falta apresentada em lista;
+- layout móvel validado sem sobreposições;
+- texto original do técnico preservado.
+
+Validação concluída:
+
+- TypeScript sem erros;
+- teste da Missão 001 concluído com sucesso;
+- git diff --check sem problemas;
+- browser sem erros.
