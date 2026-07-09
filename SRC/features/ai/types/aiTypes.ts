@@ -1,4 +1,7 @@
-import type { MaintenanceRecordType } from '../../../shared/types/domain';
+import type {
+  MaintenanceRecord,
+  MaintenanceRecordType,
+} from '../../../shared/types/domain';
 
 export type ConfidenceLevel = number;
 
@@ -20,6 +23,10 @@ export type TechnicalRecordContext = {
   initialType?: MaintenanceRecordType;
   photos?: string[];
   actionsAlreadyTaken?: string[];
+};
+
+export type AIMissionDependencies = {
+  historyRecords?: readonly MaintenanceRecord[];
 };
 
 export type ClassificationResult = {
@@ -45,7 +52,7 @@ export type HistoryEntry = {
 
 export type HistoryToolResult = {
   entries: HistoryEntry[];
-  source: 'simulated';
+  source: 'records';
 };
 
 export type EquipmentToolResult = {

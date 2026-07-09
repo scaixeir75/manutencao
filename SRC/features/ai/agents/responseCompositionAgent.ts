@@ -30,8 +30,7 @@ export async function runResponseCompositionAgent({
     missingInformation: [
       ...new Set([...summary.missingInformation, ...risk.missingInformation]),
     ],
-    consultedSources: history.source ? ['Histórico simulado'] : [],
+    consultedSources: history.source === 'records' ? ['Histórico de registos'] : [],
     confirmationMessage: 'Confirme ou corrija a sugestão antes de gravar o registo.',
   };
 }
-

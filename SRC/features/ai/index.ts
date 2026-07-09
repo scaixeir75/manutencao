@@ -9,6 +9,7 @@ export { consultEquipment } from './tools/equipmentTool';
 export { consultHistory } from './tools/historyTool';
 export { consultPhotos } from './tools/photosTool';
 export type {
+  AIMissionDependencies,
   AssistTechnicalRecordMissionResult,
   AIRecordClassification,
   ClassificationResult,

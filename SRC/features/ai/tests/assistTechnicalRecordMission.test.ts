@@ -1,10 +1,22 @@
 import { assistTechnicalRecord } from '../missions/assistTechnicalRecordMission';
 import type { AssistTechnicalRecordMissionResult } from '../types/aiTypes';
+import type { MaintenanceRecord } from '../../../shared/types/domain';
 
 const input = {
   description: 'Máquina de lavar faz ruído durante a centrifugação.',
   date: '2026-07-09',
 };
+
+const historyRecords: readonly MaintenanceRecord[] = [
+  {
+    id: 'history-record-001',
+    title: 'Ruído na centrifugação',
+    description: 'Detetado ruído durante a centrifugação.',
+    type: 'Importante',
+    date: '2026-07-01',
+    photos: [],
+  },
+];
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
@@ -23,6 +35,18 @@ function validateResult(result: AssistTechnicalRecordMissionResult) {
   assert(response.plan.suggestedPriority, 'A prioridade é obrigatória.');
   assert(response.technicalSummary, 'O resumo técnico é obrigatório.');
   assert(response.risk.level, 'O nível de risco é obrigatório.');
+  assert(
+    result.history.source === 'records',
+    'A ferramenta deve indicar os registos como fonte do histórico.',
+  );
+  assert(
+    result.history.entries.length === historyRecords.length,
+    'A ferramenta deve receber e converter o histórico fornecido.',
+  );
+  assert(
+    response.risk.level !== 'indeterminado',
+    'Uma ocorrência semelhante deve permitir determinar o risco.',
+  );
   assert(response.plan.actions[0], 'A próxima ação é obrigatória.');
   assert(
     Array.isArray(response.missingInformation),
@@ -40,7 +64,17 @@ function validateResult(result: AssistTechnicalRecordMissionResult) {
 }
 
 export async function testAssistTechnicalRecordMission() {
-  const result = await assistTechnicalRecord(input);
+  const fallbackResult = await assistTechnicalRecord(input);
+  assert(
+    fallbackResult.history.entries.length === 0,
+    'Sem dependências, o histórico deve usar uma lista vazia.',
+  );
+  assert(
+    fallbackResult.response.risk.level === 'indeterminado',
+    'Sem histórico, o risco deve permanecer indeterminado.',
+  );
+
+  const result = await assistTechnicalRecord(input, { historyRecords });
 
   validateResult(result);
 

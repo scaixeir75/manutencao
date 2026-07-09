@@ -53,6 +53,8 @@ export function DailyRecordsScreen({ records }: DailyRecordsScreenProps) {
         const result = await assistTechnicalRecord({
           description: description.trim(),
           date,
+        }, {
+          historyRecords: records,
         });
 
         if (isCurrentRequest) {
@@ -71,7 +73,7 @@ export function DailyRecordsScreen({ records }: DailyRecordsScreenProps) {
       isCurrentRequest = false;
       window.clearTimeout(timeoutId);
     };
-  }, [date, description, hasEnoughDescription]);
+  }, [date, description, hasEnoughDescription, records]);
 
   return (
     <section className="screen">
