@@ -1,4 +1,4 @@
-04/07/2026
+﻿04/07/2026
 
 Criada documentação do projeto.
 
@@ -197,5 +197,38 @@ Validação prevista:
 - TypeScript sem erros;
 - teste da Missão 001 concluído com sucesso;
 - desktop sem erros no browser;
+- móvel 390x844 sem overflow horizontal;
+- `git diff --check` sem problemas.
+
+09/08/2026
+
+Registado o marco v0.8 do Sistema Operativo de IA.
+
+A Missão 001 — Assistência ao Registo Técnico passou ao estado "Estado visual do Assistente IA".
+
+Decisão técnica:
+
+- o painel Assistente IA passa a estar sempre visível no ecrã de Registos Diários;
+- antes da ativação, informa que são necessários pelo menos 12 caracteres de descrição;
+- a ativação da análise continua dependente de 12 ou mais caracteres;
+- o estado de análise mantém a mensagem "A analisar o registo...";
+- a UI de sugestão pronta da v0.7 foi preservada;
+- risco indeterminado passa a apresentar a nota "Histórico insuficiente para avaliar risco com confiança.";
+- botões de copiar e feedback visual foram preservados.
+
+Limites mantidos:
+
+- nenhum campo do formulário é alterado automaticamente;
+- layout global da aplicação intacto;
+- formulário, dados e lógica de gravação preservados;
+- agentes, ferramentas, orquestrador e tipos não foram alterados;
+- sem chamadas externas;
+- sem dependências novas.
+
+Validação prevista:
+
+- TypeScript sem erros;
+- teste da Missão 001 concluído com sucesso;
+- desktop sem erros ou warnings no browser;
 - móvel 390x844 sem overflow horizontal;
 - `git diff --check` sem problemas.

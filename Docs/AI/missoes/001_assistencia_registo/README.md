@@ -1,4 +1,4 @@
-# Missão 001 — Assistência ao Registo Técnico
+﻿# Missão 001 — Assistência ao Registo Técnico
 
 ## Objetivo
 
@@ -6,19 +6,22 @@ Apoiar o técnico na preparação de um registo de manutenção claro, classific
 
 ## Estado atual
 
-**Versão:** v0.7
+**Versão:** v0.8
 
-**Estado:** Controlo manual melhorado.
+**Estado:** Estado visual do Assistente IA.
 
 ## Integração
 
 A missão está disponível como apoio no ecrã de Registos Diários:
 
-- o painel aparece quando a descrição tem pelo menos 12 caracteres;
+- o painel está sempre visível no ecrã de Registos Diários;
+- antes da ativação, informa que são necessários pelo menos 12 caracteres;
+- a análise continua a ser executada apenas quando a descrição tem pelo menos 12 caracteres;
 - a Missão 001 simulada é executada através do orquestrador;
 - são apresentados tipo, prioridade, resumo, risco, próxima ação, informação em falta e confirmação humana;
 - a prioridade `media` é apresentada como `Média`;
 - o risco `indeterminado` é apresentado como `Indeterminado`;
+- quando o risco é indeterminado, é apresentada nota de histórico insuficiente;
 - o tipo, a prioridade e o risco são apresentados com badges;
 - o resumo e a próxima ação têm blocos próprios;
 - existem botões pequenos para copiar o resumo e a próxima ação;
@@ -49,6 +52,7 @@ A missão está disponível como apoio no ecrã de Registos Diários:
 - Sem persistência nova.
 - Sem alteração do layout global da aplicação.
 - Sem alteração da navegação, formulário, cards exteriores ou lógica de gravação.
+- Sem alteração de agentes, ferramentas, orquestrador ou tipos.
 - Sem aplicação automática de tipo, prioridade, resumo ou próxima ação.
 
 ## Validação
@@ -61,6 +65,8 @@ A missão está disponível como apoio no ecrã de Registos Diários:
 - Sem warnings no browser.
 - Móvel 390x844 validado sem overflow horizontal.
 - Controlo manual por cópia validado.
+- Estado inicial com menos de 12 caracteres validado.
+- Nota de histórico insuficiente validada.
 - Teste da Missão 001 concluído com sucesso.
 - `git diff --check` sem problemas.
 - Risco médio quando existe uma ocorrência semelhante.

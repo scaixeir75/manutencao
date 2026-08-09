@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   color: #17202a;
   background: #eef1f4;
   font-family:
@@ -343,6 +343,14 @@ textarea {
   color: #8f2f2f;
 }
 
+.ai-assistant-message.idle {
+  border: 1px solid #d7e0e5;
+  border-radius: 8px;
+  padding: 12px;
+  color: #52616d;
+  background: #ffffff;
+}
+
 .ai-suggestion-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -469,6 +477,16 @@ textarea {
 .ai-suggestion-grid .confirmation {
   border-top: 1px solid #d7e0e5;
   padding-top: 12px;
+}
+
+.ai-status-note {
+  border: 1px solid #ead08b;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #735014;
+  background: #fff8e6;
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
 
 .ai-validation-note {

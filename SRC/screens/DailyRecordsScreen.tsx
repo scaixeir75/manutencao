@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Camera, Check, Copy, Plus, Sparkles } from 'lucide-react';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { assistTechnicalRecord } from '../features/ai';
@@ -59,6 +59,7 @@ export function DailyRecordsScreen({ records }: DailyRecordsScreenProps) {
   const [copiedSuggestion, setCopiedSuggestion] = useState<string | null>(null);
 
   const hasEnoughDescription = description.trim().length >= 12;
+  const hasInsufficientHistory = assistantResult?.response.risk.level === 'indeterminado';
 
   const copySuggestion = async (key: string, value: string) => {
     if (!value) {
@@ -157,13 +158,18 @@ export function DailyRecordsScreen({ records }: DailyRecordsScreenProps) {
         </label>
       </form>
 
-      {hasEnoughDescription && (
-        <aside className="ai-assistant-panel" aria-live="polite">
+      <aside className="ai-assistant-panel" aria-live="polite">
           <div className="ai-assistant-heading">
             <Sparkles size={18} aria-hidden="true" />
             <strong>Assistente IA</strong>
             <span>Sugestão para validação</span>
           </div>
+
+          {!hasEnoughDescription && (
+            <p className="ai-assistant-message idle">
+              Escreve uma descrição com pelo menos 12 caracteres para ativar o Assistente IA.
+            </p>
+          )}
 
           {assistantStatus === 'loading' && (
             <p className="ai-assistant-message">A analisar o registo...</p>
@@ -237,6 +243,11 @@ export function DailyRecordsScreen({ records }: DailyRecordsScreenProps) {
                 </dt>
                 <dd className="ai-text-block">{assistantResult.response.plan.actions[0]}</dd>
               </div>
+              {hasInsufficientHistory && (
+                <div className="wide ai-status-note">
+                  Histórico insuficiente para avaliar risco com confiança.
+                </div>
+              )}
               <div className="wide">
                 <dt>Informação em falta</dt>
                 <dd>
@@ -276,7 +287,6 @@ export function DailyRecordsScreen({ records }: DailyRecordsScreenProps) {
             </dl>
           )}
         </aside>
-      )}
 
       <div className="record-stack">
         {records.map((record) => (

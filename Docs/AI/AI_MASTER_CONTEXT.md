@@ -1,4 +1,4 @@
-# Contexto Mestre do Sistema Operativo de IA
+﻿# Contexto Mestre do Sistema Operativo de IA
 
 ## Finalidade
 
@@ -45,6 +45,8 @@ Na versão v0.5, esta missão dispõe de inteligência simulada melhorada, com c
 Na versão v0.6, o painel visual do Assistente IA foi refinado sem alterar o layout global da aplicação.
 
 Na versão v0.7, o controlo manual do técnico foi reforçado com a ação "Copiar sugestão completa", mantendo a regra de não alterar automaticamente campos do formulário.
+
+Na versão v0.8, o painel Assistente IA passou a apresentar um estado visível antes da ativação e uma nota explícita quando o histórico é insuficiente para avaliar risco com confiança.
 
 ## Agentes
 
@@ -123,7 +125,9 @@ Existe uma implementação técnica simulada da Missão 001 em `SRC/features/ai/
 - usa respostas locais e determinísticas;
 - não realiza chamadas externas;
 - não utiliza modelos ou fornecedores de IA;
-- apresenta um painel discreto no ecrã de Registos Diários após 12 caracteres de descrição;
+- apresenta um painel discreto no ecrã de Registos Diários;
+- antes da ativação, informa que são necessários pelo menos 12 caracteres de descrição;
+- continua a executar a missão apenas quando a descrição tem pelo menos 12 caracteres;
 - apresenta prioridade e risco com etiquetas legíveis em Português de Portugal;
 - apresenta a informação em falta como lista;
 - indica de forma explícita que é necessária confirmação do técnico;
@@ -133,6 +137,7 @@ Existe uma implementação técnica simulada da Missão 001 em `SRC/features/ai/
 - converte os registos recebidos em entradas de histórico para a IA;
 - seleciona apenas ocorrências com grupos técnicos equivalentes ao texto atual;
 - atribui risco indeterminado sem ocorrências relevantes, médio com uma ocorrência e alto com duas ou mais;
+- comunica explicitamente quando o histórico é insuficiente para avaliar risco com confiança;
 - propõe uma próxima ação específica para sintomas mecânicos, fuga de água, falha de aquecimento ou falha de alimentação;
 - usa uma lista vazia como fallback quando o histórico não é fornecido;
 - prevê uma mensagem simples de indisponibilidade;
@@ -151,9 +156,9 @@ O teste ponta a ponta encontra-se em `SRC/features/ai/tests/assistTechnicalRecor
 
 ## Estado técnico
 
-**Versão:** v0.7
+**Versão:** v0.8
 
-**Estado:** Controlo manual melhorado.
+**Estado:** Estado visual do Assistente IA.
 
 O cenário validado classifica um ruído durante a centrifugação como `Anomalia / Corretiva`, atribui prioridade média e mantém o risco indeterminado por ausência de histórico. O resultado identifica modelo, fotografia e histórico como informação em falta e exige confirmação humana.
 
@@ -164,3 +169,5 @@ Não existe persistência nova: os dados continuam a ser os registos em memória
 Na v0.6, o commit `4442e7ca8443156112cf2375e37684eecfcad9cb` refinou apenas a apresentação interna do painel Assistente IA. Não foram alterados a navegação, o formulário, os cards exteriores, a lógica de gravação ou o layout global da aplicação.
 
 Na v0.7, o painel passou a permitir copiar a sugestão completa, incluindo tipo, prioridade, resumo, risco, próxima ação, informação em falta e nota de confirmação humana. A ação é manual e explícita; a IA continua apenas a sugerir.
+
+Na v0.8, o painel passou a estar sempre visível no ecrã de Registos Diários. A ativação da análise continua dependente de pelo menos 12 caracteres na descrição, e o risco indeterminado passa a ser acompanhado por uma nota discreta de histórico insuficiente. O formulário, os dados e a lógica de gravação permanecem inalterados.
