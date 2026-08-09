@@ -55,6 +55,24 @@ export type HistoryToolResult = {
   source: 'records';
 };
 
+
+export type EquipmentHistoryToolError =
+  | 'identificador_em_falta'
+  | 'equipamento_inexistente'
+  | 'historico_indisponivel';
+
+export type EquipmentHistoryEntry = {
+  data: string;
+  tipoRegisto: MaintenanceRecordType;
+  descricao: string;
+  equipamentoId: string;
+};
+
+export type EquipmentHistoryToolResult = {
+  entries: EquipmentHistoryEntry[];
+  error?: EquipmentHistoryToolError;
+  message?: string;
+};
 export type EquipmentToolResult = {
   equipment: {
     id: string;

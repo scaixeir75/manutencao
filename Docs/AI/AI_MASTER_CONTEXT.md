@@ -1,4 +1,4 @@
-﻿# Contexto Mestre do Sistema Operativo de IA
+# Contexto Mestre do Sistema Operativo de IA
 
 ## Finalidade
 
@@ -52,6 +52,8 @@ Na versão v0.8A, foi desenhada funcionalmente a ferramenta `consultar_historico
 
 Na versão v0.8B, a Supervisão Humana foi integrada como regra transversal, sem criação de agente executável.
 
+Na versão v0.9, foi implementada de forma aditiva a função técnica `consultarHistoricoEquipamento`, preservando `consultHistory` e a Missão 001.
+
 ## Agentes
 
 Os agentes são componentes especializados com uma única responsabilidade principal. Na Missão 001 existem:
@@ -71,7 +73,7 @@ As ferramentas permitem consultar informação interna do PMP de forma controlad
 - Consultar Histórico;
 - Consultar Equipamento;
 - Consultar Fotografias.
-- Consultar Histórico do Equipamento, em estado documental v0.8A.
+- Consultar Histórico do Equipamento, com implementação técnica inicial aditiva v0.9.
 
 As ferramentas são apenas de leitura: não criam, editam ou eliminam registos.
 
@@ -79,7 +81,7 @@ Na versão v0.4, a ferramenta Consultar Histórico recebe os registos da aplica�
 
 Na versão v0.5, a ferramenta devolve apenas ocorrências relevantes através de grupos simples de palavras-chave equivalentes para sintomas mecânicos, centrifugação, fuga de água, erro ou avaria, aquecimento e alimentação elétrica.
 
-Na versão v0.8A, `consultar_historico_equipamento` é definida como especialização documental de consulta por `equipamento_id`. A ferramenta deve coexistir temporariamente com `consultar_historico`; a substituição total fica A confirmar.
+Na versão v0.8A, `consultar_historico_equipamento` foi definida como especialização documental de consulta por `equipamento_id`. Na versão v0.9, a função `consultarHistoricoEquipamento` foi implementada de forma aditiva e coexiste com `consultHistory`.
 
 ## Base de Conhecimento
 
@@ -169,9 +171,9 @@ O teste ponta a ponta encontra-se em `SRC/features/ai/tests/assistTechnicalRecor
 
 ## Estado técnico
 
-**Versão:** v0.8B
+**Versão:** v0.9
 
-**Estado:** Supervisão Humana integrada como regra transversal.
+**Estado:** Implementação técnica inicial da ferramenta Consultar Histórico do Equipamento.
 
 O cenário validado classifica um ruído durante a centrifugação como `Anomalia / Corretiva`, atribui prioridade média e mantém o risco indeterminado por ausência de histórico. O resultado identifica modelo, fotografia e histórico como informação em falta e exige confirmação humana.
 
@@ -188,3 +190,5 @@ Na v0.8, o painel passou a estar sempre visível no ecrã de Registos Diários. 
 Na v0.8A, não existe implementação técnica nova. A ferramenta `consultar_historico_equipamento` fica documentada como apenas de leitura, com entrada obrigatória `equipamento_id`, entrada opcional `limite`, saída limitada a `data`, `tipo_registo`, `descricao` e `estado`, e erros `equipamento_inexistente`, `historico_indisponivel` e `identificador_em_falta`.
 
 Na v0.8B, Supervisão Humana é uma regra transversal documentada em `Docs/AI/regras/supervisao_humana.md`. Não existe agente executável novo. Ações críticas, como criar alerta preventivo, alterar prioridade, fechar registo, gerar relatório oficial ou sugerir paragem de equipamento, exigem aprovação humana.
+
+Na v0.9, `consultarHistoricoEquipamento` filtra registos por `equipmentId`, ordena por data descendente quando possível, aplica `limite` positivo e devolve `entries`, `error` e `message` quando aplicável. O campo `estado` permanece A confirmar, porque não existe em `MaintenanceRecord`. Não foram alterados orquestrador, Missão 001, domínio, seed, ecrãs ou lógica de gravação.

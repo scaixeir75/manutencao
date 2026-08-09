@@ -6,7 +6,7 @@ export { runTechnicalSummaryAgent } from './agents/technicalSummaryAgent';
 export { assistTechnicalRecord } from './missions/assistTechnicalRecordMission';
 export { orchestrateAssistTechnicalRecord } from './orchestration/orchestrator';
 export { consultEquipment } from './tools/equipmentTool';
-export { consultHistory } from './tools/historyTool';
+export { consultHistory, consultarHistoricoEquipamento } from './tools/historyTool';
 export { consultPhotos } from './tools/photosTool';
 export type {
   AIMissionDependencies,
@@ -15,6 +15,9 @@ export type {
   ClassificationResult,
   ComposedResponse,
   ConfidenceLevel,
+  EquipmentHistoryEntry,
+  EquipmentHistoryToolError,
+  EquipmentHistoryToolResult,
   EquipmentToolResult,
   HistoryEntry,
   HistoryToolResult,

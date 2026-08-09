@@ -1,4 +1,4 @@
-﻿04/07/2026
+04/07/2026
 
 Criada documentação do projeto.
 
@@ -315,3 +315,45 @@ Limites mantidos:
 - sem alterações ao formulário;
 - sem dependências novas;
 - sem API externa.
+09/08/2026
+
+Registado o marco v0.9 do Sistema Operativo de IA.
+
+Tema:
+
+Implementação técnica inicial da ferramenta Consultar Histórico do Equipamento.
+
+Estado:
+
+Implementação técnica inicial aditiva.
+
+Decisão técnica:
+
+- foi criada a função `consultarHistoricoEquipamento` em `SRC/features/ai/tools/historyTool.ts`;
+- a implementação é aditiva e não substitui `consultHistory`;
+- `consultHistory` foi preservada para a Missão 001;
+- a função recebe `equipamentoId`, `records` e `limite` opcional;
+- os registos são filtrados por `record.equipmentId === equipamentoId`;
+- os resultados são ordenados por data do mais recente para o mais antigo quando possível;
+- `limite` é aplicado apenas quando é número positivo;
+- a saída devolve `entries`, `error` e `message` quando aplicável;
+- cada entrada devolve apenas `data`, `tipoRegisto`, `descricao` e `equipamentoId`;
+- o campo `estado` permanece A confirmar, porque não existe em `MaintenanceRecord`;
+- a ferramenta é apenas de leitura.
+
+Validação concluída:
+
+- TypeScript sem erros;
+- teste da Missão 001 concluído com sucesso;
+- teste específico da ferramenta concluído com sucesso;
+- sem chamadas externas;
+- sem dependências novas.
+
+Limites mantidos:
+
+- sem alteração do orquestrador;
+- sem alteração da Missão 001;
+- sem alteração de `seed.ts`;
+- sem alteração de `domain.ts`;
+- sem alteração de ecrãs;
+- sem alteração da lógica de gravação.

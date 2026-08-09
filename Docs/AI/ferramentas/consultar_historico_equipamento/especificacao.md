@@ -1,29 +1,34 @@
-﻿# Ferramenta — Consultar Histórico do Equipamento
+# Ferramenta — Consultar Histórico do Equipamento
 
 ## 1. Nome da ferramenta
 
 - **Nome funcional:** Consultar Histórico do Equipamento.
 - **Nome técnico interno:** `consultar_historico_equipamento`.
-- **Estado:** documentação funcional, sem implementação técnica.
-- **Versão documental:** v0.8A.
+- **Função TypeScript:** `consultarHistoricoEquipamento`.
+- **Estado:** implementação técnica inicial aditiva.
+- **Versão:** v0.9.
 
 ### Factos confirmados
 
-- A ferramenta deve obter registos anteriores associados a um equipamento.
+- A ferramenta obtém registos anteriores associados a um equipamento.
 - A ferramenta é apenas de leitura.
-- A entrada obrigatória é `equipamento_id`.
+- A entrada obrigatória funcional é `equipamento_id`.
+- A entrada técnica é `equipamentoId`.
 - A entrada opcional é `limite`.
-- A saída deve incluir apenas `data`, `tipo_registo`, `descricao` e `estado`.
+- A implementação usa `readonly MaintenanceRecord[]`.
+- A implementação não substitui `consultHistory`.
+- A Missão 001 continua a usar a ferramenta atual `consultHistory`.
 
-### Propostas arquiteturais
+### A confirmar
 
-- A ferramenta deve especializar a consulta histórica por equipamento.
-- A ferramenta deve coexistir temporariamente com `consultar_historico`.
-- A substituição total de `consultar_historico` fica **A confirmar**.
+- Fonte autorizada para validar existência real do equipamento.
+- Valor por omissão funcional de `limite`.
+- Campo real de estado do registo.
+- Autorização final por agente.
 
 ## 2. Objetivo único
 
-Obter registos anteriores associados a um equipamento identificado, para apoiar os agentes do Copiloto PMP na análise de contexto técnico.
+Obter registos anteriores associados a um equipamento identificado, para apoiar análises futuras do Copiloto PMP.
 
 A ferramenta não interpreta o histórico, não decide prioridade e não gera recomendações. Apenas devolve dados existentes e confirmados.
 
@@ -39,63 +44,85 @@ A ferramenta não interpreta o histórico, não decide prioridade e não gera re
 - Agente de Planeamento, para consultar ocorrências anteriores antes de propor próximos passos.
 - Orquestrador, para controlar quando a ferramenta pode ser chamada dentro de uma missão autorizada.
 
-A autorização final por agente deve ser confirmada antes da implementação técnica.
+A autorização final por agente deve ser confirmada antes de integrar esta ferramenta em fluxos de missão.
 
 ## 4. Entradas obrigatórias
 
-- `equipamento_id`: identificador do equipamento cujo histórico deve ser consultado.
+- `equipamento_id`, no contrato funcional.
+- `equipamentoId`, no contrato TypeScript.
+
+Tipo técnico:
+
+```ts
+equipamentoId: string | undefined
+```
 
 ## 5. Entradas opcionais
 
 - `limite`: número máximo de registos a devolver.
 
-Valor por omissão: **A confirmar**.
+Tipo técnico:
+
+```ts
+limite?: number
+```
+
+A implementação aplica `limite` apenas quando é um número positivo.
 
 ## 6. Saída estruturada
 
-A resposta deve devolver uma estrutura com:
+Tipo técnico:
 
-```text
-resultado:
-  - data
-  - tipo_registo
-  - descricao
-  - estado
-estado_consulta
-mensagem
+```ts
+{
+  entries: Array<{
+    data: string;
+    tipoRegisto: MaintenanceRecordType;
+    descricao: string;
+    equipamentoId: string;
+  }>;
+  error?: 'identificador_em_falta' | 'equipamento_inexistente' | 'historico_indisponivel';
+  message?: string;
+}
 ```
 
-Campos por registo:
+Campos por entrada:
 
-- `data`: data do registo.
-- `tipo_registo`: tipo do registo existente.
-- `descricao`: descrição registada.
-- `estado`: estado do registo.
+- `data`: origem em `MaintenanceRecord.date`.
+- `tipoRegisto`: origem em `MaintenanceRecord.type`.
+- `descricao`: origem em `MaintenanceRecord.description`.
+- `equipamentoId`: origem em `MaintenanceRecord.equipmentId`.
 
-Quando não existirem resultados, `resultado` deve ser uma lista vazia.
+### Campo `estado`
+
+`estado` permanece **A confirmar**. Não existe em `MaintenanceRecord`, por isso a implementação v0.9 não devolve este campo como dado real.
 
 ## 7. Validações das entradas
 
-- `equipamento_id` deve existir no pedido.
-- `equipamento_id` não pode estar vazio.
-- `limite`, quando fornecido, deve ser um número positivo.
-- A existência real do equipamento deve ser validada contra a fonte de dados autorizada. Fonte concreta: **A confirmar**.
+- `equipamentoId` deve existir.
+- `equipamentoId` não pode estar vazio após `trim()`.
+- `limite`, quando fornecido, só é aplicado se for número positivo.
+- A existência real do equipamento contra uma lista de equipamentos permanece **A confirmar**.
 
 ## 8. Erros possíveis
 
-- `identificador_em_falta`: quando `equipamento_id` não é fornecido ou está vazio.
-- `equipamento_inexistente`: quando o equipamento não existe na fonte autorizada.
-- `historico_indisponivel`: quando o histórico não pode ser consultado.
+- `identificador_em_falta`: quando `equipamentoId` não é fornecido ou está vazio.
+- `historico_indisponivel`: quando não existem registos associados ao equipamento indicado.
+- `equipamento_inexistente`: previsto no tipo, mas a validação contra fonte de equipamentos está **A confirmar**.
 
 ## 9. Comportamento quando não existem resultados
 
-Quando o equipamento existe mas não existem registos anteriores associados:
+Quando não existem registos associados ao equipamento indicado:
 
-- devolver `resultado` como lista vazia;
-- devolver `estado_consulta` como `sem_resultados`;
-- indicar `Informação insuficiente` para análise.
+```ts
+{
+  entries: [],
+  error: 'historico_indisponivel',
+  message: 'Informação insuficiente'
+}
+```
 
-A ausência de resultados não deve ser tratada como erro técnico.
+A ausência de resultados não deve ser usada como prova de baixo risco.
 
 ## 10. Permissões
 
@@ -103,8 +130,9 @@ Esta ferramenta é apenas de leitura.
 
 A ferramenta pode:
 
-- consultar registos existentes associados ao equipamento;
-- devolver os campos autorizados da saída estruturada.
+- consultar o array de registos recebido;
+- filtrar registos por `equipmentId`;
+- devolver os campos confirmados da saída estruturada.
 
 A ferramenta não pode:
 
@@ -123,60 +151,52 @@ A ferramenta não pode:
 - Não gera alertas.
 - Não substitui validação humana.
 - Não assume sensores, telemetria ou dados preditivos.
-- Não devolve campos não confirmados.
+- Não devolve `estado` como dado real.
 - Não deve expor dados fora do âmbito do equipamento consultado.
 
 ## 12. Regras de segurança
 
 - Separar dados devolvidos de inferências dos agentes.
 - Não transformar ausência de histórico em conclusão de baixo risco.
-- Não ocultar erros de identificação do equipamento.
-- Não devolver campos não autorizados.
+- Não ocultar erro de identificador em falta.
+- Não devolver campos não confirmados.
 - Não alterar dados recebidos ou consultados.
-- Manter rastreável a origem da consulta. Campo de origem: **A confirmar**.
 
 ## 13. Exemplo de pedido
 
 ```text
 ferramenta: consultar_historico_equipamento
 entrada:
-  equipamento_id: EQ-001
+  equipamento_id: eq-pump-02
   limite: 5
 ```
 
 ## 14. Exemplo de resposta
 
 ```text
-estado_consulta: encontrado
-mensagem: Histórico consultado com sucesso.
-resultado:
+entries:
   - data: 2026-07-03
-    tipo_registo: Tarefa
-    descricao: Ruído identificado durante funcionamento.
-    estado: A confirmar
-  - data: 2026-07-09
-    tipo_registo: Importante
-    descricao: Verificação técnica solicitada.
-    estado: A confirmar
+    tipoRegisto: Visita
+    descricao: Pressões dentro do intervalo esperado após verificação de rotina.
+    equipamentoId: eq-pump-02
 ```
 
 Exemplo sem resultados:
 
 ```text
-estado_consulta: sem_resultados
-mensagem: Informação insuficiente.
-resultado: []
+entries: []
+error: historico_indisponivel
+message: Informação insuficiente
 ```
 
 ## 15. Testes mínimos necessários
 
-- Deve devolver erro `identificador_em_falta` quando `equipamento_id` não é fornecido.
-- Deve devolver erro `equipamento_inexistente` quando o equipamento não existe.
-- Deve devolver erro `historico_indisponivel` quando o histórico não pode ser consultado.
-- Deve devolver lista vazia e mensagem `Informação insuficiente` quando não existem registos associados.
-- Deve devolver apenas `data`, `tipo_registo`, `descricao` e `estado` por registo.
-- Deve respeitar `limite` quando fornecido.
-- Não deve criar, alterar, fechar ou apagar registos.
-- Não deve decidir prioridade.
-- Não deve gerar alertas.
-- Não deve substituir validação humana.
+- Devolve `identificador_em_falta` quando não há `equipamentoId`.
+- Devolve lista filtrada por equipamento.
+- Não devolve registos de outro equipamento.
+- Ordena por data do mais recente para o mais antigo quando possível.
+- Não quebra quando a data não é parseável.
+- Aplica `limite` positivo.
+- Devolve `historico_indisponivel` e `Informação insuficiente` quando não existem resultados.
+- Não inclui campo `estado` inventado.
+- `consultHistory` continua a funcionar como antes.

@@ -1,4 +1,4 @@
-﻿# Catálogo de Ferramentas
+# Catálogo de Ferramentas
 
 As ferramentas da Missão 001 são operações de consulta. Não criam, editam ou eliminam dados do PMP.
 
@@ -43,12 +43,12 @@ As ferramentas da Missão 001 são operações de consulta. Não criam, editam o
 - **Responsabilidade:** obter registos anteriores associados a um equipamento específico.
 - **Entrada obrigatória:** `equipamento_id`.
 - **Entrada opcional:** `limite`.
-- **Saída:** lista de registos com `data`, `tipo_registo`, `descricao` e `estado`.
+- **Saída:** `entries` com `data`, `tipoRegisto`, `descricao` e `equipamentoId`. O campo `estado` permanece A confirmar por não existir em `MaintenanceRecord`.
 - **Permissões:** apenas leitura.
 - **Missão associada:** A confirmar.
-- **Estado:** Documentação funcional, sem implementação técnica.
-- **Versão:** v0.8A.
-- **Relação com `consultar_historico`:** especialização por equipamento; deve coexistir temporariamente com `consultar_historico` até ser confirmada a estratégia técnica.
+- **Estado:** Implementação técnica inicial aditiva.
+- **Versão:** v0.9.
+- **Relação com `consultar_historico`:** especialização por equipamento; coexiste com `consultHistory`, que foi preservada para a Missão 001.
 - **Garantias:** não cria, altera, fecha ou apaga registos; não decide prioridade; não gera alertas; não substitui validação humana.
 - **Limites:** sem sensores, telemetria, dados preditivos, chamadas externas ou dependências novas.
 - **Especificação:** `../ferramentas/consultar_historico_equipamento/especificacao.md`.
