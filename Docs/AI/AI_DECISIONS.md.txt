@@ -357,3 +357,51 @@ Limites mantidos:
 - sem alteração de `domain.ts`;
 - sem alteração de ecrãs;
 - sem alteração da lógica de gravação.
+09/08/2026
+
+Registado o marco v1.0 do Sistema Operativo de IA.
+
+Tema:
+
+Fecho estável documental da Missão 001 — Assistência ao Registo Técnico.
+
+Estado:
+
+Missão 001 simulada/controlada fechada documentalmente como v1.0 estável.
+
+Decisão funcional:
+
+- a Missão 001 permanece integrada no ecrã de Registos Diários;
+- o painel Assistente IA permanece visível e com estados;
+- a ativação continua dependente de pelo menos 12 caracteres na descrição;
+- a classificação, o resumo, o risco e a próxima ação continuam simulados e determinísticos;
+- a consulta de histórico no fluxo atual continua a usar `consultHistory`;
+- o técnico pode copiar resumo, próxima ação e sugestão completa;
+- a Supervisão Humana permanece visível no painel;
+- nenhum campo do formulário é alterado automaticamente;
+- nenhuma ação crítica é executada automaticamente.
+
+Decisão sobre ferramentas:
+
+- `consultarHistoricoEquipamento` existe tecnicamente desde v0.9;
+- a ferramenta é aditiva, apenas de leitura e filtra registos por equipamento;
+- a ferramenta não inventa o campo `estado`, que permanece A confirmar;
+- a ferramenta ainda não substitui `consultHistory` na Missão 001;
+- a integração de `consultarHistoricoEquipamento` fica para fluxo futuro.
+
+Limites v1.0:
+
+- sem modelo real de IA;
+- sem API externa;
+- sem persistência nova;
+- sem alteração automática do formulário;
+- sem criação automática de alertas;
+- sem fecho automático de registos;
+- sem validação real de equipamento inexistente;
+- `equipamentoId` ainda não é recolhido no formulário de Registos Diários.
+
+Próxima fase:
+
+- v1.1 ou v1.2 poderá preparar a Missão 002 — Resumo de Equipamento;
+- futuramente poderá ser criado um fluxo próprio para `consultarHistoricoEquipamento`;
+- qualquer ação crítica continuará sujeita a supervisão humana.

@@ -54,6 +54,8 @@ Na versão v0.8B, a Supervisão Humana foi integrada como regra transversal, sem
 
 Na versão v0.9, foi implementada de forma aditiva a função técnica `consultarHistoricoEquipamento`, preservando `consultHistory` e a Missão 001.
 
+Na versão v1.0, a Missão 001 foi fechada documentalmente como experiência estável, simulada e controlada, sem integração externa.
+
 ## Agentes
 
 Os agentes são componentes especializados com uma única responsabilidade principal. Na Missão 001 existem:
@@ -171,9 +173,9 @@ O teste ponta a ponta encontra-se em `SRC/features/ai/tests/assistTechnicalRecor
 
 ## Estado técnico
 
-**Versão:** v0.9
+**Versão:** v1.0
 
-**Estado:** Implementação técnica inicial da ferramenta Consultar Histórico do Equipamento.
+**Estado:** Fecho estável documental da Missão 001 simulada/controlada.
 
 O cenário validado classifica um ruído durante a centrifugação como `Anomalia / Corretiva`, atribui prioridade média e mantém o risco indeterminado por ausência de histórico. O resultado identifica modelo, fotografia e histórico como informação em falta e exige confirmação humana.
 
@@ -192,3 +194,45 @@ Na v0.8A, não existe implementação técnica nova. A ferramenta `consultar_his
 Na v0.8B, Supervisão Humana é uma regra transversal documentada em `Docs/AI/regras/supervisao_humana.md`. Não existe agente executável novo. Ações críticas, como criar alerta preventivo, alterar prioridade, fechar registo, gerar relatório oficial ou sugerir paragem de equipamento, exigem aprovação humana.
 
 Na v0.9, `consultarHistoricoEquipamento` filtra registos por `equipmentId`, ordena por data descendente quando possível, aplica `limite` positivo e devolve `entries`, `error` e `message` quando aplicável. O campo `estado` permanece A confirmar, porque não existe em `MaintenanceRecord`. Não foram alterados orquestrador, Missão 001, domínio, seed, ecrãs ou lógica de gravação.
+
+## Fecho v1.0 da Missão 001
+
+A v1.0 fecha documentalmente a Missão 001 — Assistência ao Registo Técnico como experiência simulada/controlada estável.
+
+### Implementado
+
+- Assistente IA integrado no ecrã de Registos Diários.
+- Painel IA visível com estados de ativação, análise, sugestão pronta e erro discreto.
+- Ativação da análise com pelo menos 12 caracteres na descrição.
+- Classificação simulada/controlada.
+- Resumo técnico.
+- Consulta de histórico através de `consultHistory`.
+- Avaliação de risco.
+- Próxima ação sugerida.
+- Informação em falta.
+- Cópia manual de resumo, próxima ação e sugestão completa.
+- Supervisão humana visível no painel.
+- Nenhum campo alterado automaticamente.
+- Nenhuma ação crítica executada automaticamente.
+
+### Documentado
+
+- `consultarHistoricoEquipamento` existe tecnicamente desde v0.9.
+- A ferramenta é aditiva, apenas de leitura e filtra registos por equipamento.
+- A ferramenta não inventa o campo `estado`; esse campo permanece A confirmar.
+- A ferramenta ainda não é usada pela Missão 001.
+
+### Limites
+
+- Não existe modelo real de IA.
+- Não existe API externa.
+- Não existe persistência nova.
+- Não existe alteração automática do formulário.
+- Não existe criação automática de alertas.
+- Não existe fecho automático de registos.
+- Não existe validação real de equipamento inexistente.
+- `equipamentoId` ainda não é recolhido no formulário de Registos Diários.
+
+### Futuro
+
+A v1.1 ou v1.2 poderá preparar a Missão 002 — Resumo de Equipamento, incluindo eventual integração de `consultarHistoricoEquipamento` num fluxo próprio. Qualquer ação crítica continuará sujeita a supervisão humana.

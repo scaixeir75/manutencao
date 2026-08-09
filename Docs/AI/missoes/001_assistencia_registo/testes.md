@@ -1,282 +1,99 @@
-﻿# Testes da Missão 001 — Assistência ao Registo Técnico
+# Testes da Missão 001 — Assistência ao Registo Técnico
 
-## Estado
+## Estado atual
 
-**Versão:** v0.1  
-**Estado:** Implementação simulada validada.
+**Versão:** v1.0
 
-## Teste ponta a ponta
+**Estado:** testes mínimos da Missão 001 simulada/controlada validados.
+
+A v1.0 fecha documentalmente a Missão 001 no estado estável atual. Os testes continuam locais, determinísticos e sem chamadas externas.
+
+## Teste ponta a ponta da Missão 001
 
 - **Ficheiro:** `SRC/features/ai/tests/assistTechnicalRecordMission.test.ts`
 - **Objetivo:** validar a execução completa da Missão 001 através do orquestrador.
 - **Tipo:** teste técnico local com respostas simuladas.
 - **Chamadas externas:** não.
-- **Integração visual:** não.
+- **Integração visual automatizada:** não.
 - **Alteração de ecrãs:** não.
 
-## Entrada
+### Entrada base
 
 ```text
 Máquina de lavar faz ruído durante a centrifugação.
 ```
 
-## Resultado validado
+### Resultado esperado
 
 - **Tipo:** Anomalia / Corretiva.
 - **Prioridade:** média.
 - **Resumo:** Ruído anormal durante a centrifugação.
-- **Risco:** indeterminado por ausência de histórico suficiente.
-- **Próxima ação:** verificar rolamentos, fixações, carga e sistema de transmissão.
-- **Informação em falta:** modelo do equipamento, fotografia e histórico recente.
+- **Risco:** indeterminado quando não existe histórico semelhante; médio com uma ocorrência semelhante; alto com duas ou mais ocorrências semelhantes.
+- **Próxima ação:** verificar rolamentos, fixações, carga e sistema de transmissão para sintomas mecânicos.
+- **Informação em falta:** modelo do equipamento, fotografia e histórico recente quando o contexto é insuficiente.
 - **Validação humana:** obrigatória.
 
-## Verificações
+## Cenários cobertos
 
-- O fluxo completo executa sem erro.
-- O registo não é classificado como `Tarefa`.
-- A classificação exige confirmação humana.
-- A resposta contém informação em falta.
-- O resultado inclui tipo, prioridade, resumo, risco, próxima ação e mensagem de validação.
-- O projeto permanece válido em TypeScript.
-
-## Conclusão
-
-O teste ponta a ponta da versão v0.1 foi concluído com sucesso. A validação cobre apenas a implementação simulada e não representa integração com serviços externos ou com a interface.
-
-## Validação da integração visual v0.2
-
-**Estado:** Integração visual controlada concluída.
-
-### Cenário
-
-1. Abrir o ecrã de Registos Diários.
-2. Escrever uma descrição com pelo menos 12 caracteres.
-3. Aguardar a execução simulada da Missão 001.
-4. Verificar o painel do Assistente IA.
-
-### Resultado
-
-- O painel surge de forma discreta após 12 caracteres.
-- A descrição do técnico permanece inalterada.
-- A IA apresenta apenas sugestões.
-- São mostrados tipo, prioridade, resumo, risco, próxima ação, informação em falta e confirmação humana.
-- Existe uma mensagem prevista para indisponibilidade da missão.
-- Não são realizadas chamadas externas.
-- Não foram acrescentadas dependências.
-
-### Verificações técnicas
-
-- TypeScript sem erros.
-- Desktop validado.
-- Móvel validado.
-- Sem sobreposições.
-- Sem deslocamento horizontal.
-- Sem erros no browser.
-
-## Estado v0.3
-
-**Versão:** v0.3  
-**Commit:** `aae35d750067265e681f5c3f44a7d629b46a10d2`  
-**Estado:** Refinamento visual concluído.
-
-## Validação do refinamento visual v0.3
-
-### Resultado
-
-- A prioridade é apresentada como `Média`.
-- O risco é apresentado como `Indeterminado`.
-- A confirmação é apresentada como `Confirmação do técnico necessária`.
-- A informação em falta é apresentada como lista.
-- O layout móvel não apresenta sobreposições.
-- O texto original do técnico permanece inalterado.
-
-### Verificações técnicas
-
-- TypeScript sem erros.
-- Teste da Missão 001 concluído com sucesso.
-- `git diff --check` sem problemas.
-- Browser sem erros.
-
-## Validação da ligação ao histórico v0.4
-
-### Cenário com histórico semelhante
-
-1. Fornecer à missão um registo histórico com ruído durante a centrifugação.
-2. Executar a Missão 001 com `historyRecords`.
-3. Confirmar que a ferramenta devolve origem `records`.
-4. Confirmar que o registo foi convertido numa entrada de histórico.
-
-**Resultado:** risco médio.
-
-### Cenário sem histórico
-
-1. Executar a Missão 001 sem dependências.
-2. Confirmar que a ferramenta devolve uma lista vazia.
-
-**Resultado:** risco indeterminado.
-
-### Garantias validadas
-
-- Os dados recebidos são tratados como `readonly MaintenanceRecord[]`.
-- A ferramenta não altera os registos recebidos.
-- Não existe importação direta de `initialRecords`.
-- Não existe persistência nova.
-- Não existem chamadas externas.
-- Não foram acrescentadas dependências.
-- `seed.ts`, `package.json` e `package-lock.json` permaneceram inalterados.
-
-### Verificações técnicas
-
-- TypeScript sem erros.
-- Teste da Missão 001 concluído com sucesso.
-- Browser sem erros.
-
-## Estado atual
-
-**Versão:** v0.8B
-
-**Estado:** Supervisão Humana refletida no painel Assistente IA.
-
-## Testes de inteligência simulada v0.5
-
-### Cenários de risco
-
-1. Ruído sem histórico relevante resulta em risco indeterminado.
-2. Ruído com uma ocorrência semelhante resulta em risco médio.
-3. Ruído com duas ocorrências semelhantes resulta em risco alto.
-
-### Cenários de planeamento
-
-1. Fuga de água recomenda verificar mangueiras, uniões, vedantes e drenagem.
-2. Falha de aquecimento recomenda verificar resistência, termóstato, sensor e alimentação.
-3. Falha de alimentação recomenda verificar alimentação elétrica, disjuntor, cabo, ficha e painel.
-4. Sintoma mecânico recomenda verificar rolamentos, fixações, carga e transmissão.
-
-### Garantias
-
+- Registo com ruído e sem histórico relevante resulta em risco indeterminado.
+- Registo com ruído e uma ocorrência semelhante resulta em risco médio.
+- Registo com ruído e duas ocorrências semelhantes resulta em risco alto.
+- Registo com fuga de água recomenda verificar mangueiras, uniões, vedantes e drenagem.
+- Registo com falha de aquecimento recomenda verificar resistência, termóstato, sensor de temperatura e alimentação.
+- Registo com falha de alimentação recomenda verificar alimentação elétrica, disjuntor, cabo, ficha e painel.
+- Sintoma mecânico recomenda verificar rolamentos, fixações, carga e transmissão.
 - A validação humana continua obrigatória.
-- A ferramenta devolve apenas histórico relevante.
-- Os registos históricos não são alterados.
-- Não existem chamadas externas.
-- Não foram acrescentadas dependências.
-- `seed.ts`, `package.json` e `package-lock.json` permanecem inalterados.
+- Os registos históricos recebidos não são alterados.
+- A ferramenta `consultHistory` continua a devolver origem `records`.
 
-### Resultado
+## Teste da ferramenta Consultar Histórico do Equipamento
 
-Todos os cenários automatizados da Missão 001 foram concluídos com sucesso.
+- **Ficheiro:** `SRC/features/ai/tests/equipmentHistoryTool.test.ts`
+- **Objetivo:** validar a função técnica aditiva `consultarHistoricoEquipamento` sem alterar a Missão 001.
+- **Estado:** implementado desde v0.9.
+- **Integração na Missão 001:** não integrada na v1.0.
 
-## Validação do refinamento visual v0.6
+### Cenários cobertos
 
-**Commit:** `4442e7ca8443156112cf2375e37684eecfcad9cb`
+- Devolve `identificador_em_falta` quando não existe `equipamentoId`.
+- Devolve lista filtrada por equipamento.
+- Não devolve registos de outro equipamento.
+- Aplica `limite` positivo.
+- Devolve `historico_indisponivel` e `Informação insuficiente` quando não há resultados.
+- Não inclui o campo `estado`, porque este campo não existe em `MaintenanceRecord`.
+- Confirma que `consultHistory` continua a funcionar como antes.
 
-### Resultado
+## Validações visuais registadas
 
-- Tipo, Prioridade e Risco apresentados com badges.
-- Informação em falta apresentada de forma mais legível.
-- Resumo e Próxima ação apresentados em blocos próprios.
-- Botões pequenos disponíveis para copiar Resumo e Próxima ação.
-- Fallback defensivo previsto quando a cópia não está disponível.
-- Ajustes móveis limitados ao painel Assistente IA.
+- Painel Assistente IA integrado no ecrã de Registos Diários.
+- Painel visível antes da ativação.
+- Mensagem inicial apresentada com menos de 12 caracteres.
+- Análise ativada com pelo menos 12 caracteres.
+- Estado de análise com a mensagem `A analisar o registo...`.
+- Sugestão pronta com tipo, prioridade, resumo, risco, próxima ação, informação em falta e confirmação humana.
+- Nota de histórico insuficiente quando o risco é indeterminado.
+- Nota de supervisão humana visível no painel.
+- Botões de cópia de resumo, próxima ação e sugestão completa com feedback visual.
+- Desktop e móvel 390x844 validados em marcos anteriores.
 
-### Limites validados
-
-- O layout global da aplicação não foi alterado.
-- Navegação, formulário, cards exteriores e lógica de gravação mantidos.
-- O texto do técnico permanece inalterado.
-- Não foram acrescentadas dependências.
-
-### Verificações técnicas
-
-- TypeScript sem erros.
-- Teste da Missão 001 concluído com sucesso.
-- Desktop validado.
-- Móvel 390x844 validado.
-- Sem overflow horizontal.
-- Browser sem erros ou warnings.
-
-## Validação do controlo manual v0.7
-
-### Resultado
-
-- Botões existentes para copiar Resumo e Próxima ação mantidos.
-- Botão "Copiar sugestão completa" adicionado ao painel Assistente IA.
-- Sugestão completa inclui tipo, prioridade, resumo, risco, próxima ação, informação em falta e nota de confirmação humana.
-- Função de cópia existente reutilizada com fallback defensivo.
-- Feedback visual curto apresentado após a ação de cópia.
-
-### Limites validados
-
-- Nenhum campo do formulário é alterado automaticamente.
-- Não foram criados campos novos.
-- O formulário foi preservado.
-- A descrição original do técnico permanece inalterada.
-- O tipo não é alterado pela IA.
-- A lógica de gravação não foi alterada.
-- O layout global da aplicação não foi alterado.
-- A IA continua apenas a sugerir.
-
-### Verificações técnicas
-
-- TypeScript sem erros.
-- Teste da Missão 001 concluído com sucesso.
-- Desktop sem erros no browser.
-- Móvel 390x844 sem overflow horizontal.
-- `git diff --check` sem problemas.
-
-## Validação do estado visual v0.8
-
-### Resultado
-
-- O painel Assistente IA permanece visível no ecrã de Registos Diários.
-- Com menos de 12 caracteres, é apresentada a mensagem inicial de ativação.
-- Com 12 ou mais caracteres, a análise simulada é ativada.
-- O estado de loading apresenta "A analisar o registo...".
-- A sugestão pronta mantém a UI da v0.7.
-- Quando o risco é indeterminado, é apresentada a nota de histórico insuficiente.
-- A lista de informação em falta permanece visível.
-- Botões para copiar resumo, próxima ação e sugestão completa permanecem disponíveis.
-
-### Limites validados
+## Limites validados
 
 - Nenhum campo do formulário é alterado automaticamente.
 - A descrição original do técnico permanece inalterada.
 - O tipo e a prioridade não são alterados pela IA.
-- A lógica de gravação não foi alterada.
-- O layout global da aplicação não foi alterado.
-- Agentes, ferramentas, orquestrador e tipos não foram alterados.
-- Não foram acrescentadas dependências.
-
-### Verificações técnicas
-
-- TypeScript sem erros.
-- Teste da Missão 001 concluído com sucesso.
-- Desktop sem erros ou warnings no browser.
-- Móvel 390x844 sem overflow horizontal.
-- `git diff --check` sem problemas.
-## Validação da Supervisão Humana v0.8B
-
-### Resultado
-
-- A nota de supervisão humana aparece no painel Assistente IA.
-- A nota indica que a sugestão não altera registos nem executa ações críticas.
-- A sugestão completa inclui nota de supervisão humana antes de qualquer ação crítica.
-- A UI atual da v0.8 permanece preservada.
-- Botões de copiar mantêm feedback visual.
-
-### Limites validados
-
-- Nenhum campo do formulário é alterado automaticamente.
-- A descrição original do técnico permanece inalterada.
-- O tipo permanece inalterado.
 - Nenhuma ação crítica é executada.
-- Não foi criado agente executável.
-- Orquestrador, ferramentas, agentes e tipos não foram alterados.
 - A lógica de gravação não foi alterada.
+- Não existem chamadas externas.
+- Não existem dependências novas.
+- Não existe persistência nova.
+- `seed.ts`, `domain.ts`, `package.json` e `package-lock.json` permanecem fora da implementação da Missão 001.
 
-### Verificações técnicas
+## A confirmar
 
-- TypeScript sem erros.
-- Teste da Missão 001 concluído com sucesso.
-- Desktop sem erros ou warnings no browser.
-- Móvel 390x844 sem overflow horizontal.
-- `git diff --check` sem problemas.
+- Teste automatizado visual para o painel IA.
+- Integração futura de `consultarHistoricoEquipamento` num fluxo com `equipamentoId` confirmado.
+- Validação real de equipamento inexistente.
+
+## Conclusão v1.0
+
+Os testes existentes cobrem o mínimo necessário para fechar a Missão 001 como experiência simulada/controlada: fluxo ponta a ponta, risco por histórico, ações por sintoma, validação humana, imutabilidade do histórico e ferramenta aditiva de histórico por equipamento.

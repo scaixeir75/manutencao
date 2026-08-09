@@ -1,4 +1,4 @@
-﻿# Missão 001 — Assistência ao Registo Técnico
+# Missão 001 — Assistência ao Registo Técnico
 
 ## Objetivo
 
@@ -6,85 +6,86 @@ Apoiar o técnico na preparação de um registo de manutenção claro, classific
 
 ## Estado atual
 
-**Versão:** v0.8B
+**Versão:** v1.0
 
-**Estado:** Supervisão Humana refletida no painel Assistente IA.
+**Estado:** Fecho estável documental da Missão 001 simulada/controlada.
 
-## Integração
+A Missão 001 está estável como apoio local e determinístico no ecrã de Registos Diários. Não usa IA externa, não faz chamadas externas e não altera automaticamente dados do formulário.
 
-A missão está disponível como apoio no ecrã de Registos Diários:
+## Implementado
 
-- o painel está sempre visível no ecrã de Registos Diários;
-- antes da ativação, informa que são necessários pelo menos 12 caracteres;
-- a análise continua a ser executada apenas quando a descrição tem pelo menos 12 caracteres;
-- a Missão 001 simulada é executada através do orquestrador;
-- são apresentados tipo, prioridade, resumo, risco, próxima ação, informação em falta e confirmação humana;
-- a prioridade `media` é apresentada como `Média`;
-- o risco `indeterminado` é apresentado como `Indeterminado`;
-- quando o risco é indeterminado, é apresentada nota de histórico insuficiente;
-- o tipo, a prioridade e o risco são apresentados com badges;
-- o resumo e a próxima ação têm blocos próprios;
-- existem botões pequenos para copiar o resumo e a próxima ação;
-- existe um botão para copiar a sugestão completa;
-- a sugestão completa é formatada para apoio ao registo técnico;
-- a sugestão completa inclui nota de supervisão humana antes de ações críticas;
-- existe fallback defensivo quando a cópia não está disponível;
-- a informação em falta é apresentada como lista;
-- a confirmação é apresentada como `Confirmação do técnico necessária`;
-- é apresentada nota discreta de supervisão humana;
-- o painel comunica que a sugestão não altera registos nem executa ações críticas;
-- o texto escrito pelo técnico nunca é alterado;
-- os registos em memória são fornecidos à missão através de `historyRecords`;
-- a ferramenta Consultar Histórico converte esses registos sem os alterar;
-- apenas ocorrências com palavras-chave técnicas equivalentes são devolvidas;
-- o risco varia entre indeterminado, médio e alto conforme o número de ocorrências semelhantes;
-- a próxima ação é ajustada ao sintoma identificado;
-- sem histórico disponível, a missão continua com uma lista vazia;
-- a IA apenas sugere e não grava dados;
-- em caso de falha, é apresentada uma mensagem de indisponibilidade.
+- Assistente IA integrado no ecrã de Registos Diários.
+- Painel IA sempre visível, com estados de ativação, análise, sugestão pronta e erro discreto.
+- Ativação da análise quando a descrição tem pelo menos 12 caracteres.
+- Execução da Missão 001 através do orquestrador.
+- Classificação simulada/controlada do registo.
+- Resumo técnico simples.
+- Consulta de histórico via `consultHistory`.
+- Avaliação de risco com base em ocorrências semelhantes.
+- Próxima ação sugerida conforme o sintoma identificado.
+- Informação em falta apresentada em lista.
+- Cópia manual de resumo, próxima ação e sugestão completa.
+- Supervisão humana visível no painel.
+- Nota de supervisão humana incluída na sugestão completa.
+- Mensagem de histórico insuficiente quando o risco é indeterminado.
+- Fallback defensivo quando a cópia não está disponível.
 
-## Limites
+## Documentado
 
-- Sem chamadas externas.
-- Sem modelos ou fornecedores externos de IA.
-- Sem dependências novas.
-- Sem alteração automática de campos.
+- A Supervisão Humana é uma regra transversal, não um agente executável nesta fase.
+- A ferramenta `consultar_historico_equipamento` foi desenhada em v0.8A e implementada tecnicamente em v0.9 como `consultarHistoricoEquipamento`.
+- `consultarHistoricoEquipamento` é aditiva, apenas de leitura e ainda não substitui `consultHistory` na Missão 001.
+- O campo `estado` permanece A confirmar, porque não existe em `MaintenanceRecord`.
+
+## Limites da v1.0
+
+- Não existe modelo real de IA.
+- Não existe API externa.
+- Não existe persistência nova.
+- Não existe alteração automática do formulário.
+- Não existe alteração automática de descrição, tipo ou prioridade.
+- Não existe criação automática de alertas.
+- Não existe fecho automático de registos.
+- Não existe validação real de equipamento inexistente.
+- `equipamentoId` ainda não é recolhido no formulário de Registos Diários.
+- `consultarHistoricoEquipamento` está pronta para uso futuro, mas ainda não está integrada no fluxo da Missão 001.
 - Sem criação de campos novos.
 - Sem alteração da lógica de gravação.
 - Sem importação direta de `initialRecords` pela IA.
-- Sem persistência nova.
-- Sem alteração do layout global da aplicação.
-- Sem alteração da navegação, formulário, cards exteriores ou lógica de gravação.
-- Sem alteração de agentes, ferramentas, orquestrador ou tipos.
-- Sem aplicação automática de tipo, prioridade, resumo ou próxima ação.
-- Sem execução de ações críticas sem validação humana.
-- Sem criação de agente executável de supervisão humana nesta fase.
+- Sem dependências novas.
+
+## Supervisão Humana
+
+A IA apenas sugere. O técnico mantém a responsabilidade por rever, corrigir e confirmar qualquer conteúdo antes de o usar.
+
+Ações críticas continuam proibidas sem aprovação humana explícita:
+
+- criar alerta preventivo;
+- alterar prioridade de uma intervenção;
+- fechar registo;
+- gerar relatório oficial;
+- sugerir paragem de equipamento.
+
+## Futuro
+
+- v1.1 ou v1.2 poderá preparar a Missão 002 — Resumo de Equipamento.
+- `consultarHistoricoEquipamento` poderá ser integrada num fluxo próprio quando existir contexto de equipamento confirmado.
+- Qualquer ação crítica continuará sujeita a supervisão humana.
 
 ## Validação
 
 - TypeScript sem erros.
-- Fluxo simulado ponta a ponta validado.
-- Apresentação validada em desktop e móvel.
-- Sem sobreposições ou deslocamento horizontal.
-- Sem erros no browser.
-- Sem warnings no browser.
-- Móvel 390x844 validado sem overflow horizontal.
-- Controlo manual por cópia validado.
-- Estado inicial com menos de 12 caracteres validado.
-- Nota de histórico insuficiente validada.
-- Nota de supervisão humana validada.
-- Sugestão completa com nota de supervisão humana validada.
 - Teste da Missão 001 concluído com sucesso.
-- `git diff --check` sem problemas.
-- Risco médio quando existe uma ocorrência semelhante.
-- Risco indeterminado quando não existe histórico.
-- Risco alto quando existem duas ou mais ocorrências semelhantes.
-- Ações específicas validadas para sintomas mecânicos, fuga de água, aquecimento e alimentação elétrica.
-- Imutabilidade dos registos históricos validada.
-- Sem alterações em `seed.ts`, `package.json` ou `package-lock.json`.
+- Teste específico de `consultarHistoricoEquipamento` concluído com sucesso.
+- Painel validado em desktop e móvel nas versões anteriores.
+- Sem chamadas externas.
+- Sem novas dependências.
+- Sem alterações em `seed.ts`, `domain.ts`, `package.json` ou `package-lock.json`.
 
 ## Documentos relacionados
 
 - `especificacao.md`
 - `fluxo.md`
 - `testes.md`
+- `../../regras/supervisao_humana.md`
+- `../../ferramentas/consultar_historico_equipamento/especificacao.md`
