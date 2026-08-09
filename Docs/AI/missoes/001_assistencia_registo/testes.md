@@ -133,9 +133,9 @@ O teste ponta a ponta da versão v0.1 foi concluído com sucesso. A validação 
 
 ## Estado atual
 
-**Versão:** v0.8
+**Versão:** v0.8B
 
-**Estado:** Estado visual do Assistente IA.
+**Estado:** Supervisão Humana refletida no painel Assistente IA.
 
 ## Testes de inteligência simulada v0.5
 
@@ -245,6 +245,33 @@ Todos os cenários automatizados da Missão 001 foram concluídos com sucesso.
 - O layout global da aplicação não foi alterado.
 - Agentes, ferramentas, orquestrador e tipos não foram alterados.
 - Não foram acrescentadas dependências.
+
+### Verificações técnicas
+
+- TypeScript sem erros.
+- Teste da Missão 001 concluído com sucesso.
+- Desktop sem erros ou warnings no browser.
+- Móvel 390x844 sem overflow horizontal.
+- `git diff --check` sem problemas.
+## Validação da Supervisão Humana v0.8B
+
+### Resultado
+
+- A nota de supervisão humana aparece no painel Assistente IA.
+- A nota indica que a sugestão não altera registos nem executa ações críticas.
+- A sugestão completa inclui nota de supervisão humana antes de qualquer ação crítica.
+- A UI atual da v0.8 permanece preservada.
+- Botões de copiar mantêm feedback visual.
+
+### Limites validados
+
+- Nenhum campo do formulário é alterado automaticamente.
+- A descrição original do técnico permanece inalterada.
+- O tipo permanece inalterado.
+- Nenhuma ação crítica é executada.
+- Não foi criado agente executável.
+- Orquestrador, ferramentas, agentes e tipos não foram alterados.
+- A lógica de gravação não foi alterada.
 
 ### Verificações técnicas
 

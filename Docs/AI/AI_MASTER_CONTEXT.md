@@ -50,6 +50,8 @@ Na versão v0.8, o painel Assistente IA passou a apresentar um estado visível a
 
 Na versão v0.8A, foi desenhada funcionalmente a ferramenta `consultar_historico_equipamento`, apenas em documentação, para consulta de registos anteriores associados a um equipamento.
 
+Na versão v0.8B, a Supervisão Humana foi integrada como regra transversal, sem criação de agente executável.
+
 ## Agentes
 
 Os agentes são componentes especializados com uma única responsabilidade principal. Na Missão 001 existem:
@@ -121,6 +123,10 @@ Técnico
 - Factos, inferências e sugestões devem permanecer separados.
 - Informação em falta deve ser assinalada.
 - A confirmação humana precede qualquer gravação.
+- Qualquer ação crítica exige validação humana explícita.
+- A IA deve separar factos observados, inferências e recomendações.
+- Quando faltar contexto, deve indicar `Informação insuficiente`.
+- A recomendação final deve ser apresentada como sugestão, não como decisão automática.
 
 ## Limites atuais
 
@@ -136,6 +142,7 @@ Existe uma implementação técnica simulada da Missão 001 em `SRC/features/ai/
 - apresenta prioridade e risco com etiquetas legíveis em Português de Portugal;
 - apresenta a informação em falta como lista;
 - indica de forma explícita que é necessária confirmação do técnico;
+- comunica que a sugestão não altera registos nem executa ações críticas;
 - apresenta apenas sugestões e nunca altera o texto do técnico;
 - recebe o histórico em memória através de `historyRecords`;
 - trata o histórico como `readonly MaintenanceRecord[]`;
@@ -150,6 +157,7 @@ Existe uma implementação técnica simulada da Missão 001 em `SRC/features/ai/
 - apresenta resumo e próxima ação em blocos próprios;
 - inclui botões pequenos para copiar o resumo e a próxima ação;
 - inclui um botão para copiar a sugestão completa em texto formatado;
+- inclui nota de supervisão humana na sugestão completa;
 - usa fallback defensivo quando a cópia não está disponível;
 - mantém ajustes móveis restritos ao painel IA;
 - não cria campos novos no formulário;
@@ -161,9 +169,9 @@ O teste ponta a ponta encontra-se em `SRC/features/ai/tests/assistTechnicalRecor
 
 ## Estado técnico
 
-**Versão:** v0.8A
+**Versão:** v0.8B
 
-**Estado:** Documentação funcional da ferramenta Consultar Histórico do Equipamento.
+**Estado:** Supervisão Humana integrada como regra transversal.
 
 O cenário validado classifica um ruído durante a centrifugação como `Anomalia / Corretiva`, atribui prioridade média e mantém o risco indeterminado por ausência de histórico. O resultado identifica modelo, fotografia e histórico como informação em falta e exige confirmação humana.
 
@@ -178,3 +186,5 @@ Na v0.7, o painel passou a permitir copiar a sugestão completa, incluindo tipo,
 Na v0.8, o painel passou a estar sempre visível no ecrã de Registos Diários. A ativação da análise continua dependente de pelo menos 12 caracteres na descrição, e o risco indeterminado passa a ser acompanhado por uma nota discreta de histórico insuficiente. O formulário, os dados e a lógica de gravação permanecem inalterados.
 
 Na v0.8A, não existe implementação técnica nova. A ferramenta `consultar_historico_equipamento` fica documentada como apenas de leitura, com entrada obrigatória `equipamento_id`, entrada opcional `limite`, saída limitada a `data`, `tipo_registo`, `descricao` e `estado`, e erros `equipamento_inexistente`, `historico_indisponivel` e `identificador_em_falta`.
+
+Na v0.8B, Supervisão Humana é uma regra transversal documentada em `Docs/AI/regras/supervisao_humana.md`. Não existe agente executável novo. Ações críticas, como criar alerta preventivo, alterar prioridade, fechar registo, gerar relatório oficial ou sugerir paragem de equipamento, exigem aprovação humana.

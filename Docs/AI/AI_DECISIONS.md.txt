@@ -270,3 +270,48 @@ Limites mantidos:
 - não assume sensores, telemetria ou dados preditivos;
 - não foram alterados ficheiros em `SRC/`;
 - sem dependências novas.
+09/08/2026
+
+Registado o marco v0.8B do Sistema Operativo de IA.
+
+Tema:
+
+Supervisão Humana do Assistente IA.
+
+Estado:
+
+Regra transversal documentada e refletida no painel Assistente IA, sem criação de agente executável.
+
+Decisão funcional:
+
+- Supervisão Humana é uma regra transversal do Sistema Operativo de IA;
+- não é um agente executável nesta fase;
+- qualquer ação crítica exige aprovação humana;
+- a IA deve separar factos observados, inferências e recomendações;
+- quando faltar contexto, deve usar "Informação insuficiente";
+- a recomendação final deve ser apresentada como sugestão, não como decisão automática.
+
+Ações críticas que exigem validação humana:
+
+- criar alerta preventivo;
+- alterar prioridade de uma intervenção;
+- fechar registo;
+- gerar relatório oficial;
+- sugerir paragem de equipamento.
+
+Alteração no painel Assistente IA:
+
+- adicionada nota discreta de supervisão humana;
+- a nota indica que a sugestão não altera registos nem executa ações críticas;
+- a sugestão completa passa a incluir nota de supervisão humana antes de qualquer ação crítica.
+
+Limites mantidos:
+
+- sem novo agente executável;
+- sem alterações ao orquestrador;
+- sem alterações a ferramentas;
+- sem alterações a tipos;
+- sem alterações à lógica de gravação;
+- sem alterações ao formulário;
+- sem dependências novas;
+- sem API externa.

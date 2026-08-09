@@ -41,6 +41,7 @@ function formatCompleteSuggestion(result: AssistTechnicalRecordMissionResult) {
     missingInformation,
     '',
     'Nota: Confirmação do técnico necessária.',
+    'Nota: Supervisão humana necessária antes de qualquer ação crítica.',
   ].join('\n');
 }
 
@@ -164,6 +165,10 @@ export function DailyRecordsScreen({ records }: DailyRecordsScreenProps) {
             <strong>Assistente IA</strong>
             <span>Sugestão para validação</span>
           </div>
+
+          <p className="ai-supervision-note">
+            Supervisão humana necessária: esta sugestão não altera registos nem executa ações críticas.
+          </p>
 
           {!hasEnoughDescription && (
             <p className="ai-assistant-message idle">

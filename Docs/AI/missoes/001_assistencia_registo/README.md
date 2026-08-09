@@ -6,9 +6,9 @@ Apoiar o técnico na preparação de um registo de manutenção claro, classific
 
 ## Estado atual
 
-**Versão:** v0.8
+**Versão:** v0.8B
 
-**Estado:** Estado visual do Assistente IA.
+**Estado:** Supervisão Humana refletida no painel Assistente IA.
 
 ## Integração
 
@@ -27,9 +27,12 @@ A missão está disponível como apoio no ecrã de Registos Diários:
 - existem botões pequenos para copiar o resumo e a próxima ação;
 - existe um botão para copiar a sugestão completa;
 - a sugestão completa é formatada para apoio ao registo técnico;
+- a sugestão completa inclui nota de supervisão humana antes de ações críticas;
 - existe fallback defensivo quando a cópia não está disponível;
 - a informação em falta é apresentada como lista;
 - a confirmação é apresentada como `Confirmação do técnico necessária`;
+- é apresentada nota discreta de supervisão humana;
+- o painel comunica que a sugestão não altera registos nem executa ações críticas;
 - o texto escrito pelo técnico nunca é alterado;
 - os registos em memória são fornecidos à missão através de `historyRecords`;
 - a ferramenta Consultar Histórico converte esses registos sem os alterar;
@@ -54,6 +57,8 @@ A missão está disponível como apoio no ecrã de Registos Diários:
 - Sem alteração da navegação, formulário, cards exteriores ou lógica de gravação.
 - Sem alteração de agentes, ferramentas, orquestrador ou tipos.
 - Sem aplicação automática de tipo, prioridade, resumo ou próxima ação.
+- Sem execução de ações críticas sem validação humana.
+- Sem criação de agente executável de supervisão humana nesta fase.
 
 ## Validação
 
@@ -67,6 +72,8 @@ A missão está disponível como apoio no ecrã de Registos Diários:
 - Controlo manual por cópia validado.
 - Estado inicial com menos de 12 caracteres validado.
 - Nota de histórico insuficiente validada.
+- Nota de supervisão humana validada.
+- Sugestão completa com nota de supervisão humana validada.
 - Teste da Missão 001 concluído com sucesso.
 - `git diff --check` sem problemas.
 - Risco médio quando existe uma ocorrência semelhante.
