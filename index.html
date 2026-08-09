@@ -391,6 +391,13 @@ footer{margin-top:34px;text-align:center;color:var(--muted);font-size:12px}
 .ai-helper-text{font-size:13px;line-height:1.45;color:var(--text)}
 .ai-helper-list{margin:0;padding-left:17px;color:var(--text);font-size:13px;line-height:1.45}
 .ai-helper-note{color:var(--muted);font-size:12px;line-height:1.4;margin-top:8px}
+.ai-helper-actions{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.ai-helper-input{width:100%;background:#0A0E13;border:1px solid var(--border);border-radius:8px;color:var(--text);
+  font-size:13px;line-height:1.4;padding:9px 10px;outline:none;font-family:inherit;resize:vertical;min-height:48px}
+.ai-helper-input:focus{border-color:var(--accent)}
+.ai-helper-response{display:none;margin-top:8px;background:#0A0E13;border:1px solid var(--border);border-radius:8px;
+  color:var(--text);font-size:13px;line-height:1.45;padding:9px 10px}
+.ai-helper.has-response .ai-helper-response{display:block}
 .ai-copy{background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);
   font-size:11px;font-weight:800;letter-spacing:.8px;padding:7px 10px;cursor:pointer;white-space:nowrap}
 .ai-copy:hover{border-color:var(--accent);color:var(--accent)}
@@ -635,6 +642,20 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
         </div>
       </section>
 
+      <section class="ai-helper" id="planAiHelper" aria-live="polite">
+        <div class="ai-helper-head">
+          <div class="ai-helper-title">Assistente IA</div>
+          <div class="ai-helper-actions">
+            <button type="button" class="ai-copy" id="planAiMicBtn">🎙️ Ditar</button>
+            <button type="button" class="ai-copy" id="planAiGenerateBtn">Gerar sugestão</button>
+          </div>
+        </div>
+        <div class="ai-helper-state" id="planAiState">Podes escrever ou ditar uma pergunta sobre o plano da semana.</div>
+        <textarea class="ai-helper-input" id="planAiInput" rows="2" placeholder="Pergunta ou observação sobre o plano da semana"></textarea>
+        <div class="ai-helper-response" id="planAiResponse"></div>
+        <div class="ai-helper-note">Supervisão humana necessária: esta sugestão não altera o plano nem executa ações críticas.</div>
+      </section>
+
       <section class="tasks" id="tasks"></section>
       <div class="empty" id="empty" style="display:none"></div>
     </main>
@@ -714,7 +735,10 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
       <div class="ai-helper" id="aiHelper" aria-live="polite">
         <div class="ai-helper-head">
           <div class="ai-helper-title">Assistente IA</div>
-          <button type="button" class="ai-copy" id="aiCopyBtn" style="display:none">Copiar sugestão</button>
+          <div class="ai-helper-actions">
+            <button type="button" class="ai-copy" id="aiDictateBtn">🎙️ Ditar</button>
+            <button type="button" class="ai-copy" id="aiCopyBtn" style="display:none">Copiar sugestão</button>
+          </div>
         </div>
         <div class="ai-helper-state" id="aiHelperState">Escreve uma descrição com pelo menos 12 caracteres para ativar o Assistente IA.</div>
         <div class="ai-helper-grid" id="aiHelperSuggestion">
@@ -732,6 +756,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
           </div>
         </div>
         <div class="ai-helper-note">Supervisão humana necessária: esta sugestão não altera registos nem executa ações críticas.</div>
+        <div class="ai-helper-note" id="aiMicStatus"></div>
       </div>
       <div class="drow">
         <label class="dlabel">FOTOGRAFIAS (OPCIONAL)</label>
@@ -1310,6 +1335,54 @@ let recognition=null,isListening=false,baseText='',interimText='';
 function diaryDateOf(e){return e.date||(e.timestamp?e.timestamp.slice(0,10):'');}
 let aiSuggestionText='';
 const AI_NEXT_ACTION='Validar a ocorrência, consultar histórico do equipamento e confirmar a ação necessária.';
+let aiActiveDictation=null;
+
+function appendDictatedText(target,text){
+  const clean=normalizeSpaces(text||'').trim();
+  if(!target||!clean)return;
+  const base=target.value.trim();
+  target.value=base?base+' '+clean:clean;
+  target.dispatchEvent(new Event('input',{bubbles:true}));
+}
+
+function startAiDictation({button,target,status,onText,onEnd}){
+  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SpeechRecognition){
+    if(status)status.textContent='Microfone não disponível neste navegador.';
+    return;
+  }
+  if(aiActiveDictation){
+    const active=aiActiveDictation;
+    active.rec.stop();
+    aiActiveDictation=null;
+    if(active.button)active.button.textContent='🎙️ Ditar';
+    if(active.status)active.status.textContent='';
+    return;
+  }
+  const rec=new SpeechRecognition();
+  aiActiveDictation={rec,button,status};
+  rec.lang='pt-PT';
+  rec.continuous=false;
+  rec.interimResults=false;
+  if(button)button.textContent='A ouvir...';
+  if(status)status.textContent='A ouvir... revê o texto antes de enviar ou guardar.';
+  rec.onresult=event=>{
+    const text=Array.from(event.results).map(result=>result[0].transcript).join(' ');
+    appendDictatedText(target,text);
+    if(onText)onText(text);
+  };
+  rec.onerror=()=>{if(status)status.textContent='Microfone não disponível neste navegador.';};
+  rec.onend=()=>{
+    if(aiActiveDictation&&aiActiveDictation.rec===rec)aiActiveDictation=null;
+    if(button)button.textContent='🎙️ Ditar';
+    if(onEnd)onEnd();
+  };
+  try{rec.start();}catch(e){
+    aiActiveDictation=null;
+    if(button)button.textContent='🎙️ Ditar';
+    if(status)status.textContent='Microfone não disponível neste navegador.';
+  }
+}
 
 function buildAiSummary(text){
   const clean=normalizeSpaces(text.trim());
@@ -1368,6 +1441,20 @@ async function copyAiSuggestion(){
   }catch(e){
     if(btn){btn.textContent='Não copiado';setTimeout(()=>{btn.textContent='Copiar sugestão';},1600);}
   }
+}
+
+function generatePlanAiSuggestion(){
+  const panel=$('planAiHelper');if(!panel)return;
+  const input=$('planAiInput');
+  const question=input?input.value.trim():'';
+  const weekText=$('wlabel')&&$('wlabel').textContent?$('wlabel').textContent:'Plano Semanal';
+  const response=[
+    question?'Pergunta registada para apoio: '+question:'Sugestão geral para o plano semanal.',
+    'Contexto: '+weekText+'.',
+    'Revê as tarefas previstas, confirma prioridades e valida se existe alguma intervenção pendente antes de iniciar o trabalho.'
+  ].join(' ');
+  $('planAiResponse').textContent=response;
+  panel.classList.add('has-response');
 }
 
 function switchView(view){
@@ -1482,6 +1569,18 @@ $('micBtn').onclick=()=>{if(!recognition)return;isListening?stopListening():star
 $('diaryText').addEventListener('input',updateDiaryAssistant);
 $('diaryFicha').addEventListener('change',updateDiaryAssistant);
 $('aiCopyBtn').onclick=copyAiSuggestion;
+$('aiDictateBtn').onclick=()=>startAiDictation({
+  button:$('aiDictateBtn'),
+  target:$('diaryText'),
+  status:$('aiMicStatus'),
+  onText:updateDiaryAssistant
+});
+$('planAiMicBtn').onclick=()=>startAiDictation({
+  button:$('planAiMicBtn'),
+  target:$('planAiInput'),
+  status:$('planAiState')
+});
+$('planAiGenerateBtn').onclick=generatePlanAiSuggestion;
 
 function initDiaryListener(){
   if(!window.firebaseReady){setTimeout(initDiaryListener,300);return;}
