@@ -48,6 +48,8 @@ Na versão v0.7, o controlo manual do técnico foi reforçado com a ação "Copi
 
 Na versão v0.8, o painel Assistente IA passou a apresentar um estado visível antes da ativação e uma nota explícita quando o histórico é insuficiente para avaliar risco com confiança.
 
+Na versão v0.8A, foi desenhada funcionalmente a ferramenta `consultar_historico_equipamento`, apenas em documentação, para consulta de registos anteriores associados a um equipamento.
+
 ## Agentes
 
 Os agentes são componentes especializados com uma única responsabilidade principal. Na Missão 001 existem:
@@ -67,12 +69,15 @@ As ferramentas permitem consultar informação interna do PMP de forma controlad
 - Consultar Histórico;
 - Consultar Equipamento;
 - Consultar Fotografias.
+- Consultar Histórico do Equipamento, em estado documental v0.8A.
 
 As ferramentas são apenas de leitura: não criam, editam ou eliminam registos.
 
 Na versão v0.4, a ferramenta Consultar Histórico recebe os registos da aplicação por injeção de dependências. Não importa diretamente os dados seed nem altera o array recebido.
 
 Na versão v0.5, a ferramenta devolve apenas ocorrências relevantes através de grupos simples de palavras-chave equivalentes para sintomas mecânicos, centrifugação, fuga de água, erro ou avaria, aquecimento e alimentação elétrica.
+
+Na versão v0.8A, `consultar_historico_equipamento` é definida como especialização documental de consulta por `equipamento_id`. A ferramenta deve coexistir temporariamente com `consultar_historico`; a substituição total fica A confirmar.
 
 ## Base de Conhecimento
 
@@ -156,9 +161,9 @@ O teste ponta a ponta encontra-se em `SRC/features/ai/tests/assistTechnicalRecor
 
 ## Estado técnico
 
-**Versão:** v0.8
+**Versão:** v0.8A
 
-**Estado:** Estado visual do Assistente IA.
+**Estado:** Documentação funcional da ferramenta Consultar Histórico do Equipamento.
 
 O cenário validado classifica um ruído durante a centrifugação como `Anomalia / Corretiva`, atribui prioridade média e mantém o risco indeterminado por ausência de histórico. O resultado identifica modelo, fotografia e histórico como informação em falta e exige confirmação humana.
 
@@ -171,3 +176,5 @@ Na v0.6, o commit `4442e7ca8443156112cf2375e37684eecfcad9cb` refinou apenas a ap
 Na v0.7, o painel passou a permitir copiar a sugestão completa, incluindo tipo, prioridade, resumo, risco, próxima ação, informação em falta e nota de confirmação humana. A ação é manual e explícita; a IA continua apenas a sugerir.
 
 Na v0.8, o painel passou a estar sempre visível no ecrã de Registos Diários. A ativação da análise continua dependente de pelo menos 12 caracteres na descrição, e o risco indeterminado passa a ser acompanhado por uma nota discreta de histórico insuficiente. O formulário, os dados e a lógica de gravação permanecem inalterados.
+
+Na v0.8A, não existe implementação técnica nova. A ferramenta `consultar_historico_equipamento` fica documentada como apenas de leitura, com entrada obrigatória `equipamento_id`, entrada opcional `limite`, saída limitada a `data`, `tipo_registo`, `descricao` e `estado`, e erros `equipamento_inexistente`, `historico_indisponivel` e `identificador_em_falta`.

@@ -232,3 +232,41 @@ Validação prevista:
 - desktop sem erros ou warnings no browser;
 - móvel 390x844 sem overflow horizontal;
 - `git diff --check` sem problemas.
+09/08/2026
+
+Registado o marco v0.8A do Sistema Operativo de IA.
+
+Tema:
+
+Desenho funcional da ferramenta Consultar Histórico do Equipamento.
+
+Estado:
+
+Documentação funcional, sem implementação técnica.
+
+Decisão funcional:
+
+- foi documentada a ferramenta `consultar_historico_equipamento`;
+- o objetivo único é obter registos anteriores associados a um equipamento;
+- a entrada obrigatória é `equipamento_id`;
+- a entrada opcional é `limite`;
+- a saída fica limitada a `data`, `tipo_registo`, `descricao` e `estado`;
+- a ferramenta é apenas de leitura;
+- quando não existem resultados, deve devolver lista vazia e indicar "Informação insuficiente";
+- os erros previstos são `equipamento_inexistente`, `historico_indisponivel` e `identificador_em_falta`.
+
+Relação com ferramentas existentes:
+
+- `consultar_historico_equipamento` deve especializar a consulta histórica por equipamento;
+- deve coexistir temporariamente com `consultar_historico`;
+- a substituição total de `consultar_historico` fica A confirmar.
+
+Limites mantidos:
+
+- não cria, altera, fecha ou apaga registos;
+- não decide prioridade;
+- não gera alertas;
+- não substitui validação humana;
+- não assume sensores, telemetria ou dados preditivos;
+- não foram alterados ficheiros em `SRC/`;
+- sem dependências novas.
