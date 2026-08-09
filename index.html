@@ -379,6 +379,21 @@ footer{margin-top:34px;text-align:center;color:var(--muted);font-size:12px}
   background:linear-gradient(90deg,var(--accent),var(--accent2));color:#000;font-size:15px;font-weight:800;letter-spacing:1px}
 .diary-save:hover{filter:brightness(1.08)}
 .diary-save:disabled{opacity:.5;cursor:default}
+.ai-helper{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:10px;box-shadow:var(--shadow-sm)}
+.ai-helper-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.ai-helper-title{font-size:12px;font-weight:800;letter-spacing:1.5px;color:var(--accent)}
+.ai-helper-state{color:var(--muted);font-size:13px;line-height:1.4}
+.ai-helper-grid{display:none;gap:8px}
+.ai-helper.ready .ai-helper-grid{display:grid}
+.ai-helper.ready .ai-helper-state{display:none}
+.ai-helper-item{background:#0A0E13;border:1px solid var(--border);border-radius:8px;padding:9px 10px}
+.ai-helper-label{color:var(--muted);font-size:10px;font-weight:800;letter-spacing:1.2px;margin-bottom:4px}
+.ai-helper-text{font-size:13px;line-height:1.45;color:var(--text)}
+.ai-helper-list{margin:0;padding-left:17px;color:var(--text);font-size:13px;line-height:1.45}
+.ai-helper-note{color:var(--muted);font-size:12px;line-height:1.4;margin-top:8px}
+.ai-copy{background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);
+  font-size:11px;font-weight:800;letter-spacing:.8px;padding:7px 10px;cursor:pointer;white-space:nowrap}
+.ai-copy:hover{border-color:var(--accent);color:var(--accent)}
 
 /* Fotografias */
 .photo-add{display:flex;gap:8px;flex-wrap:wrap}
@@ -695,6 +710,28 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
           <button class="mic-btn" id="micBtn" title="Ditar texto">🎤</button>
         </div>
         <div class="mic-status" id="micStatus"></div>
+      </div>
+      <div class="ai-helper" id="aiHelper" aria-live="polite">
+        <div class="ai-helper-head">
+          <div class="ai-helper-title">Assistente IA</div>
+          <button type="button" class="ai-copy" id="aiCopyBtn" style="display:none">Copiar sugestão</button>
+        </div>
+        <div class="ai-helper-state" id="aiHelperState">Escreve uma descrição com pelo menos 12 caracteres para ativar o Assistente IA.</div>
+        <div class="ai-helper-grid" id="aiHelperSuggestion">
+          <div class="ai-helper-item">
+            <div class="ai-helper-label">RESUMO</div>
+            <div class="ai-helper-text" id="aiSummary"></div>
+          </div>
+          <div class="ai-helper-item">
+            <div class="ai-helper-label">PRÓXIMA AÇÃO</div>
+            <div class="ai-helper-text" id="aiNextAction"></div>
+          </div>
+          <div class="ai-helper-item">
+            <div class="ai-helper-label">INFORMAÇÃO EM FALTA</div>
+            <ul class="ai-helper-list" id="aiMissing"></ul>
+          </div>
+        </div>
+        <div class="ai-helper-note">Supervisão humana necessária: esta sugestão não altera registos nem executa ações críticas.</div>
       </div>
       <div class="drow">
         <label class="dlabel">FOTOGRAFIAS (OPCIONAL)</label>
@@ -1271,6 +1308,67 @@ let currentSeverity='info';
 let diaryCache=[];
 let recognition=null,isListening=false,baseText='',interimText='';
 function diaryDateOf(e){return e.date||(e.timestamp?e.timestamp.slice(0,10):'');}
+let aiSuggestionText='';
+const AI_NEXT_ACTION='Validar a ocorrência, consultar histórico do equipamento e confirmar a ação necessária.';
+
+function buildAiSummary(text){
+  const clean=normalizeSpaces(text.trim());
+  if(clean.length<=140)return clean;
+  return clean.slice(0,137).trim()+'...';
+}
+
+function getAiMissingInfo(){
+  const missing=[];
+  const fichaId=$('diaryFicha')&&$('diaryFicha').value?$('diaryFicha').value:'';
+  if(!fichaId)missing.push('equipamento/ficha');
+  if(!pendingPhotos.length)missing.push('fotografia');
+  const hasRelatedHistory=fichaId&&diaryCache.some(e=>String(e.fichaId||'')===String(fichaId));
+  if(!hasRelatedHistory)missing.push('histórico');
+  return missing;
+}
+
+function updateDiaryAssistant(){
+  const panel=$('aiHelper');if(!panel)return;
+  const text=$('diaryText').value.trim();
+  const copyBtn=$('aiCopyBtn');
+  if(text.length<12){
+    panel.classList.remove('ready');
+    $('aiHelperState').textContent='Escreve uma descrição com pelo menos 12 caracteres para ativar o Assistente IA.';
+    if(copyBtn)copyBtn.style.display='none';
+    aiSuggestionText='';
+    return;
+  }
+  const summary=buildAiSummary(text);
+  const missing=getAiMissingInfo();
+  $('aiSummary').textContent=summary;
+  $('aiNextAction').textContent=AI_NEXT_ACTION;
+  $('aiMissing').innerHTML=missing.length?missing.map(item=>`<li>${escapeHtml(item)}</li>`).join(''):'<li>Nenhuma identificada</li>';
+  aiSuggestionText=[
+    'Assistente IA — Sugestão para Registo Técnico',
+    '',
+    'Resumo: '+summary,
+    'Próxima ação: '+AI_NEXT_ACTION,
+    '',
+    'Informação em falta:',
+    ...(missing.length?missing.map(item=>'- '+item):['- Nenhuma identificada']),
+    '',
+    'Nota: Supervisão humana necessária antes de qualquer ação crítica.'
+  ].join('\n');
+  panel.classList.add('ready');
+  if(copyBtn){copyBtn.style.display='inline-flex';copyBtn.textContent='Copiar sugestão';}
+}
+
+async function copyAiSuggestion(){
+  if(!aiSuggestionText)return;
+  const btn=$('aiCopyBtn');
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText)await navigator.clipboard.writeText(aiSuggestionText);
+    else throw new Error('clipboard indisponível');
+    if(btn){btn.textContent='Copiado';setTimeout(()=>{btn.textContent='Copiar sugestão';},1600);}
+  }catch(e){
+    if(btn){btn.textContent='Não copiado';setTimeout(()=>{btn.textContent='Copiar sugestão';},1600);}
+  }
+}
 
 function switchView(view){
   const isPlano=view==='plano';
@@ -1331,7 +1429,7 @@ function renderPhotoThumbs(){
       <button type="button" class="pt-remove" onclick="removePendingPhoto(${i})">✕</button>
     </div>`).join('');
 }
-function removePendingPhoto(i){pendingPhotos.splice(i,1);renderPhotoThumbs();}
+function removePendingPhoto(i){pendingPhotos.splice(i,1);renderPhotoThumbs();updateDiaryAssistant();}
 window.removePendingPhoto=removePendingPhoto;
 
 $('photoAddBtn').onclick=()=>$('photoInput').click();
@@ -1349,7 +1447,7 @@ async function handlePhotoFiles(files,sourceBtn){
       const dataUrl=await compressImage(f);
       pendingPhotos.push(dataUrl);
     }
-    renderPhotoThumbs();
+    renderPhotoThumbs();updateDiaryAssistant();
   }catch(err){console.error(err);showToast('Erro ao processar imagem','err');}
   sourceBtn.textContent=orig;sourceBtn.disabled=false;
 }
@@ -1372,14 +1470,18 @@ function setupSpeech(){
     for(let i=0;i<event.results.length;i++){const r=event.results[i];if(r.isFinal)finalChunk+=r[0].transcript+' ';else interimText+=r[0].transcript;}
     if(finalChunk)baseText=normalizeSpaces(baseText+' '+finalChunk).replace(/^\s+/,'');
     $('diaryText').value=normalizeSpaces(baseText+' '+interimText).replace(/^\s+/,'');
+    updateDiaryAssistant();
     $('micStatus').textContent='🎤 A ouvir... fale agora';
   };
   recognition.onerror=(e)=>{if(e.error==='no-speech'||e.error==='aborted')return;$('micStatus').textContent='Erro: '+e.error;stopListening();};
   recognition.onend=()=>{interimText='';if(isListening){try{recognition.start();}catch(e){}}};
 }
 function startListening(){const ta=$('diaryText');baseText=ta.value?normalizeSpaces(ta.value).replace(/\s+$/,''):'';interimText='';isListening=true;$('micBtn').classList.add('listening');$('micStatus').textContent='🎤 A ouvir... fale agora';try{recognition.start();}catch(e){}}
-function stopListening(){isListening=false;interimText='';$('diaryText').value=normalizeSpaces(baseText).trim();$('micBtn').classList.remove('listening');$('micStatus').textContent='';try{recognition.stop();}catch(e){}}
+function stopListening(){isListening=false;interimText='';$('diaryText').value=normalizeSpaces(baseText).trim();updateDiaryAssistant();$('micBtn').classList.remove('listening');$('micStatus').textContent='';try{recognition.stop();}catch(e){}}
 $('micBtn').onclick=()=>{if(!recognition)return;isListening?stopListening():startListening();};
+$('diaryText').addEventListener('input',updateDiaryAssistant);
+$('diaryFicha').addEventListener('change',updateDiaryAssistant);
+$('aiCopyBtn').onclick=copyAiSuggestion;
 
 function initDiaryListener(){
   if(!window.firebaseReady){setTimeout(initDiaryListener,300);return;}
@@ -1411,6 +1513,7 @@ $('diarySave').onclick=async()=>{
     $('diaryDate').value=new Date().toISOString().slice(0,10);
     if($('diaryFicha'))$('diaryFicha').value='';
     pendingPhotos=[];renderPhotoThumbs();
+    updateDiaryAssistant();
     currentSeverity='info';document.querySelectorAll('.sev-btn').forEach(x=>x.classList.toggle('active',x.dataset.level==='info'));
     showToast('Registo guardado');
   }catch(err){console.error(err);alert('Erro ao guardar. Verifique a ligação.');}
