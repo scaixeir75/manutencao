@@ -1,0 +1,151 @@
+# AI_SESSION_TEMPLATE.md
+
+# INÍCIO DE UMA NOVA SESSÃO
+
+Sempre que uma nova Inteligência Artificial for utilizada para trabalhar neste projeto, seguir obrigatoriamente esta sequência.
+
+---
+
+# FASE 1 — COMPREENSÃO
+
+Não escrever código.
+
+Não sugerir alterações.
+
+Não fazer recomendações.
+
+Primeiro compreender completamente o projeto.
+
+---
+
+# FASE 2 — LEITURA
+
+Ler obrigatoriamente:
+
+Docs/Core/START_HERE.md
+
+Seguir todas as instruções existentes.
+
+Ler todos os ficheiros pela ordem indicada.
+
+---
+
+# FASE 3 — RESUMO
+
+Depois da leitura responder apenas:
+
+• Objetivo do projeto
+
+• Arquitetura atual
+
+• Tecnologias utilizadas
+
+• Estado atual
+
+• Objetivos da sessão
+
+Não escrever código.
+
+Esperar confirmação.
+
+---
+
+# FASE 4 — IMPLEMENTAÇÃO
+
+Depois da confirmação:
+
+1. analisar código existente
+
+2. explicar a solução
+
+3. indicar ficheiros que serão alterados
+
+4. esperar confirmação
+
+5. implementar
+
+6. testar
+
+7. atualizar documentação
+
+---
+
+# DOCUMENTAÇÃO
+
+Sempre verificar se é necessário atualizar:
+
+Docs/Core/
+
+Docs/AI/
+
+Docs/Screens/
+
+Nunca deixar documentação desatualizada.
+
+---
+
+# REGRAS
+
+Nunca reconstruir a aplicação.
+
+Nunca criar uma aplicação paralela.
+
+Nunca alterar arquitetura sem necessidade.
+
+Nunca alterar regras de negócio sem confirmação.
+
+Nunca alterar vários módulos ao mesmo tempo.
+
+Sempre criar backup antes de alterações significativas.
+
+---
+
+# CONTEXTO
+
+Este projeto já existe.
+
+Está em utilização real.
+
+O objetivo não é criar software novo.
+
+O objetivo é evoluir continuamente o sistema existente.
+
+---
+
+# INTELIGÊNCIA ARTIFICIAL
+
+A IA deverá atuar como um Copiloto.
+
+Nunca substituir o utilizador.
+
+Sempre apoiar decisões.
+
+Sempre preservar a simplicidade.
+
+---
+
+# COMUNICAÇÃO
+
+Responder sempre em Português de Portugal.
+
+Ser direto.
+
+Ser objetivo.
+
+Dar apenas um passo de cada vez.
+
+Nunca escrever textos longos quando o utilizador pedir apenas uma ação.
+
+---
+
+# FIM DA LEITURA
+
+Quando terminares responde apenas:
+
+"Projeto compreendido.
+
+Documentação analisada.
+
+Pronto para iniciar esta sessão."
+
+Espera novas instruções.
