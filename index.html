@@ -396,7 +396,7 @@ footer{margin-top:34px;text-align:center;color:var(--muted);font-size:12px}
   font-size:13px;line-height:1.4;padding:9px 10px;outline:none;font-family:inherit;resize:vertical;min-height:48px}
 .ai-helper-input:focus{border-color:var(--accent)}
 .ai-helper-response{display:block;margin-top:8px;background:#0A0E13;border:1px solid var(--border);border-radius:8px;
-  color:var(--muted);font-size:13px;line-height:1.45;padding:9px 10px}
+  color:var(--muted);font-size:13px;line-height:1.45;padding:9px 10px;white-space:pre-line}
 .ai-helper.has-response .ai-helper-response{color:var(--text)}
 .ai-copy{background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);
   font-size:11px;font-weight:800;letter-spacing:.8px;padding:7px 10px;cursor:pointer;white-space:nowrap}
@@ -1444,16 +1444,139 @@ async function copyAiSuggestion(){
   }
 }
 
+function getQuestionKeywords(question){
+  const stop=new Set(['a','o','os','as','de','da','do','das','dos','e','em','no','na','nos','nas','um','uma','este','esta','isto','houve','vezes','quantas','quantos','manutencao','manutencoes','registo','registos','historico','ficha','equipamento','semana','ano','meses','anteriores','parecidas','problemas','intervencoes']);
+  return norm(question).split(/[^a-z0-9]+/).filter(word=>word.length>2&&!stop.has(word));
+}
+
+function findCatalogMatches(question){
+  const normalizedQuestion=norm(question);
+  const words=getQuestionKeywords(question);
+  const numberTokens=new Set(normalizedQuestion.split(/[^0-9]+/).filter(Boolean));
+  return Object.entries(CATALOG).filter(([id,name])=>{
+    const normalizedName=norm(name);
+    return numberTokens.has(String(id))||
+      normalizedQuestion.includes(normalizedName)||
+      words.some(word=>normalizedName.includes(word));
+  }).map(([id,name])=>({id,name}));
+}
+
+function recordYear(value){
+  if(!value)return null;
+  const date=new Date(value);
+  return Number.isNaN(date.getTime())?null:date.getFullYear();
+}
+
+function getDiaryRecordText(record){
+  return [record.text,record.fichaNome,record.severity].filter(Boolean).join(' ');
+}
+
+function getFichaRecordText(record,fichaId){
+  return [record.note,record.status,record.tech,CATALOG[fichaId]].filter(Boolean).join(' ');
+}
+
+function matchesQuestionText(text,keywords){
+  const normalized=norm(text||'');
+  return keywords.some(word=>normalized.includes(word));
+}
+
+function collectAiLocalFacts(question){
+  const keywords=getQuestionKeywords(question);
+  const catalogMatches=findCatalogMatches(question);
+  const matchedFichaIds=new Set(catalogMatches.map(match=>String(match.id)));
+  const wantsThisYear=norm(question).includes('este ano');
+  const currentYear=new Date().getFullYear();
+  const weeklyFichaIds=new Set((SCHEDULE[String(week)]||[]).map(id=>String(id)));
+
+  const relatedDiary=diaryCache.filter(record=>{
+    const sameFicha=record.fichaId&&matchedFichaIds.has(String(record.fichaId));
+    const textMatch=keywords.length&&matchesQuestionText(getDiaryRecordText(record),keywords);
+    const sameYear=!wantsThisYear||recordYear(diaryDateOf(record)||record.timestamp)===currentYear;
+    return sameYear&&(sameFicha||textMatch);
+  });
+
+  const relatedFicha=[];
+  Object.entries(LOGS).forEach(([fichaId,entries])=>{
+    const sameFicha=matchedFichaIds.has(String(fichaId));
+    (entries||[]).forEach(record=>{
+      const textMatch=keywords.length&&matchesQuestionText(getFichaRecordText(record,fichaId),keywords);
+      const sameYear=!wantsThisYear||recordYear(record.date||record.created)===currentYear;
+      if(sameYear&&(sameFicha||textMatch))relatedFicha.push({fichaId,record});
+    });
+  });
+
+  const weeklyMatches=catalogMatches.filter(match=>weeklyFichaIds.has(String(match.id)));
+  return {keywords,catalogMatches,relatedDiary,relatedFicha,weeklyMatches,wantsThisYear,currentYear};
+}
+
+function formatAiLocalAnswer(question){
+  const facts=collectAiLocalFacts(question);
+  const total=facts.relatedDiary.length+facts.relatedFicha.length;
+  const factsLines=[];
+  const inferenceLines=[];
+  const recommendationLines=[];
+  const insufficientLines=[];
+
+  if(facts.catalogMatches.length){
+    factsLines.push('Foram identificadas fichas/equipamentos possíveis: '+facts.catalogMatches.map(match=>`Ficha ${match.id} — ${match.name}`).join('; ')+'.');
+  }
+  if(facts.wantsThisYear){
+    factsLines.push(`Foram encontrados ${total} registos relacionados em ${facts.currentYear}.`);
+  }else{
+    factsLines.push(`Foram encontrados ${total} registos relacionados nas caches locais.`);
+  }
+  factsLines.push(`${facts.relatedDiary.length} registos estão em Registos Diários.`);
+  factsLines.push(`${facts.relatedFicha.length} registos estão no histórico de fichas.`);
+  if(facts.weeklyMatches.length){
+    factsLines.push('No plano da semana atual existem intervenções para: '+facts.weeklyMatches.map(match=>`Ficha ${match.id} — ${match.name}`).join('; ')+'.');
+  }
+
+  if(total>=2)inferenceLines.push('A existência de vários registos pode indicar recorrência, mas deve ser confirmada manualmente.');
+  else if(total===1)inferenceLines.push('Existe um registo relacionado, mas a informação é limitada para concluir recorrência.');
+  else inferenceLines.push('Não há dados suficientes nas caches locais para inferir recorrência com confiança.');
+
+  recommendationLines.push('Rever os registos encontrados e confirmar se pertencem ao mesmo equipamento antes de decidir ação.');
+  recommendationLines.push('Validar manualmente datas, ficha/equipamento e contexto técnico.');
+
+  if(!facts.catalogMatches.length)insufficientLines.push('Selecionar ficha/equipamento ou escrever o nome mais específico do equipamento.');
+  if(!facts.keywords.length)insufficientLines.push('Escrever uma pergunta com termos técnicos ou nome do equipamento.');
+  if(!facts.wantsThisYear&&norm(question).includes('ano'))insufficientLines.push('Confirmar o ano pretendido.');
+  if(total===0)insufficientLines.push('Não foram encontrados registos suficientes para responder com confiança.');
+
+  return [
+    'Factos encontrados:',
+    ...factsLines.map(line=>'- '+line),
+    '',
+    'Inferência:',
+    ...inferenceLines.map(line=>'- '+line),
+    '',
+    'Recomendação:',
+    ...recommendationLines.map(line=>'- '+line),
+    '',
+    'Informação insuficiente:',
+    ...(insufficientLines.length?insufficientLines.map(line=>'- '+line):['- Nenhuma lacuna evidente nos dados consultados, mas a análise continua a ser textual e simples.']),
+    '',
+    'Supervisão humana necessária:',
+    '- Esta sugestão não altera dados nem executa ações críticas.'
+  ].join('\n');
+}
+
 function generatePlanAiSuggestion(){
   const panel=$('planAiHelper');if(!panel)return;
   const input=$('planAiInput');
   const question=input?input.value.trim():'';
-  const weekText=$('wlabel')&&$('wlabel').textContent?$('wlabel').textContent:'Plano Semanal';
-  const response=[
-    question?'Pergunta registada para apoio: '+question:'Sugestão geral para o plano semanal.',
-    'Contexto: '+weekText+'.',
-    'Revê as tarefas previstas, confirma prioridades e valida se existe alguma intervenção pendente antes de iniciar o trabalho.'
-  ].join(' ');
+  const response=question
+    ? formatAiLocalAnswer(question)
+    : [
+        'Factos encontrados:',
+        '- Não foi indicada uma pergunta concreta.',
+        '',
+        'Informação insuficiente:',
+        '- Escrever ou ditar uma pergunta sobre registos, ficha/equipamento, plano semanal ou histórico.',
+        '',
+        'Supervisão humana necessária:',
+        '- Esta sugestão não altera dados nem executa ações críticas.'
+      ].join('\n');
   $('planAiResponse').textContent=response;
   panel.classList.add('has-response');
 }
