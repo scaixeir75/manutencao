@@ -738,10 +738,12 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
           <div class="ai-helper-title">Assistente IA</div>
           <div class="ai-helper-actions">
             <button type="button" class="ai-copy" id="aiDictateBtn">🎙️ Ditar</button>
+            <button type="button" class="ai-copy" id="aiGenerateBtn">Analisar com IA</button>
             <button type="button" class="ai-copy" id="aiCopyBtn" style="display:none">Copiar sugestão</button>
           </div>
         </div>
-        <div class="ai-helper-state" id="aiHelperState">Escreve uma descrição com pelo menos 12 caracteres para ativar o Assistente IA.</div>
+        <div class="ai-helper-state" id="aiHelperState">Escreve primeiro a descrição do registo e depois faz uma pergunta à IA.</div>
+        <textarea class="ai-helper-input" id="aiDiaryInput" rows="2" placeholder="Pergunta ou observação sobre este registo"></textarea>
         <div class="ai-helper-grid" id="aiHelperSuggestion">
           <div class="ai-helper-item">
             <div class="ai-helper-label">RESUMO</div>
@@ -1401,15 +1403,39 @@ function getAiMissingInfo(){
   return missing;
 }
 
-function updateDiaryAssistant(){
+function getDiaryAssistantStateText(){
+  const text=$('diaryText')&&$('diaryText').value?$('diaryText').value.trim():'';
+  return text.length<12
+    ? 'Escreve primeiro uma descrição com pelo menos 12 caracteres para contextualizar o Assistente IA.'
+    : 'Escreve ou dita uma pergunta e usa "Analisar com IA".';
+}
+
+function resetDiaryAssistant({clearInput=false}={}){
+  const panel=$('aiHelper');if(!panel)return;
+  const copyBtn=$('aiCopyBtn');
+  panel.classList.remove('ready');
+  $('aiHelperState').textContent=getDiaryAssistantStateText();
+  $('aiSummary').textContent='';
+  $('aiNextAction').textContent='';
+  $('aiMissing').innerHTML='';
+  if(clearInput&&$('aiDiaryInput'))$('aiDiaryInput').value='';
+  if(copyBtn)copyBtn.style.display='none';
+  aiSuggestionText='';
+}
+
+function generateDiaryAiSuggestion(){
   const panel=$('aiHelper');if(!panel)return;
   const text=$('diaryText').value.trim();
+  const question=$('aiDiaryInput')&&$('aiDiaryInput').value?$('aiDiaryInput').value.trim():'';
   const copyBtn=$('aiCopyBtn');
   if(text.length<12){
-    panel.classList.remove('ready');
-    $('aiHelperState').textContent='Escreve uma descrição com pelo menos 12 caracteres para ativar o Assistente IA.';
-    if(copyBtn)copyBtn.style.display='none';
-    aiSuggestionText='';
+    resetDiaryAssistant();
+    $('aiHelperState').textContent='Escreve primeiro uma descrição com pelo menos 12 caracteres para contextualizar o Assistente IA.';
+    return;
+  }
+  if(question.length<3){
+    resetDiaryAssistant();
+    $('aiHelperState').textContent='Escreve ou dita uma pergunta na caixa da IA antes de analisar.';
     return;
   }
   const summary=buildAiSummary(text);
@@ -1420,6 +1446,7 @@ function updateDiaryAssistant(){
   aiSuggestionText=[
     'Assistente IA — Sugestão para Registo Técnico',
     '',
+    'Pergunta: '+question,
     'Resumo: '+summary,
     'Próxima ação: '+AI_NEXT_ACTION,
     '',
@@ -1613,6 +1640,10 @@ function compressImage(file){
   return new Promise((resolve,reject)=>{
     const reader=new FileReader();
     reader.onload=()=>{
+      const fallback=()=>{
+        if(typeof reader.result==='string'&&reader.result)resolve(reader.result);
+        else reject(new Error('Falha ao ler imagem'));
+      };
       const img=new Image();
       img.onload=()=>{
         let{width,height}=img;
@@ -1621,10 +1652,15 @@ function compressImage(file){
         const canvas=document.createElement('canvas');
         canvas.width=width;canvas.height=height;
         const ctx=canvas.getContext('2d');
-        ctx.drawImage(img,0,0,width,height);
-        resolve(canvas.toDataURL('image/jpeg',PHOTO_QUALITY));
+        if(!ctx){fallback();return;}
+        try{
+          ctx.drawImage(img,0,0,width,height);
+          resolve(canvas.toDataURL('image/jpeg',PHOTO_QUALITY));
+        }catch(err){
+          fallback();
+        }
       };
-      img.onerror=reject;
+      img.onerror=()=>fallback();
       img.src=reader.result;
     };
     reader.onerror=reject;
@@ -1640,7 +1676,7 @@ function renderPhotoThumbs(){
       <button type="button" class="pt-remove" onclick="removePendingPhoto(${i})">✕</button>
     </div>`).join('');
 }
-function removePendingPhoto(i){pendingPhotos.splice(i,1);renderPhotoThumbs();updateDiaryAssistant();}
+function removePendingPhoto(i){pendingPhotos.splice(i,1);renderPhotoThumbs();resetDiaryAssistant();}
 window.removePendingPhoto=removePendingPhoto;
 
 $('photoAddBtn').onclick=()=>$('photoInput').click();
@@ -1658,7 +1694,7 @@ async function handlePhotoFiles(files,sourceBtn){
       const dataUrl=await compressImage(f);
       pendingPhotos.push(dataUrl);
     }
-    renderPhotoThumbs();updateDiaryAssistant();
+    renderPhotoThumbs();resetDiaryAssistant();
   }catch(err){console.error(err);showToast('Erro ao processar imagem','err');}
   sourceBtn.textContent=orig;sourceBtn.disabled=false;
 }
@@ -1681,24 +1717,25 @@ function setupSpeech(){
     for(let i=0;i<event.results.length;i++){const r=event.results[i];if(r.isFinal)finalChunk+=r[0].transcript+' ';else interimText+=r[0].transcript;}
     if(finalChunk)baseText=normalizeSpaces(baseText+' '+finalChunk).replace(/^\s+/,'');
     $('diaryText').value=normalizeSpaces(baseText+' '+interimText).replace(/^\s+/,'');
-    updateDiaryAssistant();
+    resetDiaryAssistant();
     $('micStatus').textContent='🎤 A ouvir... fale agora';
   };
   recognition.onerror=(e)=>{if(e.error==='no-speech'||e.error==='aborted')return;$('micStatus').textContent='Erro: '+e.error;stopListening();};
   recognition.onend=()=>{interimText='';if(isListening){try{recognition.start();}catch(e){}}};
 }
 function startListening(){const ta=$('diaryText');baseText=ta.value?normalizeSpaces(ta.value).replace(/\s+$/,''):'';interimText='';isListening=true;$('micBtn').classList.add('listening');$('micStatus').textContent='🎤 A ouvir... fale agora';try{recognition.start();}catch(e){}}
-function stopListening(){isListening=false;interimText='';$('diaryText').value=normalizeSpaces(baseText).trim();updateDiaryAssistant();$('micBtn').classList.remove('listening');$('micStatus').textContent='';try{recognition.stop();}catch(e){}}
+function stopListening(){isListening=false;interimText='';$('diaryText').value=normalizeSpaces(baseText).trim();resetDiaryAssistant();$('micBtn').classList.remove('listening');$('micStatus').textContent='';try{recognition.stop();}catch(e){}}
 $('micBtn').onclick=()=>{if(!recognition)return;isListening?stopListening():startListening();};
-$('diaryText').addEventListener('input',updateDiaryAssistant);
-$('diaryFicha').addEventListener('change',updateDiaryAssistant);
+$('diaryText').addEventListener('input',()=>resetDiaryAssistant());
+$('diaryFicha').addEventListener('change',()=>resetDiaryAssistant());
+$('aiDiaryInput').addEventListener('input',()=>resetDiaryAssistant());
 $('aiCopyBtn').onclick=copyAiSuggestion;
 $('aiDictateBtn').onclick=()=>startAiDictation({
   button:$('aiDictateBtn'),
-  target:$('diaryText'),
-  status:$('aiMicStatus'),
-  onText:updateDiaryAssistant
+  target:$('aiDiaryInput'),
+  status:$('aiMicStatus')
 });
+$('aiGenerateBtn').onclick=generateDiaryAiSuggestion;
 $('planAiMicBtn').onclick=()=>startAiDictation({
   button:$('planAiMicBtn'),
   target:$('planAiInput'),
@@ -1736,7 +1773,7 @@ $('diarySave').onclick=async()=>{
     $('diaryDate').value=new Date().toISOString().slice(0,10);
     if($('diaryFicha'))$('diaryFicha').value='';
     pendingPhotos=[];renderPhotoThumbs();
-    updateDiaryAssistant();
+    resetDiaryAssistant({clearInput:true});
     currentSeverity='info';document.querySelectorAll('.sev-btn').forEach(x=>x.classList.toggle('active',x.dataset.level==='info'));
     showToast('Registo guardado');
   }catch(err){console.error(err);alert('Erro ao guardar. Verifique a ligação.');}
