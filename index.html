@@ -737,6 +737,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
         <div class="ai-helper-head">
           <div class="ai-helper-title">🤖 Assistente IA</div>
           <div class="ai-helper-actions">
+            <button type="button" class="ai-copy" id="aiUseFichaBtn" style="display:none">Usar ficha sugerida</button>
             <button type="button" class="ai-copy" id="aiDictateBtn">🎙️ Ditar</button>
             <button type="button" class="ai-copy" id="aiGenerateBtn">Analisar com IA</button>
             <button type="button" class="ai-copy" id="aiCopyBtn" style="display:none">Copiar sugestão</button>
@@ -745,6 +746,14 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
         <div class="ai-helper-state" id="aiHelperState">Escreve primeiro a descrição do registo e depois faz uma pergunta à IA.</div>
         <textarea class="ai-helper-input" id="aiDiaryInput" rows="2" placeholder="Pergunta ou observação sobre este registo"></textarea>
         <div class="ai-helper-grid" id="aiHelperSuggestion">
+          <div class="ai-helper-item">
+            <div class="ai-helper-label">FICHA PROVÁVEL</div>
+            <div class="ai-helper-text" id="aiProbableFicha"></div>
+          </div>
+          <div class="ai-helper-item">
+            <div class="ai-helper-label">MOTIVO DA SUGESTÃO</div>
+            <div class="ai-helper-text" id="aiFichaReason"></div>
+          </div>
           <div class="ai-helper-item">
             <div class="ai-helper-label">RESUMO</div>
             <div class="ai-helper-text" id="aiSummary"></div>
@@ -1413,14 +1422,81 @@ function getDiaryAssistantStateText(){
 function resetDiaryAssistant({clearInput=false}={}){
   const panel=$('aiHelper');if(!panel)return;
   const copyBtn=$('aiCopyBtn');
+  const useFichaBtn=$('aiUseFichaBtn');
   panel.classList.remove('ready');
   $('aiHelperState').textContent=getDiaryAssistantStateText();
+  $('aiProbableFicha').textContent='';
+  $('aiFichaReason').textContent='';
   $('aiSummary').textContent='';
   $('aiNextAction').textContent='';
   $('aiMissing').innerHTML='';
   if(clearInput&&$('aiDiaryInput'))$('aiDiaryInput').value='';
   if(copyBtn)copyBtn.style.display='none';
+  if(useFichaBtn)useFichaBtn.style.display='none';
+  delete panel.dataset.suggestedFichaId;
   aiSuggestionText='';
+}
+
+function scoreFichaSuggestion(contextText){
+  const keywords=getQuestionKeywords(contextText);
+  const normalizedText=norm(contextText||'');
+  const fichaBoosts={
+    '25':['gerador','emergencia','arranca','arranque'],
+    '29':['autoclismo','sanitario','sanitarios','sanita','wc','casa banho','lavatorio','torneira']
+  };
+  const scores=Object.entries(CATALOG).map(([id,name])=>{
+    const normalizedName=norm(name);
+    let score=0;
+    const reasons=[];
+    if(normalizedText.includes(normalizedName)){score+=6;reasons.push('nome da ficha encontrado no texto');}
+    for(const word of keywords){
+      if(normalizedName.includes(word)){score+=2;reasons.push(`termo relacionado: ${word}`);}
+    }
+    for(const hint of (fichaBoosts[id]||[])){
+      if(normalizedText.includes(norm(hint))){score+=3;reasons.push(`indício específico: ${hint}`);}
+    }
+    const diaryHits=diaryCache.filter(record=>String(record.fichaId||'')===String(id)&&matchesQuestionText(getDiaryRecordText(record),keywords)).length;
+    const logHits=(LOGS[id]||[]).filter(record=>matchesQuestionText(getFichaRecordText(record,id),keywords)).length;
+    if(diaryHits){score+=Math.min(diaryHits,2);reasons.push(`${diaryHits} registo(s) diário(s) relacionado(s)`);}
+    if(logHits){score+=Math.min(logHits,2);reasons.push(`${logHits} ocorrência(s) no histórico`);}
+    return {id,name,score,reasons:[...new Set(reasons)],diaryHits,logHits};
+  }).filter(item=>item.score>0).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name,'pt'));
+  return {keywords,scores: scores.slice(0,3)};
+}
+
+function formatFichaSuggestion(contextText){
+  const result=scoreFichaSuggestion(contextText);
+  const top=result.scores[0];
+  if(!top){
+    return {
+      probable:'Informação insuficiente',
+      reason:'Não foi encontrada correspondência suficiente nas fichas existentes.',
+      found:'Sem correspondência razoável em CATALOG ou histórico relacionado.',
+      missing:['Especificar melhor o equipamento, zona ou tipo de anomalia.'],
+      suggestedFichaId:'',
+      useButton:false
+    };
+  }
+  const multiple=result.scores.length>1&&result.scores[1].score>=Math.max(1,top.score-1);
+  const foundLines=result.scores.map(item=>`Ficha ${item.id} — ${item.name} (${item.score} ponto(s))`);
+  if(multiple){
+    return {
+      probable:'Possíveis fichas: '+result.scores.map(item=>`${item.id} — ${item.name}`).join('; '),
+      reason:'Há várias hipóteses com pontuação próxima. A sugestão é apenas indicativa.',
+      found:foundLines.join(' | '),
+      missing:['Selecionar manualmente a ficha correta.', 'Confirmar o equipamento exato antes de guardar.'],
+      suggestedFichaId:'',
+      useButton:false
+    };
+  }
+  return {
+    probable:`Provável: Ficha ${top.id} — ${top.name}`,
+    reason:top.reasons.length?top.reasons.join('; '):'Correspondência textual simples com a ficha.',
+    found:foundLines.join(' | '),
+    missing:['Confirmação do técnico necessária.'],
+    suggestedFichaId:top.score>=3?top.id:'',
+    useButton:top.score>=3
+  };
 }
 
 function generateDiaryAiSuggestion(){
@@ -1428,6 +1504,7 @@ function generateDiaryAiSuggestion(){
   const text=$('diaryText').value.trim();
   const question=$('aiDiaryInput')&&$('aiDiaryInput').value?$('aiDiaryInput').value.trim():'';
   const copyBtn=$('aiCopyBtn');
+  const useFichaBtn=$('aiUseFichaBtn');
   if(text.length<12){
     resetDiaryAssistant();
     $('aiHelperState').textContent='Escreve primeiro uma descrição com pelo menos 12 caracteres para contextualizar o Assistente IA.';
@@ -1440,23 +1517,37 @@ function generateDiaryAiSuggestion(){
   }
   const summary=buildAiSummary(text);
   const missing=getAiMissingInfo();
+  const fichaSuggestion=formatFichaSuggestion(text+' '+question);
+  const missingItems=[...missing];
+  if(Array.isArray(fichaSuggestion.missing))missingItems.push(...fichaSuggestion.missing);
+  const uniqueMissing=[...new Set(missingItems)];
+  $('aiProbableFicha').textContent=fichaSuggestion.probable;
+  $('aiFichaReason').textContent=fichaSuggestion.reason;
   $('aiSummary').textContent=summary;
   $('aiNextAction').textContent=AI_NEXT_ACTION;
-  $('aiMissing').innerHTML=missing.length?missing.map(item=>`<li>${escapeHtml(item)}</li>`).join(''):'<li>Nenhuma identificada</li>';
+  $('aiMissing').innerHTML=uniqueMissing.length?uniqueMissing.map(item=>`<li>${escapeHtml(item)}</li>`).join(''):'<li>Nenhuma identificada</li>';
+  panel.dataset.suggestedFichaId=fichaSuggestion.suggestedFichaId||'';
   aiSuggestionText=[
     'Assistente IA — Sugestão para Registo Técnico',
     '',
     'Pergunta: '+question,
+    'Ficha provável: '+fichaSuggestion.probable,
+    'Motivo da sugestão: '+fichaSuggestion.reason,
+    'Informação encontrada: '+fichaSuggestion.found,
     'Resumo: '+summary,
     'Próxima ação: '+AI_NEXT_ACTION,
     '',
     'Informação em falta:',
-    ...(missing.length?missing.map(item=>'- '+item):['- Nenhuma identificada']),
+    ...(uniqueMissing.length?uniqueMissing.map(item=>'- '+item):['- Nenhuma identificada']),
     '',
-    'Nota: Supervisão humana necessária antes de qualquer ação crítica.'
+    'Nota: Confirmação do técnico necessária.'
   ].join('\n');
   panel.classList.add('ready');
   if(copyBtn){copyBtn.style.display='inline-flex';copyBtn.textContent='Copiar sugestão';}
+  if(useFichaBtn){
+    useFichaBtn.style.display=fichaSuggestion.useButton?'inline-flex':'none';
+    useFichaBtn.textContent='Usar ficha sugerida';
+  }
 }
 
 async function copyAiSuggestion(){
@@ -1730,6 +1821,13 @@ $('diaryText').addEventListener('input',()=>resetDiaryAssistant());
 $('diaryFicha').addEventListener('change',()=>resetDiaryAssistant());
 $('aiDiaryInput').addEventListener('input',()=>resetDiaryAssistant());
 $('aiCopyBtn').onclick=copyAiSuggestion;
+$('aiUseFichaBtn').onclick=()=>{
+  const suggestedId=$('aiHelper')&&$('aiHelper').dataset&&$('aiHelper').dataset.suggestedFichaId?$('aiHelper').dataset.suggestedFichaId:'';
+  if(!suggestedId||!$('diaryFicha'))return;
+  $('diaryFicha').value=suggestedId;
+  resetDiaryAssistant();
+  $('aiHelperState').textContent='Ficha sugerida aplicada. Confirmação do técnico necessária.';
+};
 $('aiDictateBtn').onclick=()=>startAiDictation({
   button:$('aiDictateBtn'),
   target:$('aiDiaryInput'),
