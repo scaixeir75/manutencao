@@ -644,7 +644,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
 
       <section class="ai-helper" id="planAiHelper" aria-live="polite">
         <div class="ai-helper-head">
-          <div class="ai-helper-title">Assistente IA</div>
+          <div class="ai-helper-title">🤖 Assistente IA</div>
           <div class="ai-helper-actions">
             <button type="button" class="ai-copy" id="planAiMicBtn">🎙️ Ditar</button>
             <button type="button" class="ai-copy" id="planAiGenerateBtn">Perguntar à IA</button>
@@ -735,7 +735,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
       </div>
       <div class="ai-helper" id="aiHelper" aria-live="polite">
         <div class="ai-helper-head">
-          <div class="ai-helper-title">Assistente IA</div>
+          <div class="ai-helper-title">🤖 Assistente IA</div>
           <div class="ai-helper-actions">
             <button type="button" class="ai-copy" id="aiDictateBtn">🎙️ Ditar</button>
             <button type="button" class="ai-copy" id="aiGenerateBtn">Analisar com IA</button>
@@ -1817,14 +1817,21 @@ function startEditDiary(id){
         <option value="urgente">🚨 Importante</option>
       </select>
     </div>
+    <div class="de-editrow">
+      <select id="editFicha-${id}">
+        <option value="">— Nenhum —</option>
+      </select>
+    </div>
     <div class="de-editbtns">
       <button class="de-save" onclick="saveEditDiary('${id}')">GUARDAR</button>
       <button class="de-cancel" onclick="cancelEditDiary('${id}')">Cancelar</button>
     </div>`;
   card.appendChild(box);
+  populateFichaSelect($('editFicha-'+id));
   $('editText-'+id).value=e.text||'';
   $('editDate-'+id).value=e.date||(e.timestamp?e.timestamp.slice(0,10):'');
   $('editSev-'+id).value=e.severity||'info';
+  $('editFicha-'+id).value=e.fichaId||'';
   $('editText-'+id).focus();
 }
 window.startEditDiary=startEditDiary;
@@ -1836,6 +1843,7 @@ async function saveEditDiary(id){
   if(!newText){alert('A descrição não pode ficar vazia.');return;}
   const newDate=$('editDate-'+id).value;
   const newSev=$('editSev-'+id).value;
+  const newFichaId=$('editFicha-'+id)&&$('editFicha-'+id).value?$('editFicha-'+id).value:'';
   try{
     const{db,ref,set}=window.fb;
     const updated={
@@ -1845,6 +1853,10 @@ async function saveEditDiary(id){
       timestamp:e.timestamp,        // mantém a data/hora original de registo
       editedAt:new Date().toISOString()  // marca quando foi editado
     };
+    if(newFichaId){
+      updated.fichaId=newFichaId;
+      updated.fichaNome=CATALOG[newFichaId];
+    }
     if(Array.isArray(e.photos)&&e.photos.length)updated.photos=e.photos; // preserva fotos
     await set(ref(db,'registos_diarios/'+id),updated);
     showToast('Alterações guardadas');
@@ -2072,12 +2084,17 @@ document.getElementById('diaryHistoryToggle').addEventListener('click',()=>{
 });
 
 // Popula select de fichas no diário
-(function(){
-  const sel=document.getElementById('diaryFicha');
+function populateFichaSelect(sel){
   if(!sel)return;
+  const current=sel.value;
+  sel.innerHTML='<option value="">— Nenhum —</option>';
   Object.entries(CATALOG).sort((a,b)=>a[1].localeCompare(b[1],'pt')).forEach(([id,nome])=>{
     const opt=document.createElement('option');opt.value=id;opt.textContent=id+' — '+nome;sel.appendChild(opt);
   });
+  sel.value=current||'';
+}
+(function(){
+  populateFichaSelect(document.getElementById('diaryFicha'));
 })();
 
 buildCalendar();selectWeek(week,false);setupSpeech();
