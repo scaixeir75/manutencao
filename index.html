@@ -1025,8 +1025,78 @@ const fmtTs=ts=>ts?new Date(ts).toLocaleString('pt-PT',{day:'2-digit',month:'2-d
 let LOGS={}; // { fichaId: [ {id,date,week,status,tech,note,created}, ... ] }
 let fichasListenerStarted=false;
 let modalFicha=null;
-const logsFor=f=>(LOGS[f]||[]).slice().sort((a,b)=>b.date.localeCompare(a.date)||b.created-a.created);
-const logCount=f=>(LOGS[f]||[]).length;
+let diaryFichaSyncBusy=false;
+let diaryFichaSyncPending=false;
+function getDiaryMirrorId(diaryId){return 'diary_'+diaryId;}
+function isDiaryMirrorEntry(entry){return !!(entry&&entry.source==='diary'&&entry.diaryId);}
+function getDiaryMirrorStatus(entry){
+  if(entry.severity==='urgente')return 'Anomalia';
+  if(entry.severity==='aviso')return 'Pendente';
+  return 'Concluído';
+}
+function buildDiaryMirrorEntry(entry){
+  const date=diaryDateOf(entry)||(entry.timestamp?entry.timestamp.slice(0,10):new Date().toISOString().slice(0,10));
+  return {
+    id:getDiaryMirrorId(entry.id),
+    diaryId:entry.id,
+    source:'diary',
+    date,
+    week:isoWeek(new Date(date+'T12:00:00')),
+    status:getDiaryMirrorStatus(entry),
+    tech:'Registo Diário',
+    note:entry.text||'',
+    created:entry.timestamp?new Date(entry.timestamp).getTime():Date.now()
+  };
+}
+function sameDiaryMirrorEntry(a,b){
+  return !!a&&!!b&&a.date===b.date&&a.week===b.week&&a.status===b.status&&a.tech===b.tech&&a.note===b.note&&a.created===b.created&&a.diaryId===b.diaryId&&a.source===b.source;
+}
+function mergedLogsFor(f){
+  const merged=new Map();
+  (LOGS[f]||[]).forEach(entry=>{
+    const key=entry.id||`${entry.date}-${entry.created||''}-${entry.note||''}`;
+    merged.set(String(key),entry);
+  });
+  diaryCache.filter(entry=>String(entry.fichaId||'')===String(f)).forEach(entry=>{
+    const mirror=buildDiaryMirrorEntry(entry);
+    merged.set(mirror.id,mirror);
+  });
+  return [...merged.values()].sort((a,b)=>b.date.localeCompare(a.date)||b.created-a.created);
+}
+const logsFor=f=>mergedLogsFor(String(f));
+const logCount=f=>logsFor(f).length;
+async function syncDiaryEntriesToFichaHistory(){
+  if(!window.fb||!Array.isArray(diaryCache))return;
+  if(diaryFichaSyncBusy){diaryFichaSyncPending=true;return;}
+  diaryFichaSyncBusy=true;
+  try{
+    const{db,ref,set,remove}=window.fb;
+    const desired=new Map();
+    diaryCache.forEach(entry=>{
+      if(!entry.id||!entry.fichaId)return;
+      const fichaId=String(entry.fichaId);
+      desired.set(fichaId+'/'+getDiaryMirrorId(entry.id),buildDiaryMirrorEntry(entry));
+    });
+    const existing=new Map();
+    Object.entries(LOGS).forEach(([fichaId,entries])=>{
+      (entries||[]).forEach(entry=>{
+        if(isDiaryMirrorEntry(entry)&&entry.id)existing.set(String(fichaId)+'/'+entry.id,entry);
+      });
+    });
+    for(const[path,entry]of desired){
+      const current=existing.get(path);
+      if(!sameDiaryMirrorEntry(current,entry))await set(ref(db,'registos_fichas/'+path),entry);
+    }
+    for(const[path]of existing){
+      if(!desired.has(path))await remove(ref(db,'registos_fichas/'+path));
+    }
+  }catch(err){
+    console.error(err);
+  }finally{
+    diaryFichaSyncBusy=false;
+    if(diaryFichaSyncPending){diaryFichaSyncPending=false;syncDiaryEntriesToFichaHistory();}
+  }
+}
 
 function setSyncStatus(state,text){
   const dot=$('syncDot'),label=$('syncText');
@@ -1051,6 +1121,7 @@ function initFichasListener(){
     render();
     if(typeof modalFicha!=='undefined'&&modalFicha)renderLogList();
     if($('reportView')&&$('reportView').style.display!=='none')buildReportBody();
+    syncDiaryEntriesToFichaHistory();
   },(err)=>{
     console.error(err);
     setSyncStatus('err','Sem ligação');
@@ -1094,7 +1165,7 @@ function paintCalendar(){
   document.querySelectorAll('.dot').forEach(d=>{
     const w=+d.dataset.w;
     const isSel=w===week;
-    const hasLogs=Object.values(LOGS).some(arr=>Array.isArray(arr)&&arr.some(e=>e.week===w));
+    const hasLogs=Object.keys(CATALOG).some(f=>logsFor(f).some(e=>e.week===w));
     d.classList.toggle('sel',isSel);
     d.classList.toggle('has-log',!isSel&&hasLogs);
   });
@@ -1113,7 +1184,7 @@ function render(){
   if(!fichas.length){empty.style.display='block';empty.textContent='Nenhum equipamento agendado para a semana '+week+'.';return;}
   empty.style.display='none';
   fichas.forEach((f,i)=>{
-    const n=logCount(f);const hasAnomalia=(LOGS[f]||[]).some(e=>e.status==='Anomalia');
+    const n=logCount(f);const hasAnomalia=logsFor(f).some(e=>e.status==='Anomalia');
     const el=document.createElement('article');el.className='task'+(hasAnomalia?' anomalia':'');el.style.animationDelay=(i*22)+'ms';el.setAttribute('role','button');el.tabIndex=0;
     el.innerHTML=`<div class="trow"><div class="badge">${f}</div><div><div class="ficha">FICHA Nº ${f}</div><div class="nome"></div></div><div class="meta">${hasAnomalia?'<span class="anomalia-badge">⚠ ANOMALIA</span>':''}<span class="logchip ${n?'has':''}">${n?n+' registo'+(n>1?'s':''):'+ registo'}</span></div></div>`;
     el.querySelector('.nome').textContent=CATALOG[f];
@@ -1157,11 +1228,13 @@ function renderLogList(){
   const entries=logsFor(modalFicha);
   if(!entries.length){list.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:14px 0">Sem registos para esta ficha.</div>';return;}
   entries.forEach(e=>{
+    const readOnly=isDiaryMirrorEntry(e);
     const el=document.createElement('div');el.className='logentry';
-    el.innerHTML=`<div class="lh"><span class="ld">${fmtDate(e.date)}</span><span class="lw">Semana ${pad(e.week)}</span><span class="status ${e.status}">${e.status.toUpperCase()}</span><button class="del" title="Apagar">🗑</button></div>${e.tech?'<div class="lt"></div>':''}${e.note?'<div class="ln"></div>':''}`;
+    el.innerHTML=`<div class="lh"><span class="ld">${fmtDate(e.date)}</span><span class="lw">Semana ${pad(e.week)}</span><span class="status ${e.status}">${e.status.toUpperCase()}</span>${readOnly?'<span class="lw">Registo Diário</span>':'<button class="del" title="Apagar">🗑</button>'}</div>${e.tech?'<div class="lt"></div>':''}${e.note?'<div class="ln"></div>':''}`;
     if(e.tech)el.querySelector('.lt').textContent='Técnico: '+e.tech;
     if(e.note)el.querySelector('.ln').textContent=e.note;
-    el.querySelector('.del').onclick=async()=>{
+    const delBtn=el.querySelector('.del');
+    if(delBtn)delBtn.onclick=async()=>{
       const ok=await askConfirm('Apagar o registo de '+fmtDate(e.date)+'?',{title:'Apagar registo'});
       if(!ok)return;
       try{
@@ -1852,6 +1925,7 @@ function initDiaryListener(){
     // da ocorrência seja anterior a outros já existentes.
     diaryCache.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
     renderDiary();
+    syncDiaryEntriesToFichaHistory();
   });
 }
 window.initDiaryListener=initDiaryListener;
@@ -1881,7 +1955,13 @@ $('diarySave').onclick=async()=>{
 async function deleteDiary(id){
   const ok=await askConfirm('Apagar este registo diário permanentemente?',{title:'Apagar registo'});
   if(!ok)return;
-  try{const{db,ref,remove}=window.fb;await remove(ref(db,'registos_diarios/'+id));}
+  try{
+    const{db,ref,remove}=window.fb;
+    await remove(ref(db,'registos_diarios/'+id));
+    diaryCache=diaryCache.filter(entry=>entry.id!==id);
+    renderDiary();
+    syncDiaryEntriesToFichaHistory();
+  }
   catch(err){alert('Erro ao eliminar.');}
 }
 window.deleteDiary=deleteDiary;
