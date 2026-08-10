@@ -1,0 +1,407 @@
+04/07/2026
+
+Criada documentação do projeto.
+
+Criado START_HERE.md.
+
+Criado AI_COPILOT_MASTER_PROMPT v2.0.
+
+09/07/2026
+
+Registado o marco técnico v0.1 do Sistema Operativo de IA.
+
+A Missão 001 — Assistência ao Registo Técnico passou ao estado "Implementação simulada validada".
+
+Validado o fluxo ponta a ponta através da missão e do orquestrador com o teste:
+
+SRC/features/ai/tests/assistTechnicalRecordMission.test.ts
+
+Resultado validado:
+
+- Tipo: Anomalia / Corretiva.
+- Prioridade: média.
+- Risco: indeterminado por ausência de histórico.
+- Informação em falta: modelo do equipamento, fotografia e histórico.
+- Confirmação humana obrigatória.
+
+A versão v0.1 não realiza chamadas externas, não tem integração visual e não altera os ecrãs da aplicação.
+
+09/07/2026
+
+Registado o marco v0.2 do Sistema Operativo de IA.
+
+A Missão 001 — Assistência ao Registo Técnico passou ao estado "Integração visual controlada concluída".
+
+A integração foi realizada no ecrã de Registos Diários com o seguinte comportamento:
+
+- painel discreto após 12 caracteres na descrição;
+- execução da Missão 001 simulada;
+- texto do técnico nunca alterado;
+- IA limitada a sugestões;
+- mensagem de indisponibilidade prevista;
+- sem chamadas externas;
+- sem dependências novas;
+- sem alteração da lógica de gravação.
+
+Validação concluída:
+
+- TypeScript sem erros;
+- desktop validado;
+- móvel validado;
+- sem sobreposições;
+- sem deslocamento horizontal;
+- sem erros no browser.
+
+09/07/2026
+
+Registado o marco v0.3 do Sistema Operativo de IA.
+
+Commit:
+
+aae35d750067265e681f5c3f44a7d629b46a10d2
+
+A Missão 001 — Assistência ao Registo Técnico passou ao estado "Refinamento visual concluído".
+
+Alterações no painel Assistente IA:
+
+- prioridade apresentada como "Média";
+- risco apresentado como "Indeterminado";
+- confirmação apresentada como "Confirmação do técnico necessária";
+- informação em falta apresentada em lista;
+- layout móvel validado sem sobreposições;
+- texto original do técnico preservado.
+
+Validação concluída:
+
+- TypeScript sem erros;
+- teste da Missão 001 concluído com sucesso;
+- git diff --check sem problemas;
+- browser sem erros.
+
+09/07/2026
+
+Registado o marco v0.4 do Sistema Operativo de IA.
+
+Commit:
+
+26625bb03ce68cde079e95b1ff1ccccdd0dedf93
+
+A Missão 001 — Assistência ao Registo Técnico passou ao estado "Ligação ao histórico em memória concluída".
+
+Decisão técnica:
+
+- a ferramenta Consultar Histórico deixou de devolver apenas histórico simulado;
+- os registos são recebidos em `historyRecords` por injeção de dependências;
+- o contrato usa `readonly MaintenanceRecord[]`;
+- os registos da aplicação são convertidos em entradas de histórico para a IA;
+- os dados recebidos não são alterados;
+- a ausência de histórico usa uma lista vazia como fallback;
+- `initialRecords` não é importado diretamente pela camada de IA.
+
+Validação concluída:
+
+- TypeScript sem erros;
+- teste da Missão 001 com risco médio quando existe ocorrência semelhante;
+- risco indeterminado quando não existe histórico;
+- browser sem erros;
+- sem alterações em `seed.ts`, `package.json` ou `package-lock.json`;
+- sem chamadas externas ou dependências novas.
+
+09/07/2026
+
+Registado o marco v0.5 do Sistema Operativo de IA.
+
+A Missão 001 — Assistência ao Registo Técnico passou ao estado "Inteligência simulada melhorada".
+
+Decisões técnicas:
+
+- a ferramenta Consultar Histórico devolve apenas ocorrências relevantes;
+- a correspondência usa grupos simples de palavras-chave técnicas equivalentes;
+- o risco é indeterminado sem histórico relevante;
+- uma ocorrência semelhante resulta em risco médio;
+- duas ou mais ocorrências semelhantes resultam em risco alto;
+- a próxima ação é ajustada a sintomas mecânicos, fuga de água, falha de aquecimento e falha de alimentação;
+- sintomas desconhecidos originam uma recomendação de inspeção técnica e recolha de informação;
+- a validação humana continua obrigatória;
+- os registos históricos permanecem imutáveis.
+
+Validação prevista e executada:
+
+- TypeScript sem erros;
+- testes reforçados para risco, ações e imutabilidade;
+- sem chamadas externas;
+- sem dependências novas;
+- sem alterações em `seed.ts`, `package.json` ou `package-lock.json`.
+
+09/07/2026
+
+Registado o marco v0.6 do Sistema Operativo de IA.
+
+Commit:
+
+4442e7ca8443156112cf2375e37684eecfcad9cb
+
+A Missão 001 — Assistência ao Registo Técnico passou ao estado "Painel Assistente IA refinado".
+
+Alterações no painel Assistente IA:
+
+- badges para Tipo, Prioridade e Risco;
+- informação em falta apresentada de forma mais legível;
+- blocos próprios para Resumo e Próxima ação;
+- botões pequenos para copiar Resumo e Próxima ação;
+- fallback defensivo quando a cópia não está disponível;
+- ajustes móveis restritos ao painel IA.
+
+Limites mantidos:
+
+- nenhum layout global da aplicação foi alterado;
+- navegação, formulário, cards exteriores e lógica de gravação mantidos;
+- sem chamadas externas;
+- sem dependências novas.
+
+Validação concluída:
+
+- TypeScript sem erros;
+- teste da Missão 001 concluído com sucesso;
+- desktop validado;
+- móvel 390x844 validado;
+- sem overflow horizontal;
+- browser sem erros ou warnings.
+
+09/07/2026
+
+Registado o marco v0.7 do Sistema Operativo de IA.
+
+A Missão 001 — Assistência ao Registo Técnico passou ao estado "Controlo manual melhorado".
+
+Decisão técnica:
+
+- foi adicionado o botão "Copiar sugestão completa";
+- a sugestão completa inclui tipo, prioridade, resumo, risco, próxima ação, informação em falta e nota de confirmação humana;
+- a função de cópia existente foi reutilizada, incluindo fallback defensivo;
+- a ação depende sempre de clique explícito do técnico;
+- nenhum campo do formulário é alterado automaticamente;
+- não foram criados novos campos;
+- o formulário foi preservado;
+- o layout global da aplicação não foi alterado.
+
+Limites mantidos:
+
+- a IA continua apenas a sugerir;
+- sem chamadas externas;
+- sem dependências novas;
+- sem alteração da lógica de gravação.
+
+Validação prevista:
+
+- TypeScript sem erros;
+- teste da Missão 001 concluído com sucesso;
+- desktop sem erros no browser;
+- móvel 390x844 sem overflow horizontal;
+- `git diff --check` sem problemas.
+
+09/08/2026
+
+Registado o marco v0.8 do Sistema Operativo de IA.
+
+A Missão 001 — Assistência ao Registo Técnico passou ao estado "Estado visual do Assistente IA".
+
+Decisão técnica:
+
+- o painel Assistente IA passa a estar sempre visível no ecrã de Registos Diários;
+- antes da ativação, informa que são necessários pelo menos 12 caracteres de descrição;
+- a ativação da análise continua dependente de 12 ou mais caracteres;
+- o estado de análise mantém a mensagem "A analisar o registo...";
+- a UI de sugestão pronta da v0.7 foi preservada;
+- risco indeterminado passa a apresentar a nota "Histórico insuficiente para avaliar risco com confiança.";
+- botões de copiar e feedback visual foram preservados.
+
+Limites mantidos:
+
+- nenhum campo do formulário é alterado automaticamente;
+- layout global da aplicação intacto;
+- formulário, dados e lógica de gravação preservados;
+- agentes, ferramentas, orquestrador e tipos não foram alterados;
+- sem chamadas externas;
+- sem dependências novas.
+
+Validação prevista:
+
+- TypeScript sem erros;
+- teste da Missão 001 concluído com sucesso;
+- desktop sem erros ou warnings no browser;
+- móvel 390x844 sem overflow horizontal;
+- `git diff --check` sem problemas.
+09/08/2026
+
+Registado o marco v0.8A do Sistema Operativo de IA.
+
+Tema:
+
+Desenho funcional da ferramenta Consultar Histórico do Equipamento.
+
+Estado:
+
+Documentação funcional, sem implementação técnica.
+
+Decisão funcional:
+
+- foi documentada a ferramenta `consultar_historico_equipamento`;
+- o objetivo único é obter registos anteriores associados a um equipamento;
+- a entrada obrigatória é `equipamento_id`;
+- a entrada opcional é `limite`;
+- a saída fica limitada a `data`, `tipo_registo`, `descricao` e `estado`;
+- a ferramenta é apenas de leitura;
+- quando não existem resultados, deve devolver lista vazia e indicar "Informação insuficiente";
+- os erros previstos são `equipamento_inexistente`, `historico_indisponivel` e `identificador_em_falta`.
+
+Relação com ferramentas existentes:
+
+- `consultar_historico_equipamento` deve especializar a consulta histórica por equipamento;
+- deve coexistir temporariamente com `consultar_historico`;
+- a substituição total de `consultar_historico` fica A confirmar.
+
+Limites mantidos:
+
+- não cria, altera, fecha ou apaga registos;
+- não decide prioridade;
+- não gera alertas;
+- não substitui validação humana;
+- não assume sensores, telemetria ou dados preditivos;
+- não foram alterados ficheiros em `SRC/`;
+- sem dependências novas.
+09/08/2026
+
+Registado o marco v0.8B do Sistema Operativo de IA.
+
+Tema:
+
+Supervisão Humana do Assistente IA.
+
+Estado:
+
+Regra transversal documentada e refletida no painel Assistente IA, sem criação de agente executável.
+
+Decisão funcional:
+
+- Supervisão Humana é uma regra transversal do Sistema Operativo de IA;
+- não é um agente executável nesta fase;
+- qualquer ação crítica exige aprovação humana;
+- a IA deve separar factos observados, inferências e recomendações;
+- quando faltar contexto, deve usar "Informação insuficiente";
+- a recomendação final deve ser apresentada como sugestão, não como decisão automática.
+
+Ações críticas que exigem validação humana:
+
+- criar alerta preventivo;
+- alterar prioridade de uma intervenção;
+- fechar registo;
+- gerar relatório oficial;
+- sugerir paragem de equipamento.
+
+Alteração no painel Assistente IA:
+
+- adicionada nota discreta de supervisão humana;
+- a nota indica que a sugestão não altera registos nem executa ações críticas;
+- a sugestão completa passa a incluir nota de supervisão humana antes de qualquer ação crítica.
+
+Limites mantidos:
+
+- sem novo agente executável;
+- sem alterações ao orquestrador;
+- sem alterações a ferramentas;
+- sem alterações a tipos;
+- sem alterações à lógica de gravação;
+- sem alterações ao formulário;
+- sem dependências novas;
+- sem API externa.
+09/08/2026
+
+Registado o marco v0.9 do Sistema Operativo de IA.
+
+Tema:
+
+Implementação técnica inicial da ferramenta Consultar Histórico do Equipamento.
+
+Estado:
+
+Implementação técnica inicial aditiva.
+
+Decisão técnica:
+
+- foi criada a função `consultarHistoricoEquipamento` em `SRC/features/ai/tools/historyTool.ts`;
+- a implementação é aditiva e não substitui `consultHistory`;
+- `consultHistory` foi preservada para a Missão 001;
+- a função recebe `equipamentoId`, `records` e `limite` opcional;
+- os registos são filtrados por `record.equipmentId === equipamentoId`;
+- os resultados são ordenados por data do mais recente para o mais antigo quando possível;
+- `limite` é aplicado apenas quando é número positivo;
+- a saída devolve `entries`, `error` e `message` quando aplicável;
+- cada entrada devolve apenas `data`, `tipoRegisto`, `descricao` e `equipamentoId`;
+- o campo `estado` permanece A confirmar, porque não existe em `MaintenanceRecord`;
+- a ferramenta é apenas de leitura.
+
+Validação concluída:
+
+- TypeScript sem erros;
+- teste da Missão 001 concluído com sucesso;
+- teste específico da ferramenta concluído com sucesso;
+- sem chamadas externas;
+- sem dependências novas.
+
+Limites mantidos:
+
+- sem alteração do orquestrador;
+- sem alteração da Missão 001;
+- sem alteração de `seed.ts`;
+- sem alteração de `domain.ts`;
+- sem alteração de ecrãs;
+- sem alteração da lógica de gravação.
+09/08/2026
+
+Registado o marco v1.0 do Sistema Operativo de IA.
+
+Tema:
+
+Fecho estável documental da Missão 001 — Assistência ao Registo Técnico.
+
+Estado:
+
+Missão 001 simulada/controlada fechada documentalmente como v1.0 estável.
+
+Decisão funcional:
+
+- a Missão 001 permanece integrada no ecrã de Registos Diários;
+- o painel Assistente IA permanece visível e com estados;
+- a ativação continua dependente de pelo menos 12 caracteres na descrição;
+- a classificação, o resumo, o risco e a próxima ação continuam simulados e determinísticos;
+- a consulta de histórico no fluxo atual continua a usar `consultHistory`;
+- o técnico pode copiar resumo, próxima ação e sugestão completa;
+- a Supervisão Humana permanece visível no painel;
+- nenhum campo do formulário é alterado automaticamente;
+- nenhuma ação crítica é executada automaticamente.
+
+Decisão sobre ferramentas:
+
+- `consultarHistoricoEquipamento` existe tecnicamente desde v0.9;
+- a ferramenta é aditiva, apenas de leitura e filtra registos por equipamento;
+- a ferramenta não inventa o campo `estado`, que permanece A confirmar;
+- a ferramenta ainda não substitui `consultHistory` na Missão 001;
+- a integração de `consultarHistoricoEquipamento` fica para fluxo futuro.
+
+Limites v1.0:
+
+- sem modelo real de IA;
+- sem API externa;
+- sem persistência nova;
+- sem alteração automática do formulário;
+- sem criação automática de alertas;
+- sem fecho automático de registos;
+- sem validação real de equipamento inexistente;
+- `equipamentoId` ainda não é recolhido no formulário de Registos Diários.
+
+Próxima fase:
+
+- v1.1 ou v1.2 poderá preparar a Missão 002 — Resumo de Equipamento;
+- futuramente poderá ser criado um fluxo próprio para `consultarHistoricoEquipamento`;
+- qualquer ação crítica continuará sujeita a supervisão humana.
