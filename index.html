@@ -655,6 +655,15 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
         <textarea class="ai-helper-input" id="planAiInput" rows="2" placeholder="Pergunta ou observação sobre o plano da semana"></textarea>
         <div class="ai-helper-label">RESPOSTA DA IA</div>
         <div class="ai-helper-response" id="planAiResponse">A resposta aparecerá aqui depois de perguntares à IA.</div>
+        <div class="ai-helper-grid" id="planAiSuggestion">
+          <div class="ai-helper-item"><div class="ai-helper-label">FICHA PROVÁVEL</div><div class="ai-helper-text" id="planAiProbableFicha"></div></div>
+          <div class="ai-helper-item"><div class="ai-helper-label">MOTIVO DA SUGESTÃO</div><div class="ai-helper-text" id="planAiFichaReason"></div></div>
+          <div class="ai-helper-item"><div class="ai-helper-label">RESUMO</div><div class="ai-helper-text" id="planAiSummary"></div></div>
+          <div class="ai-helper-item"><div class="ai-helper-label">PRÓXIMA AÇÃO</div><div class="ai-helper-text" id="planAiNextAction"></div></div>
+          <div class="ai-helper-item"><div class="ai-helper-label">INFORMAÇÃO EM FALTA</div><ul class="ai-helper-list" id="planAiMissing"></ul></div>
+          <div class="ai-helper-item"><div class="ai-helper-label">HISTÓRICO RECENTE</div><ul class="ai-helper-list" id="planAiRecentHistory"></ul></div>
+          <div class="ai-helper-item"><div class="ai-helper-label">RECORRÊNCIA</div><div class="ai-helper-text" id="planAiRecurrence"></div></div>
+        </div>
         <div class="ai-helper-note">Supervisão humana necessária: esta sugestão não altera o plano nem executa ações críticas.</div>
       </section>
 
@@ -1578,6 +1587,10 @@ function resetPlanAssistant({clearInput=false}={}){
   panel.classList.remove('has-response');
   $('planAiState').textContent='Podes escrever ou ditar uma pergunta sobre o plano da semana.';
   $('planAiResponse').textContent='A resposta aparecerá aqui depois de perguntares à IA.';
+  $('planAiResponse').style.display='block';
+  $('planAiSuggestion').style.display='none';
+  ['planAiProbableFicha','planAiFichaReason','planAiSummary','planAiNextAction','planAiRecurrence'].forEach(id=>$(id).textContent='');
+  ['planAiMissing','planAiRecentHistory'].forEach(id=>$(id).innerHTML='');
   if(clearInput&&$('planAiInput'))$('planAiInput').value='';
 }
 
@@ -1899,8 +1912,24 @@ function generatePlanAiSuggestion(){
   const panel=$('planAiHelper');if(!panel)return;
   const input=$('planAiInput');
   const question=input?input.value.trim():'';
-  const response=buildUnifiedAiAnalysis(question).text;
-  $('planAiResponse').textContent=response;
+  const analysis=buildUnifiedAiAnalysis(question);
+  const response=$('planAiResponse');
+  if(analysis.intent==='occurrence'){
+    const s=analysis.suggestion,h=analysis.history;
+    response.style.display='none';
+    $('planAiProbableFicha').textContent=s.probable;
+    $('planAiFichaReason').textContent=s.reason;
+    $('planAiSummary').textContent=buildAiSummary(analysis.input);
+    $('planAiNextAction').textContent=AI_NEXT_ACTION;
+    $('planAiMissing').innerHTML=analysis.missing.map(item=>`<li>${escapeHtml(item)}</li>`).join('');
+    $('planAiRecentHistory').innerHTML=h.entries.length?h.entries.map(entry=>`<li>${escapeHtml(entry.date||'Sem data')} — ${escapeHtml(getHistoryEntrySummary(entry))}</li>`).join(''):'<li>Informação insuficiente sobre histórico anterior.</li>';
+    $('planAiRecurrence').textContent=analysis.recurrence;
+    $('planAiSuggestion').style.display='grid';
+  }else{
+    response.style.display='block';
+    response.textContent=analysis.text;
+    $('planAiSuggestion').style.display='none';
+  }
   panel.classList.add('has-response');
 }
 
