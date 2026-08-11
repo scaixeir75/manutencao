@@ -648,6 +648,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
           <div class="ai-helper-actions">
             <button type="button" class="ai-copy" id="planAiMicBtn">🎙️ Ditar</button>
             <button type="button" class="ai-copy" id="planAiGenerateBtn">Perguntar à IA</button>
+            <button type="button" class="ai-copy" id="planAiClearBtn">Limpar</button>
           </div>
         </div>
         <div class="ai-helper-state" id="planAiState">Podes escrever ou ditar uma pergunta sobre o plano da semana.</div>
@@ -741,10 +742,13 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
             <button type="button" class="ai-copy" id="aiDictateBtn">🎙️ Ditar</button>
             <button type="button" class="ai-copy" id="aiGenerateBtn">Analisar com IA</button>
             <button type="button" class="ai-copy" id="aiCopyBtn" style="display:none">Copiar sugestão</button>
+            <button type="button" class="ai-copy" id="aiClearBtn">Limpar</button>
           </div>
         </div>
         <div class="ai-helper-state" id="aiHelperState">Escreve primeiro a descrição do registo e depois faz uma pergunta à IA.</div>
         <textarea class="ai-helper-input" id="aiDiaryInput" rows="2" placeholder="Pergunta ou observação sobre este registo"></textarea>
+        <div class="ai-helper-label" id="aiGeneralResponseLabel" style="display:none">RESPOSTA DA IA</div>
+        <div class="ai-helper-response" id="aiGeneralResponse" style="display:none"></div>
         <div class="ai-helper-grid" id="aiHelperSuggestion">
           <div class="ai-helper-item">
             <div class="ai-helper-label">FICHA PROVÁVEL</div>
@@ -1492,12 +1496,25 @@ function getDiaryAssistantStateText(){
     : 'Escreve ou dita uma pergunta e usa "Analisar com IA".';
 }
 
+function setDiaryAssistantMode(mode){
+  const response=$('aiGeneralResponse');
+  const responseLabel=$('aiGeneralResponseLabel');
+  const grid=$('aiHelperSuggestion');
+  if(!response||!responseLabel||!grid)return;
+  const showGeneral=mode==='general';
+  response.style.display=showGeneral?'block':'none';
+  responseLabel.style.display=showGeneral?'block':'none';
+  grid.style.display=showGeneral?'none':'grid';
+}
+
 function resetDiaryAssistant({clearInput=false}={}){
   const panel=$('aiHelper');if(!panel)return;
   const copyBtn=$('aiCopyBtn');
   const useFichaBtn=$('aiUseFichaBtn');
   panel.classList.remove('ready');
+  setDiaryAssistantMode('suggestion');
   $('aiHelperState').textContent=getDiaryAssistantStateText();
+  $('aiGeneralResponse').textContent='';
   $('aiProbableFicha').textContent='';
   $('aiFichaReason').textContent='';
   $('aiSummary').textContent='';
@@ -1508,6 +1525,14 @@ function resetDiaryAssistant({clearInput=false}={}){
   if(useFichaBtn)useFichaBtn.style.display='none';
   delete panel.dataset.suggestedFichaId;
   aiSuggestionText='';
+}
+
+function resetPlanAssistant({clearInput=false}={}){
+  const panel=$('planAiHelper');if(!panel)return;
+  panel.classList.remove('has-response');
+  $('planAiState').textContent='Podes escrever ou ditar uma pergunta sobre o plano da semana.';
+  $('planAiResponse').textContent='A resposta aparecerá aqui depois de perguntares à IA.';
+  if(clearInput&&$('planAiInput'))$('planAiInput').value='';
 }
 
 function scoreFichaSuggestion(contextText){
@@ -1596,11 +1621,8 @@ function generateDiaryAiSuggestion(){
   }
   if(isGeneralQuestion){
     const response=formatAiLocalAnswer(question);
-    $('aiProbableFicha').textContent='Não aplicável';
-    $('aiFichaReason').textContent='Consulta geral baseada em Registos Diários, Histórico de Fichas e catálogo.';
-    $('aiSummary').textContent=response;
-    $('aiNextAction').textContent='Confirmação humana necessária.';
-    $('aiMissing').innerHTML='<li>Nenhuma ação automática será executada.</li>';
+    setDiaryAssistantMode('general');
+    $('aiGeneralResponse').textContent=response;
     panel.dataset.suggestedFichaId='';
     aiSuggestionText=response;
     panel.classList.add('ready');
@@ -1608,6 +1630,7 @@ function generateDiaryAiSuggestion(){
     if(useFichaBtn)useFichaBtn.style.display='none';
     return;
   }
+  setDiaryAssistantMode('suggestion');
   const summary=buildAiSummary(text);
   const missing=getAiMissingInfo();
   const fichaSuggestion=formatFichaSuggestion(text+' '+question);
@@ -1934,6 +1957,7 @@ $('diaryText').addEventListener('input',()=>resetDiaryAssistant());
 $('diaryFicha').addEventListener('change',()=>resetDiaryAssistant());
 $('aiDiaryInput').addEventListener('input',()=>resetDiaryAssistant());
 $('aiCopyBtn').onclick=copyAiSuggestion;
+$('aiClearBtn').onclick=()=>resetDiaryAssistant({clearInput:true});
 $('aiUseFichaBtn').onclick=()=>{
   const suggestedId=$('aiHelper')&&$('aiHelper').dataset&&$('aiHelper').dataset.suggestedFichaId?$('aiHelper').dataset.suggestedFichaId:'';
   if(!suggestedId||!$('diaryFicha'))return;
@@ -1953,6 +1977,7 @@ $('planAiMicBtn').onclick=()=>startAiDictation({
   status:$('planAiState')
 });
 $('planAiGenerateBtn').onclick=generatePlanAiSuggestion;
+$('planAiClearBtn').onclick=()=>resetPlanAssistant({clearInput:true});
 
 function initDiaryListener(){
   if(!window.firebaseReady){setTimeout(initDiaryListener,300);return;}
