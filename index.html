@@ -1658,7 +1658,8 @@ function generateDiaryAiSuggestion(){
   const copyBtn=$('aiCopyBtn');
   const useFichaBtn=$('aiUseFichaBtn');
   const isGeneralQuestion=isGeneralAiQuestion(question);
-  if(text.length<12&&!isGeneralQuestion){
+  const contextText=text||question;
+  if(contextText.length<12&&!isGeneralQuestion){
     resetDiaryAssistant();
     $('aiHelperState').textContent='Escreve primeiro uma descrição com pelo menos 12 caracteres para contextualizar o Assistente IA.';
     return;
@@ -1679,14 +1680,14 @@ function generateDiaryAiSuggestion(){
     if(useFichaBtn)useFichaBtn.style.display='none';
     return;
   }
-  const fichaSuggestion=formatFichaSuggestion(text+' '+question);
+  const fichaSuggestion=formatFichaSuggestion(contextText+' '+question);
   if(!fichaSuggestion.historyFichaId && /^Informa/.test(fichaSuggestion.probable||'')){
     resetDiaryAssistant({clearInput:false,forceInitialState:true});
     $('aiHelperState').textContent='Informação insuficiente.';
     return;
   }
   setDiaryAssistantMode('suggestion');
-  const summary=buildAiSummary(text);
+  const summary=buildAiSummary(contextText);
   const missing=getAiMissingInfo();
   const historySnapshot=getFichaHistorySnapshot(fichaSuggestion.historyFichaId);
   const missingItems=[...missing];
