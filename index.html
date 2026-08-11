@@ -770,6 +770,14 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
             <div class="ai-helper-label">INFORMAÇÃO EM FALTA</div>
             <ul class="ai-helper-list" id="aiMissing"></ul>
           </div>
+          <div class="ai-helper-item">
+            <div class="ai-helper-label">HISTÓRICO RECENTE</div>
+            <ul class="ai-helper-list" id="aiRecentHistory"></ul>
+          </div>
+          <div class="ai-helper-item">
+            <div class="ai-helper-label">RECORRÊNCIA</div>
+            <div class="ai-helper-text" id="aiRecurrence"></div>
+          </div>
         </div>
         <div class="ai-helper-note">Supervisão humana necessária: esta sugestão não altera registos nem executa ações críticas.</div>
         <div class="ai-helper-note" id="aiMicStatus"></div>
@@ -1479,6 +1487,16 @@ function buildAiSummary(text){
   return clean.slice(0,137).trim()+'...';
 }
 
+function getFichaHistorySnapshot(fichaId){
+  if(!fichaId)return {entries:[], total:0};
+  const entries=logsFor(String(fichaId));
+  return {entries:entries.slice(0,3), total:entries.length};
+}
+
+function getHistoryEntrySummary(entry){
+  return buildAiSummary(entry.note||entry.text||entry.status||'Registo sem resumo disponível.');
+}
+
 function getAiMissingInfo(){
   const missing=[];
   const fichaId=$('diaryFicha')&&$('diaryFicha').value?$('diaryFicha').value:'';
@@ -1523,6 +1541,8 @@ function resetDiaryAssistant({clearInput=false,forceInitialState=false}={}){
   $('aiSummary').textContent='';
   $('aiNextAction').textContent='';
   $('aiMissing').innerHTML='';
+  $('aiRecentHistory').innerHTML='';
+  $('aiRecurrence').textContent='';
   if(clearInput&&$('aiDiaryInput'))$('aiDiaryInput').value='';
   if(copyBtn)copyBtn.style.display='none';
   if(useFichaBtn)useFichaBtn.style.display='none';
@@ -1574,6 +1594,7 @@ function formatFichaSuggestion(contextText){
       reason:'Não foi encontrada correspondência suficiente nas fichas existentes.',
       found:'Sem correspondência razoável em CATALOG ou histórico relacionado.',
       missing:['Especificar melhor o equipamento, zona ou tipo de anomalia.'],
+      historyFichaId:'',
       suggestedFichaId:'',
       useButton:false
     };
@@ -1586,6 +1607,7 @@ function formatFichaSuggestion(contextText){
       reason:'Há várias hipóteses com pontuação próxima. A sugestão é apenas indicativa.',
       found:foundLines.join(' | '),
       missing:['Selecionar manualmente a ficha correta.', 'Confirmar o equipamento exato antes de guardar.'],
+      historyFichaId:'',
       suggestedFichaId:'',
       useButton:false
     };
@@ -1595,6 +1617,7 @@ function formatFichaSuggestion(contextText){
     reason:top.reasons.length?top.reasons.join('; '):'Correspondência textual simples com a ficha.',
     found:foundLines.join(' | '),
     missing:['Confirmação do técnico necessária.'],
+    historyFichaId:top.id,
     suggestedFichaId:top.score>=3?top.id:'',
     useButton:top.score>=3
   };
@@ -1637,6 +1660,7 @@ function generateDiaryAiSuggestion(){
   const summary=buildAiSummary(text);
   const missing=getAiMissingInfo();
   const fichaSuggestion=formatFichaSuggestion(text+' '+question);
+  const historySnapshot=getFichaHistorySnapshot(fichaSuggestion.historyFichaId);
   const missingItems=[...missing];
   if(Array.isArray(fichaSuggestion.missing))missingItems.push(...fichaSuggestion.missing);
   const uniqueMissing=[...new Set(missingItems)];
@@ -1645,6 +1669,12 @@ function generateDiaryAiSuggestion(){
   $('aiSummary').textContent=summary;
   $('aiNextAction').textContent=AI_NEXT_ACTION;
   $('aiMissing').innerHTML=uniqueMissing.length?uniqueMissing.map(item=>`<li>${escapeHtml(item)}</li>`).join(''):'<li>Nenhuma identificada</li>';
+  $('aiRecentHistory').innerHTML=historySnapshot.entries.length
+    ? historySnapshot.entries.map(entry=>`<li>${escapeHtml(entry.date||'Sem data')} — ${escapeHtml(getHistoryEntrySummary(entry))}</li>`).join('')
+    : '<li>Informação insuficiente sobre histórico anterior.</li>';
+  $('aiRecurrence').textContent=historySnapshot.total
+    ? `Foram encontrados ${historySnapshot.total} registo(s) relacionados com esta ficha.`
+    : 'Informação insuficiente sobre histórico anterior.';
   panel.dataset.suggestedFichaId=fichaSuggestion.suggestedFichaId||'';
   aiSuggestionText=[
     'Assistente IA — Sugestão para Registo Técnico',
@@ -1653,6 +1683,17 @@ function generateDiaryAiSuggestion(){
     'Ficha provável: '+fichaSuggestion.probable,
     'Motivo da sugestão: '+fichaSuggestion.reason,
     'Informação encontrada: '+fichaSuggestion.found,
+    '',
+    'HistÃ³rico recente:',
+    ...(historySnapshot.entries.length
+      ? historySnapshot.entries.map(entry=>`- ${entry.date||'Sem data'} â€” ${getHistoryEntrySummary(entry)}`)
+      : ['- InformaÃ§Ã£o insuficiente sobre histÃ³rico anterior.']),
+    '',
+    'RecorrÃªncia:',
+    historySnapshot.total
+      ? `Foram encontrados ${historySnapshot.total} registo(s) relacionados com esta ficha.`
+      : 'InformaÃ§Ã£o insuficiente sobre histÃ³rico anterior.',
+    '',
     'Resumo: '+summary,
     'Próxima ação: '+AI_NEXT_ACTION,
     '',
