@@ -1553,7 +1553,7 @@ function resetDiaryAssistant({clearInput=false,forceInitialState=false}={}){
   const copyBtn=$('aiCopyBtn');
   const useFichaBtn=$('aiUseFichaBtn');
   panel.classList.remove('ready');
-  setDiaryAssistantMode(forceInitialState?'initial':'suggestion');
+  setDiaryAssistantMode('initial');
   $('aiHelperState').textContent=forceInitialState
     ? 'Escreve primeiro uma descrição com pelo menos 12 caracteres para contextualizar o Assistente IA.'
     : getDiaryAssistantStateText();
@@ -2051,6 +2051,7 @@ $('planAiMicBtn').onclick=()=>startAiDictation({
 });
 $('planAiGenerateBtn').onclick=generatePlanAiSuggestion;
 $('planAiClearBtn').onclick=()=>resetPlanAssistant({clearInput:true});
+resetDiaryAssistant({clearInput:false,forceInitialState:true});
 
 function initDiaryListener(){
   if(!window.firebaseReady){setTimeout(initDiaryListener,300);return;}
