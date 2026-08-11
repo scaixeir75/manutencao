@@ -1651,26 +1651,41 @@ function isGeneralAiQuestion(question){
   return /\?$/.test(question.trim())||/\b(quantas|quantos|numero|número|total|houve|ha|há|existem|existe|quais|qual|quando|onde|historico|histórico|manutencao|manutenção)\b/.test(normalized);
 }
 
+function buildUnifiedAiAnalysis(inputText){
+  const text=normalizeSpaces(String(inputText||'').trim());
+  if(text.length<12)return {intent:'insufficient',text:'Informação insuficiente.'};
+  if(isGeneralAiQuestion(text))return {intent:'quantitative',text:formatAiLocalAnswer(text)};
+  const suggestion=formatFichaSuggestion(text);
+  if(!suggestion.historyFichaId)return {intent:'insufficient',text:'Informação insuficiente.'};
+  const history=getFichaHistorySnapshot(suggestion.historyFichaId);
+  const missing=[...new Set([...(getAiMissingInfo()),...(suggestion.missing||[])])];
+  const recurrence=history.total
+    ? `Foram encontrados ${history.total} registo(s) relacionados com esta ficha.`
+    : 'Informação insuficiente sobre histórico anterior.';
+  return {intent:'occurrence',input:text,suggestion,history,missing,recurrence,
+    text:[`Ficha provável: ${suggestion.probable}`,
+      `Motivo da sugestão: ${suggestion.reason}`,
+      `Histórico recente: ${history.entries.length?history.entries.map(getHistoryEntrySummary).join('; '):'Informação insuficiente sobre histórico anterior.'}`,
+      `Recorrência: ${recurrence}`,
+      `Informação em falta: ${missing.length?missing.join('; '):'Nenhuma identificada'}`,
+      'Confirmação humana necessária.'].join('\n')};
+}
+
 function generateDiaryAiSuggestion(){
   const panel=$('aiHelper');if(!panel)return;
   const text=$('diaryText').value.trim();
   const question=$('aiDiaryInput')&&$('aiDiaryInput').value?$('aiDiaryInput').value.trim():'';
   const copyBtn=$('aiCopyBtn');
   const useFichaBtn=$('aiUseFichaBtn');
-  const isGeneralQuestion=isGeneralAiQuestion(question);
   const contextText=text||question;
-  if(contextText.length<12&&!isGeneralQuestion){
+  const analysis=buildUnifiedAiAnalysis(contextText);
+  if(!contextText||analysis.intent==='insufficient'){
     resetDiaryAssistant();
-    $('aiHelperState').textContent='Escreve primeiro uma descrição com pelo menos 12 caracteres para contextualizar o Assistente IA.';
+    $('aiHelperState').textContent='Informação insuficiente.';
     return;
   }
-  if(question.length<3){
-    resetDiaryAssistant();
-    $('aiHelperState').textContent='Escreve ou dita uma pergunta na caixa da IA antes de analisar.';
-    return;
-  }
-  if(isGeneralQuestion){
-    const response=formatAiLocalAnswer(question);
+  if(analysis.intent==='quantitative'){
+    const response=analysis.text;
     setDiaryAssistantMode('general');
     $('aiGeneralResponse').textContent=response;
     panel.dataset.suggestedFichaId='';
@@ -1680,19 +1695,12 @@ function generateDiaryAiSuggestion(){
     if(useFichaBtn)useFichaBtn.style.display='none';
     return;
   }
-  const fichaSuggestion=formatFichaSuggestion(contextText+' '+question);
-  if(!fichaSuggestion.historyFichaId && /^Informa/.test(fichaSuggestion.probable||'')){
-    resetDiaryAssistant({clearInput:false,forceInitialState:true});
-    $('aiHelperState').textContent='Informação insuficiente.';
-    return;
-  }
+  const fichaSuggestion=analysis.suggestion;
   setDiaryAssistantMode('suggestion');
   const summary=buildAiSummary(contextText);
   const missing=getAiMissingInfo();
-  const historySnapshot=getFichaHistorySnapshot(fichaSuggestion.historyFichaId);
-  const missingItems=[...missing];
-  if(Array.isArray(fichaSuggestion.missing))missingItems.push(...fichaSuggestion.missing);
-  const uniqueMissing=[...new Set(missingItems)];
+  const historySnapshot=analysis.history;
+  const uniqueMissing=analysis.missing;
   $('aiProbableFicha').textContent=fichaSuggestion.probable;
   $('aiFichaReason').textContent=fichaSuggestion.reason;
   $('aiSummary').textContent=summary;
@@ -1701,9 +1709,7 @@ function generateDiaryAiSuggestion(){
   $('aiRecentHistory').innerHTML=historySnapshot.entries.length
     ? historySnapshot.entries.map(entry=>`<li>${escapeHtml(entry.date||'Sem data')} — ${escapeHtml(getHistoryEntrySummary(entry))}</li>`).join('')
     : '<li>Informação insuficiente sobre histórico anterior.</li>';
-  $('aiRecurrence').textContent=historySnapshot.total
-    ? `Foram encontrados ${historySnapshot.total} registo(s) relacionados com esta ficha.`
-    : 'Informação insuficiente sobre histórico anterior.';
+  $('aiRecurrence').textContent=analysis.recurrence;
   updateDiarySuggestionVisibility();
   panel.dataset.suggestedFichaId=fichaSuggestion.suggestedFichaId||'';
   aiSuggestionText=[
@@ -1893,18 +1899,7 @@ function generatePlanAiSuggestion(){
   const panel=$('planAiHelper');if(!panel)return;
   const input=$('planAiInput');
   const question=input?input.value.trim():'';
-  const response=question
-    ? formatAiLocalAnswer(question)
-    : [
-        'Factos encontrados:',
-        '- Não foi indicada uma pergunta concreta.',
-        '',
-        'Informação insuficiente:',
-        '- Escrever ou ditar uma pergunta sobre registos, ficha/equipamento, plano semanal ou histórico.',
-        '',
-        'Supervisão humana necessária:',
-        '- Esta sugestão não altera dados nem executa ações críticas.'
-      ].join('\n');
+  const response=buildUnifiedAiAnalysis(question).text;
   $('planAiResponse').textContent=response;
   panel.classList.add('has-response');
 }
