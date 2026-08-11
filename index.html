@@ -1572,13 +1572,19 @@ function formatFichaSuggestion(contextText){
   };
 }
 
+function isGeneralAiQuestion(question){
+  const normalized=norm(question||'');
+  return /\?$/.test(question.trim())||/\b(quantas|quantos|numero|número|total|houve|ha|há|existem|existe|quais|qual|quando|onde|historico|histórico|manutencao|manutenção)\b/.test(normalized);
+}
+
 function generateDiaryAiSuggestion(){
   const panel=$('aiHelper');if(!panel)return;
   const text=$('diaryText').value.trim();
   const question=$('aiDiaryInput')&&$('aiDiaryInput').value?$('aiDiaryInput').value.trim():'';
   const copyBtn=$('aiCopyBtn');
   const useFichaBtn=$('aiUseFichaBtn');
-  if(text.length<12){
+  const isGeneralQuestion=isGeneralAiQuestion(question);
+  if(text.length<12&&!isGeneralQuestion){
     resetDiaryAssistant();
     $('aiHelperState').textContent='Escreve primeiro uma descrição com pelo menos 12 caracteres para contextualizar o Assistente IA.';
     return;
@@ -1586,6 +1592,20 @@ function generateDiaryAiSuggestion(){
   if(question.length<3){
     resetDiaryAssistant();
     $('aiHelperState').textContent='Escreve ou dita uma pergunta na caixa da IA antes de analisar.';
+    return;
+  }
+  if(isGeneralQuestion){
+    const response=formatAiLocalAnswer(question);
+    $('aiProbableFicha').textContent='Não aplicável';
+    $('aiFichaReason').textContent='Consulta geral baseada em Registos Diários, Histórico de Fichas e catálogo.';
+    $('aiSummary').textContent=response;
+    $('aiNextAction').textContent='Confirmação humana necessária.';
+    $('aiMissing').innerHTML='<li>Nenhuma ação automática será executada.</li>';
+    panel.dataset.suggestedFichaId='';
+    aiSuggestionText=response;
+    panel.classList.add('ready');
+    if(copyBtn){copyBtn.style.display='inline-flex';copyBtn.textContent='Copiar sugestão';}
+    if(useFichaBtn)useFichaBtn.style.display='none';
     return;
   }
   const summary=buildAiSummary(text);
@@ -1703,6 +1723,8 @@ function collectAiLocalFacts(question){
 function formatAiLocalAnswer(question){
   const facts=collectAiLocalFacts(question);
   const total=facts.relatedDiary.length+facts.relatedFicha.length;
+  const normalizedQuestion=norm(question);
+  const isQuantitativeQuestion=/\b(quantas|quantos|numero|número|total)\b/.test(normalizedQuestion);
   const factsLines=[];
   const inferenceLines=[];
   const recommendationLines=[];
@@ -1734,6 +1756,29 @@ function formatAiLocalAnswer(question){
   if(!facts.wantsThisYear&&norm(question).includes('ano'))insufficientLines.push('Confirmar o ano pretendido.');
   if(total===0)insufficientLines.push('Não foram encontrados registos suficientes para responder com confiança.');
 
+  if(isQuantitativeQuestion){
+    if(total===0){
+      return [
+        'Informação insuficiente para responder com confiança.',
+        '',
+        'Detalhe:',
+        ...(insufficientLines.length?insufficientLines.map(line=>'- '+line):['- Não foram encontrados registos relacionados.']),
+        '',
+        'Confirmação humana necessária.'
+      ].join('\n');
+    }
+    return [
+      `Foram encontradas ${total} manutenções relacionadas${facts.catalogMatches.length===1?' com '+facts.catalogMatches[0].name.toLowerCase():''}${facts.wantsThisYear?' este ano':''}.`,
+      '',
+      'Detalhe:',
+      `- ${facts.relatedDiary.length} em Registos Diários`,
+      `- ${facts.relatedFicha.length} no Histórico de Fichas`,
+      ...(facts.catalogMatches.length>1?['- Fichas possíveis: '+facts.catalogMatches.map(match=>`${match.id} — ${match.name}`).join('; ')]:[]),
+      '',
+      'Confirmação humana necessária.'
+    ].join('\n');
+  }
+
   return [
     'Factos encontrados:',
     ...factsLines.map(line=>'- '+line),
@@ -1741,14 +1786,9 @@ function formatAiLocalAnswer(question){
     'Inferência:',
     ...inferenceLines.map(line=>'- '+line),
     '',
-    'Recomendação:',
-    ...recommendationLines.map(line=>'- '+line),
-    '',
-    'Informação insuficiente:',
-    ...(insufficientLines.length?insufficientLines.map(line=>'- '+line):['- Nenhuma lacuna evidente nos dados consultados, mas a análise continua a ser textual e simples.']),
-    '',
-    'Supervisão humana necessária:',
-    '- Esta sugestão não altera dados nem executa ações críticas.'
+    ...(recommendationLines.length?['Recomendação:', ...recommendationLines.map(line=>'- '+line), '']:[]),
+    ...(insufficientLines.length?['Informação insuficiente:', ...insufficientLines.map(line=>'- '+line), '']:[]),
+    'Confirmação humana necessária.'
   ].join('\n');
 }
 
