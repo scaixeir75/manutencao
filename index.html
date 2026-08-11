@@ -1526,6 +1526,28 @@ function setDiaryAssistantMode(mode){
   grid.style.display=showSuggestion?'grid':'none';
 }
 
+function setDiarySuggestionItemVisibility(id, visible){
+  const el=$(id);
+  const item=el&&el.closest?el.closest('.ai-helper-item'):null;
+  if(item)item.style.display=visible?'block':'none';
+}
+
+function hasListContent(id){
+  const el=$(id);
+  if(!el)return false;
+  return !!el.querySelector('li') || !!el.textContent.trim();
+}
+
+function updateDiarySuggestionVisibility(){
+  setDiarySuggestionItemVisibility('aiProbableFicha', !!$('aiProbableFicha').textContent.trim());
+  setDiarySuggestionItemVisibility('aiFichaReason', !!$('aiFichaReason').textContent.trim());
+  setDiarySuggestionItemVisibility('aiSummary', !!$('aiSummary').textContent.trim());
+  setDiarySuggestionItemVisibility('aiNextAction', !!$('aiNextAction').textContent.trim());
+  setDiarySuggestionItemVisibility('aiMissing', hasListContent('aiMissing'));
+  setDiarySuggestionItemVisibility('aiRecentHistory', hasListContent('aiRecentHistory'));
+  setDiarySuggestionItemVisibility('aiRecurrence', !!$('aiRecurrence').textContent.trim());
+}
+
 function resetDiaryAssistant({clearInput=false,forceInitialState=false}={}){
   const panel=$('aiHelper');if(!panel)return;
   const copyBtn=$('aiCopyBtn');
@@ -1543,6 +1565,7 @@ function resetDiaryAssistant({clearInput=false,forceInitialState=false}={}){
   $('aiMissing').innerHTML='';
   $('aiRecentHistory').innerHTML='';
   $('aiRecurrence').textContent='';
+  updateDiarySuggestionVisibility();
   if(clearInput&&$('aiDiaryInput'))$('aiDiaryInput').value='';
   if(copyBtn)copyBtn.style.display='none';
   if(useFichaBtn)useFichaBtn.style.display='none';
@@ -1656,10 +1679,15 @@ function generateDiaryAiSuggestion(){
     if(useFichaBtn)useFichaBtn.style.display='none';
     return;
   }
+  const fichaSuggestion=formatFichaSuggestion(text+' '+question);
+  if(!fichaSuggestion.historyFichaId && /^Informa/.test(fichaSuggestion.probable||'')){
+    resetDiaryAssistant({clearInput:false,forceInitialState:true});
+    $('aiHelperState').textContent='Informação insuficiente.';
+    return;
+  }
   setDiaryAssistantMode('suggestion');
   const summary=buildAiSummary(text);
   const missing=getAiMissingInfo();
-  const fichaSuggestion=formatFichaSuggestion(text+' '+question);
   const historySnapshot=getFichaHistorySnapshot(fichaSuggestion.historyFichaId);
   const missingItems=[...missing];
   if(Array.isArray(fichaSuggestion.missing))missingItems.push(...fichaSuggestion.missing);
@@ -1675,6 +1703,7 @@ function generateDiaryAiSuggestion(){
   $('aiRecurrence').textContent=historySnapshot.total
     ? `Foram encontrados ${historySnapshot.total} registo(s) relacionados com esta ficha.`
     : 'Informação insuficiente sobre histórico anterior.';
+  updateDiarySuggestionVisibility();
   panel.dataset.suggestedFichaId=fichaSuggestion.suggestedFichaId||'';
   aiSuggestionText=[
     'Assistente IA — Sugestão para Registo Técnico',
