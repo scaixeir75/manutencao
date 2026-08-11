@@ -740,7 +740,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
           <div class="ai-helper-actions">
             <button type="button" class="ai-copy" id="aiUseFichaBtn" style="display:none">Usar ficha sugerida</button>
             <button type="button" class="ai-copy" id="aiDictateBtn">🎙️ Ditar</button>
-            <button type="button" class="ai-copy" id="aiGenerateBtn">Analisar com IA</button>
+            <button type="button" class="ai-copy" id="aiGenerateBtn">Perguntar à IA</button>
             <button type="button" class="ai-copy" id="aiCopyBtn" style="display:none">Copiar sugestão</button>
             <button type="button" class="ai-copy" id="aiClearBtn">Limpar</button>
           </div>
@@ -1493,7 +1493,7 @@ function getDiaryAssistantStateText(){
   const text=$('diaryText')&&$('diaryText').value?$('diaryText').value.trim():'';
   return text.length<12
     ? 'Escreve primeiro uma descrição com pelo menos 12 caracteres para contextualizar o Assistente IA.'
-    : 'Escreve ou dita uma pergunta e usa "Analisar com IA".';
+    : 'Escreve ou dita uma pergunta e usa "Perguntar à IA".';
 }
 
 function setDiaryAssistantMode(mode){
