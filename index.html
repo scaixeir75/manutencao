@@ -1502,18 +1502,21 @@ function setDiaryAssistantMode(mode){
   const grid=$('aiHelperSuggestion');
   if(!response||!responseLabel||!grid)return;
   const showGeneral=mode==='general';
+  const showSuggestion=mode==='suggestion';
   response.style.display=showGeneral?'block':'none';
   responseLabel.style.display=showGeneral?'block':'none';
-  grid.style.display=showGeneral?'none':'grid';
+  grid.style.display=showSuggestion?'grid':'none';
 }
 
-function resetDiaryAssistant({clearInput=false}={}){
+function resetDiaryAssistant({clearInput=false,forceInitialState=false}={}){
   const panel=$('aiHelper');if(!panel)return;
   const copyBtn=$('aiCopyBtn');
   const useFichaBtn=$('aiUseFichaBtn');
   panel.classList.remove('ready');
-  setDiaryAssistantMode('suggestion');
-  $('aiHelperState').textContent=getDiaryAssistantStateText();
+  setDiaryAssistantMode(forceInitialState?'initial':'suggestion');
+  $('aiHelperState').textContent=forceInitialState
+    ? 'Escreve primeiro uma descrição com pelo menos 12 caracteres para contextualizar o Assistente IA.'
+    : getDiaryAssistantStateText();
   $('aiGeneralResponse').textContent='';
   $('aiProbableFicha').textContent='';
   $('aiFichaReason').textContent='';
@@ -1957,7 +1960,7 @@ $('diaryText').addEventListener('input',()=>resetDiaryAssistant());
 $('diaryFicha').addEventListener('change',()=>resetDiaryAssistant());
 $('aiDiaryInput').addEventListener('input',()=>resetDiaryAssistant());
 $('aiCopyBtn').onclick=copyAiSuggestion;
-$('aiClearBtn').onclick=()=>resetDiaryAssistant({clearInput:true});
+$('aiClearBtn').onclick=()=>resetDiaryAssistant({clearInput:true,forceInitialState:true});
 $('aiUseFichaBtn').onclick=()=>{
   const suggestedId=$('aiHelper')&&$('aiHelper').dataset&&$('aiHelper').dataset.suggestedFichaId?$('aiHelper').dataset.suggestedFichaId:'';
   if(!suggestedId||!$('diaryFicha'))return;
