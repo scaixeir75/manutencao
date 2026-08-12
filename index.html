@@ -1506,13 +1506,14 @@ function getHistoryEntrySummary(entry){
   return buildAiSummary(entry.note||entry.text||entry.status||'Registo sem resumo disponível.');
 }
 
-function getAiMissingInfo(){
+function getAiMissingInfo(fichaIdOverride='',historyFound=false){
   const missing=[];
   const fichaId=$('diaryFicha')&&$('diaryFicha').value?$('diaryFicha').value:'';
-  if(!fichaId)missing.push('equipamento/ficha');
+  const resolvedFicha=fichaIdOverride||fichaId;
+  if(!resolvedFicha)missing.push('localização exata/quarto/zona');
   if(!pendingPhotos.length)missing.push('fotografia');
-  const hasRelatedHistory=fichaId&&diaryCache.some(e=>String(e.fichaId||'')===String(fichaId));
-  if(!hasRelatedHistory)missing.push('histórico');
+  const hasRelatedHistory=historyFound||!!(resolvedFicha&&logsFor(String(resolvedFicha)).length);
+  if(!hasRelatedHistory)missing.push('histórico, se aplicável');
   return missing;
 }
 
@@ -1664,14 +1665,48 @@ function isGeneralAiQuestion(question){
   return /\?$/.test(question.trim())||/\b(quantas|quantos|numero|número|total|houve|ha|há|existem|existe|quais|qual|quando|onde|historico|histórico|manutencao|manutenção)\b/.test(normalized);
 }
 
+function findRelatedRecords(inputText){
+  const generic=new Set(['problema','problemas','verificar','verificacao','manutencao','situacao','anomalia','resolver','precisa','identificar']);
+  const terms=norm(inputText).split(/[^a-z0-9]+/).filter(t=>t.length>2&&!generic.has(t));
+  const matches=[];
+  const add=(record,fichaId,source)=>{const text=source==='diary'?getDiaryRecordText(record):getFichaRecordText(record,fichaId);const score=terms.filter(term=>norm(text).includes(term)).length;if(score)matches.push({record,fichaId:String(fichaId||record.fichaId||''),score,text});};
+  diaryCache.forEach(record=>add(record,record.fichaId,'diary'));
+  Object.entries(LOGS).forEach(([id,entries])=>(entries||[]).forEach(record=>add(record,id,'ficha')));
+  return {terms,matches:matches.sort((a,b)=>b.score-a.score).slice(0,8)};
+}
+
+function getPendingAnomalies(scope=''){
+  const all=[];
+  Object.entries(CATALOG).forEach(([fichaId,name])=>{if(scope&&String(fichaId)!==String(scope))return;const entries=logsFor(fichaId).map(record=>({...record,_date:new Date(record.date||record.created||record.timestamp||0)})).sort((a,b)=>a._date-b._date);entries.forEach((anomaly,index)=>{if(!norm(anomaly.status||anomaly.type||anomaly.severity||'').includes('anomalia'))return;const later=entries.slice(index+1).filter(entry=>/conclu|corrigid|resolvid|tarefa conclu|intervencao conclu/.test(norm(entry.status||entry.type||'')));const related=later.some(entry=>{const a=norm(anomaly.note||anomaly.text||''),b=norm(entry.note||entry.text||'');return !a||!b||a.split(/[^a-z0-9]+/).filter(x=>x.length>3).some(x=>b.includes(x));});all.push({fichaId,name,date:anomaly.date||anomaly.created||'',description:anomaly.note||anomaly.text||'Anomalia sem descrição.',state:related?'resolved':later.length?'possible':'pending'});});});
+  return {pending:all.filter(x=>x.state==='pending'),possible:all.filter(x=>x.state==='possible'),resolved:all.filter(x=>x.state==='resolved')};
+}
+
+function formatRelatedAnswer(question,related){
+  const rows=related.matches.slice(0,3);const areas=[...new Set(rows.map(x=>CATALOG[x.fichaId]).filter(Boolean))];
+  return [`Foram encontrados registos relacionados com “${question}”.`,'','Ocorrência recente:',...rows.map(x=>`- ${x.record.date||x.record.timestamp||'Sem data'} — ${buildAiSummary(x.text)}`),'','Possíveis áreas relacionadas:',...areas.map(x=>`- ${x}`),'','Confirmação humana necessária.'].join('\n');
+}
+
+function formatPendingAnomaliesAnswer(question){
+  const match=norm(question).match(/ficha\s*(\d+)/);const data=getPendingAnomalies(match&&match[1]);
+  const lines=[`Foram encontradas ${data.pending.length} anomalia(s) pendente(s).`,`${data.possible.length} possivelmente resolvida(s); ${data.resolved.length} resolvida(s).`];
+  if(data.pending.length)lines.push('','Pendentes:',...data.pending.map(x=>`- Ficha ${x.fichaId} — ${x.name} — ${x.date||'Sem data'} — ${x.description}`));
+  return lines.concat(['','Confirmação humana necessária.']).join('\n');
+}
+
 function buildUnifiedAiAnalysis(inputText){
   const text=normalizeSpaces(String(inputText||'').trim());
-  if(text.length<12)return {intent:'insufficient',text:'Informação insuficiente.'};
+  const normalized=norm(text);
+  const genericOnly=/^(problema para identificar|problema para verificar|verificar|ha um problema|anomalia|resolver situacao|precisa de manutencao)$/i.test(normalized);
+  if(text.length<12||genericOnly)return {intent:'insufficient',text:'Informação insuficiente.'};
+  if(/anomalia|pendente|por resolver|resolver/.test(normalized)&&/(quantas|quantos|quais|ha |tem anomalias)/.test(normalized))return {intent:'pending-anomalies',text:formatPendingAnomaliesAnswer(text)};
   if(isGeneralAiQuestion(text))return {intent:'quantitative',text:formatAiLocalAnswer(text)};
-  const suggestion=formatFichaSuggestion(text);
+  const related=findRelatedRecords(text);
+  const preliminary=formatFichaSuggestion(text);
+  if(related.matches.length&&!preliminary.historyFichaId)return {intent:'related-search',text:formatRelatedAnswer(text,related),related};
+  const suggestion=preliminary;
   if(!suggestion.historyFichaId)return {intent:'insufficient',text:'Informação insuficiente.'};
   const history=getFichaHistorySnapshot(suggestion.historyFichaId);
-  const missing=[...new Set([...(getAiMissingInfo()),...(suggestion.missing||[])])];
+  const missing=[...new Set([...(getAiMissingInfo(suggestion.historyFichaId,history.total>0)),...(suggestion.missing||[])].filter(item=>norm(item)!=='equipamento/ficha'&&!norm(item).startsWith('historico')))];
   const recurrence=history.total
     ? `Foram encontrados ${history.total} registo(s) relacionados com esta ficha.`
     : 'Informação insuficiente sobre histórico anterior.';
@@ -1697,7 +1732,7 @@ function generateDiaryAiSuggestion(){
     $('aiHelperState').textContent='Informação insuficiente.';
     return;
   }
-  if(analysis.intent==='quantitative'){
+  if(['quantitative','related-search','pending-anomalies'].includes(analysis.intent)){
     const response=analysis.text;
     setDiaryAssistantMode('general');
     $('aiGeneralResponse').textContent=response;
