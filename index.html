@@ -1667,7 +1667,7 @@ function isGeneralAiQuestion(question){
 
 function findRelatedRecords(inputText){
   const generic=new Set(['problema','problemas','verificar','verificacao','manutencao','situacao','anomalia','resolver','precisa','identificar']);
-  const terms=norm(inputText).split(/[^a-z0-9]+/).filter(t=>t.length>2&&!generic.has(t));
+  const terms=[...new Set(norm(inputText).split(/[^a-z0-9]+/).filter(t=>t.length>2&&!generic.has(t)))];
   const matches=[];
   const add=(record,fichaId,source)=>{const text=source==='diary'?getDiaryRecordText(record):getFichaRecordText(record,fichaId);const score=terms.filter(term=>norm(text).includes(term)).length;if(score)matches.push({record,fichaId:String(fichaId||record.fichaId||''),score,text});};
   diaryCache.forEach(record=>add(record,record.fichaId,'diary'));
@@ -1697,7 +1697,8 @@ function buildUnifiedAiAnalysis(inputText){
   const text=normalizeSpaces(String(inputText||'').trim());
   const normalized=norm(text);
   const genericOnly=/^(problema para identificar|problema para verificar|verificar|ha um problema|anomalia|resolver situacao|precisa de manutencao)$/i.test(normalized);
-  if(text.length<12||genericOnly)return {intent:'insufficient',text:'Informação insuficiente.'};
+  const hasTechnicalMatch=findCatalogMatches(text).length>0||/\b(autoclismo|wc|sanita|fuga|gerador|elevador|iluminacao|caldeira|aqs|bomba|quadro eletrico|corte de agua|falta de agua|interrupcao de agua)\b/.test(normalized);
+  if(text.length<3||genericOnly||(!hasTechnicalMatch&&text.length<12))return {intent:'insufficient',text:'Informação insuficiente.'};
   if(/anomalia|pendente|por resolver|resolver/.test(normalized)&&/(quantas|quantos|quais|ha |tem anomalias)/.test(normalized))return {intent:'pending-anomalies',text:formatPendingAnomaliesAnswer(text)};
   if(isGeneralAiQuestion(text))return {intent:'quantitative',text:formatAiLocalAnswer(text)};
   const related=findRelatedRecords(text);
@@ -1711,6 +1712,8 @@ function buildUnifiedAiAnalysis(inputText){
     ? `Foram encontrados ${history.total} registo(s) relacionados com esta ficha.`
     : 'Informação insuficiente sobre histórico anterior.';
   return {intent:'occurrence',input:text,suggestion,history,missing,recurrence,
+    facts:{catalog:suggestion.probable,history:history.entries,relatedRecords:related.matches},
+    inferences:{reason:suggestion.reason,recurrence},
     text:[`Ficha provável: ${suggestion.probable}`,
       `Motivo da sugestão: ${suggestion.reason}`,
       `Histórico recente: ${history.entries.length?history.entries.map(getHistoryEntrySummary).join('; '):'Informação insuficiente sobre histórico anterior.'}`,
