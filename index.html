@@ -1207,7 +1207,7 @@ function render(){
   if(!fichas.length){empty.style.display='block';empty.textContent='Nenhum equipamento agendado para a semana '+week+'.';return;}
   empty.style.display='none';
   fichas.forEach((f,i)=>{
-    const n=logCount(f);const hasAnomalia=logsFor(f).some(e=>e.status==='Anomalia');
+    const n=logCount(f);const hasAnomalia=getPendingAnomalies(f).pending.length>0;
     const el=document.createElement('article');el.className='task'+(hasAnomalia?' anomalia':'');el.style.animationDelay=(i*22)+'ms';el.setAttribute('role','button');el.tabIndex=0;
     el.innerHTML=`<div class="trow"><div class="badge">${f}</div><div><div class="ficha">FICHA Nº ${f}</div><div class="nome"></div></div><div class="meta">${hasAnomalia?'<span class="anomalia-badge">⚠ ANOMALIA</span>':''}<span class="logchip ${n?'has':''}">${n?n+' registo'+(n>1?'s':''):'+ registo'}</span></div></div>`;
     el.querySelector('.nome').textContent=CATALOG[f];
