@@ -1710,8 +1710,8 @@ function isRelatedCorrection(anomaly,correction){
 
 function getPendingAnomalies(scope=''){
   const all=[];
-  Object.entries(CATALOG).forEach(([fichaId,name])=>{if(scope&&String(fichaId)!==String(scope))return;const entries=logsFor(fichaId).map(record=>({...record,_date:new Date(record.date||record.created||record.timestamp||0)})).sort((a,b)=>a._date-b._date);entries.forEach((anomaly,index)=>{if(!norm(anomaly.status||anomaly.type||anomaly.severity||'').includes('anomalia'))return;const later=entries.slice(index+1).filter(entry=>/conclu|corrigid|resolvid|tarefa conclu|intervencao conclu/.test(norm(entry.status||entry.type||'')));const related=later.some(entry=>isRelatedCorrection(anomaly,entry));all.push({id:anomaly.id,fichaId,name,date:anomaly.date||anomaly.created||'',description:anomaly.note||anomaly.text||'Anomalia sem descrição.',state:related?'resolved':later.length?'possible':'pending'});});});
-  return {pending:all.filter(x=>x.state==='pending'),possible:all.filter(x=>x.state==='possible'),resolved:all.filter(x=>x.state==='resolved')};
+  Object.entries(CATALOG).forEach(([fichaId,name])=>{if(scope&&String(fichaId)!==String(scope))return;const entries=logsFor(fichaId).map(record=>({...record,_date:new Date(record.date||record.created||record.timestamp||0)})).sort((a,b)=>a._date-b._date);entries.forEach((anomaly,index)=>{if(!norm(anomaly.status||anomaly.type||anomaly.severity||'').includes('anomalia'))return;const later=entries.slice(index+1).filter(entry=>/conclu|corrigid|resolvid|tarefa conclu|intervencao conclu/.test(norm(entry.status||entry.type||'')));const related=later.some(entry=>isRelatedCorrection(anomaly,entry));all.push({id:anomaly.id,fichaId,name,date:anomaly.date||anomaly.created||'',description:anomaly.note||anomaly.text||'Anomalia sem descrição.',state:related?'resolved':'pending',possible:!related&&later.length>0});});});
+  return {pending:all.filter(x=>x.state==='pending'),possible:all.filter(x=>x.possible),resolved:all.filter(x=>x.state==='resolved')};
 }
 
 function hasPendingAnomalyForFicha(fichaId,pendingData=getPendingAnomalies()){
