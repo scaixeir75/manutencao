@@ -1034,6 +1034,18 @@ function showToast(msg,type='ok'){
 }
 const pad=w=>String(w).padStart(2,'0');
 const norm=s=>s.toLowerCase().normalize('NFD').replace(/\p{M}+/gu,'').trim();
+const wordTokens=s=>norm(s||'').split(/[^a-z0-9]+/).filter(Boolean);
+function hasWholeWord(text,term){
+  const t=norm(term);
+  if(!t)return false;
+  return wordTokens(text).includes(t);
+}
+function hasAllWholeWords(text,terms){
+  return terms.every(term=>hasWholeWord(text,term));
+}
+function wordBoundaryRegExp(term){
+  return new RegExp(`(^|[^\\p{L}\\p{N}])(${String(term).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})(?=$|[^\\p{L}\\p{N}])`,'giu');
+}
 const monthFor=w=>MONTHS.find(([,a,b])=>w>=a&&w<=b)[0];
 function isoWeek(d=new Date()){
   const dt=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
@@ -1614,7 +1626,7 @@ function scoreFichaSuggestion(contextText){
     const reasons=[];
     if(normalizedText.includes(normalizedName)){score+=6;reasons.push('nome da ficha encontrado no texto');}
     for(const word of keywords){
-      if(normalizedName.includes(word)){score+=2;reasons.push(`termo relacionado: ${word}`);}
+      if(hasWholeWord(name,word)){score+=2;reasons.push(`termo relacionado: ${word}`);}
     }
     for(const hint of (fichaBoosts[id]||[])){
       if(normalizedText.includes(norm(hint))){score+=3;reasons.push(`indício específico: ${hint}`);}
@@ -1682,8 +1694,8 @@ function findRelatedRecords(inputText){
   const add=(record,fichaId,source)=>{
     const text=source==='diary'?getDiaryRecordText(record):getFichaRecordText(record,fichaId);const normalized=norm(text);
     const exact=directPatterns.some(pattern=>pattern.test(normalized));
-    const present=terms.filter(term=>normalized.includes(term));
-    const positions=terms.map(term=>normalized.indexOf(term)).filter(position=>position>=0);
+    const present=terms.filter(term=>hasWholeWord(text,term));
+    const positions=terms.map(term=>wordTokens(text).indexOf(term)).filter(position=>position>=0);
     const close=terms.length>1&&present.length===terms.length&&positions.length===terms.length&&Math.max(...positions)-Math.min(...positions)<=50;
     const score=exact?4:close?2:0;
     if(score)matches.push({record,fichaId:String(fichaId||record.fichaId||''),score,text});
@@ -1903,7 +1915,7 @@ function findCatalogMatches(question){
     const normalizedName=norm(name);
     return numberTokens.has(String(id))||
       normalizedQuestion.includes(normalizedName)||
-      words.some(word=>normalizedName.includes(word));
+      words.some(word=>hasWholeWord(name,word));
   }).map(([id,name])=>({id,name}));
 }
 
@@ -1922,8 +1934,7 @@ function getFichaRecordText(record,fichaId){
 }
 
 function matchesQuestionText(text,keywords){
-  const normalized=norm(text||'');
-  return keywords.some(word=>normalized.includes(word));
+  return keywords.some(word=>hasWholeWord(text,word));
 }
 
 function collectAiLocalFacts(question){
@@ -2341,8 +2352,7 @@ function highlight(escapedText,query){
   if(!terms.length)return escapedText;
   let result=escapedText;
   terms.forEach(term=>{
-    const re=new RegExp('('+term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
-    result=result.replace(re,'<mark class="hl-match">$1</mark>');
+    result=result.replace(wordBoundaryRegExp(term),'$1<mark class="hl-match">$2</mark>');
   });
   return result;
 }
@@ -2364,7 +2374,7 @@ function renderDiary(){
     const d=diaryDateOf(e);
     if(diaryFrom&&d&&d<diaryFrom)return false;
     if(diaryTo&&d&&d>diaryTo)return false;
-    if(qn&&!norm(e.text||'').includes(qn))return false;
+    if(qn&&!hasAllWholeWords(e.text||'',wordTokens(qn)))return false;
     return true;
   });
 
