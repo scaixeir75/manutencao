@@ -1715,9 +1715,18 @@ async function markAnomalyAsResolved(fichaId,anomaly){
   try{await addLog(fichaId,entry);showToast('Anomalia marcada como corrigida.');}catch(err){console.error(err);showToast('Erro ao registar a correção.','err');}
 }
 
+function renderPendingAiResponse(response,analysis){
+  const data=analysis.pendingData||{pending:[]};
+  response.textContent=analysis.text.split('\nPendentes:')[0]+'\n\nPendentes:';
+  if(!data.pending.length)return;
+  const list=document.createElement('div');list.className='ai-pending-list';
+  data.pending.forEach(anomaly=>{const item=document.createElement('div');item.className='logentry anomaly-pending';item.innerHTML=`<span>${escapeHtml(`Ficha ${anomaly.fichaId} — ${anomaly.name} — ${anomaly.date||'Sem data'} — ${anomaly.description}`)}</span> <button class="resolve-anomaly" type="button">Corrigir</button>`;item.querySelector('.resolve-anomaly').onclick=()=>markAnomalyAsResolved(anomaly.fichaId,anomaly);list.appendChild(item);});
+  response.appendChild(list);
+}
+
 function formatRelatedAnswer(question,related){
   const rows=related.matches.filter(x=>x.score>=2).slice(0,3);const areaTerms=/caldeira|bomba|hidropressora|retorno|aqs|abastecimento|agua/;const areas=[...new Set(rows.map(x=>CATALOG[x.fichaId]).filter(x=>x&&areaTerms.test(norm(x))))];
-  return [`Foram encontrados registos relacionados com “${question}”.`,'','Ocorrência recente:',...rows.map(x=>`- ${x.record.date||x.record.timestamp||'Sem data'} — ${buildAiSummary(x.text)}`),'','Possíveis áreas relacionadas:',...areas.map(x=>`- ${x}`),'','Confirmação humana necessária.'].join('\n');
+  return [`Foram encontrados registos relacionados com “${question}”.`,'','Ocorrência recente:',...rows.map(x=>`- ${x.record.date||x.record.timestamp||'Sem data'} — ${buildAiSummary(x.text)}`),...(areas.length?['','Possíveis áreas relacionadas:',...areas.map(x=>`- ${x}`)]:[]),'','Confirmação humana necessária.'].join('\n');
 }
 
 function formatPendingAnomaliesAnswer(question){
@@ -1737,7 +1746,7 @@ function buildUnifiedAiAnalysis(inputText){
   const genericOnly=/^(problema para identificar|problema para verificar|verificar|ha um problema|anomalia|resolver situacao|precisa de manutencao)$/i.test(normalized);
   const hasTechnicalMatch=findCatalogMatches(text).length>0||/\b(autoclismo|wc|sanita|fuga|gerador|elevador|iluminacao|caldeira|aqs|bomba|quadro eletrico|corte de agua|falta de agua|interrupcao de agua)\b/.test(normalized);
   if(text.length<3||genericOnly||(!hasTechnicalMatch&&text.length<12))return {intent:'insufficient',text:'Informação insuficiente.'};
-  if(/anomalia|pendente|por resolver|resolver/.test(normalized)&&/(quantas|quantos|quais|ha |tem anomalias)/.test(normalized))return {intent:'pending-anomalies',text:formatPendingAnomaliesAnswer(text)};
+  if(/anomalia|pendente|por resolver|resolver/.test(normalized)&&/(quantas|quantos|quais|ha |tem anomalias)/.test(normalized)){const match=norm(text).match(/ficha\s*(\d+)/);const pendingData=getPendingAnomalies(match&&match[1]);return {intent:'pending-anomalies',text:formatPendingAnomaliesAnswer(text),pendingData};}
   if(isGeneralAiQuestion(text))return {intent:'quantitative',text:formatAiLocalAnswer(text)};
   const related=findRelatedRecords(text);
   const preliminary=formatFichaSuggestion(text);
@@ -1776,7 +1785,7 @@ function generateDiaryAiSuggestion(){
   if(['quantitative','related-search','pending-anomalies'].includes(analysis.intent)){
     const response=analysis.text;
     setDiaryAssistantMode('general');
-    $('aiGeneralResponse').textContent=response;
+    if(analysis.intent==='pending-anomalies')renderPendingAiResponse($('aiGeneralResponse'),analysis);else $('aiGeneralResponse').textContent=response;
     panel.dataset.suggestedFichaId='';
     aiSuggestionText=response;
     panel.classList.add('ready');
@@ -2003,7 +2012,7 @@ function generatePlanAiSuggestion(){
     $('planAiSuggestion').style.display='grid';
   }else{
     response.style.display='block';
-    response.textContent=analysis.text;
+    if(analysis.intent==='pending-anomalies')renderPendingAiResponse(response,analysis);else response.textContent=analysis.text;
     $('planAiSuggestion').style.display='none';
   }
   panel.classList.add('has-response');
