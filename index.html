@@ -1693,9 +1693,24 @@ function findRelatedRecords(inputText){
   return {terms,matches:matches.sort((a,b)=>b.score-a.score).slice(0,8)};
 }
 
+function anomalySubjectTerms(entry){
+  const stop=new Set(['anomalia','problema','situacao','reparacao','reparar','corrigir','corrigido','concluido','resolvido','tarefa','intervencao','manutencao','verificar','cozinha','pela','para','com','sem','das','dos','nas','nos','pela','pelo','assiste','catering']);
+  return norm(entry.note||entry.text||'').split(/[^a-z0-9]+/).filter(term=>term.length>3&&!stop.has(term));
+}
+
+function isRelatedCorrection(anomaly,correction){
+  if(String(correction.resolvesAnomalyId||'')===String(anomaly.id||''))return true;
+  const b=norm(correction.note||correction.text||'');
+  if(b.includes('anomalia marcada como corrigida'))return true;
+  const aTerms=anomalySubjectTerms(anomaly),bTerms=anomalySubjectTerms(correction);
+  if(aTerms.some(term=>bTerms.includes(term)))return true;
+  const groups=[['quadro','disjuntor','diferencial','eletrico','electric'],['autoclismo','valvula','sanita','wc','fuga'],['forno','fogao','placa'],['caldeira','aqs','retorno'],['bomba','hidropressora']];
+  return groups.some(group=>group.some(term=>aTerms.includes(term))&&group.some(term=>bTerms.includes(term)));
+}
+
 function getPendingAnomalies(scope=''){
   const all=[];
-  Object.entries(CATALOG).forEach(([fichaId,name])=>{if(scope&&String(fichaId)!==String(scope))return;const entries=logsFor(fichaId).map(record=>({...record,_date:new Date(record.date||record.created||record.timestamp||0)})).sort((a,b)=>a._date-b._date);entries.forEach((anomaly,index)=>{if(!norm(anomaly.status||anomaly.type||anomaly.severity||'').includes('anomalia'))return;const later=entries.slice(index+1).filter(entry=>/conclu|corrigid|resolvid|tarefa conclu|intervencao conclu/.test(norm(entry.status||entry.type||'')));const related=later.some(entry=>{const a=norm(anomaly.note||anomaly.text||''),b=norm(entry.note||entry.text||'');return entry.resolvesAnomalyId===anomaly.id||(!a||!b||a.split(/[^a-z0-9]+/).filter(x=>x.length>3).some(x=>b.includes(x)));});all.push({id:anomaly.id,fichaId,name,date:anomaly.date||anomaly.created||'',description:anomaly.note||anomaly.text||'Anomalia sem descrição.',state:related?'resolved':later.length?'possible':'pending'});});});
+  Object.entries(CATALOG).forEach(([fichaId,name])=>{if(scope&&String(fichaId)!==String(scope))return;const entries=logsFor(fichaId).map(record=>({...record,_date:new Date(record.date||record.created||record.timestamp||0)})).sort((a,b)=>a._date-b._date);entries.forEach((anomaly,index)=>{if(!norm(anomaly.status||anomaly.type||anomaly.severity||'').includes('anomalia'))return;const later=entries.slice(index+1).filter(entry=>/conclu|corrigid|resolvid|tarefa conclu|intervencao conclu/.test(norm(entry.status||entry.type||'')));const related=later.some(entry=>isRelatedCorrection(anomaly,entry));all.push({id:anomaly.id,fichaId,name,date:anomaly.date||anomaly.created||'',description:anomaly.note||anomaly.text||'Anomalia sem descrição.',state:related?'resolved':later.length?'possible':'pending'});});});
   return {pending:all.filter(x=>x.state==='pending'),possible:all.filter(x=>x.state==='possible'),resolved:all.filter(x=>x.state==='resolved')};
 }
 
