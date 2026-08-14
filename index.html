@@ -1687,17 +1687,18 @@ function findRelatedRecords(inputText){
   const generic=new Set(['problema','problemas','verificar','verificacao','manutencao','situacao','anomalia','resolver','precisa','identificar']);
   const terms=[...new Set(norm(inputText).split(/[^a-z0-9]+/).filter(t=>t.length>2&&!generic.has(t)))];
   const matches=[];
+  if(!terms.length)return {terms,matches};
   const query=norm(inputText);
   const directPatterns=query.includes('corte agua')
     ? [/corte.{0,30}agua/,/interrupcao.{0,30}agua/,/falta.{0,30}agua/,/suspensao.{0,30}agua/,/agua.{0,30}(cortada|interrupcao|falta|suspensao)/]
-    : [new RegExp(terms.join('.{0,30}'))];
+    : terms.length>1?[new RegExp(terms.join('.{0,30}'))]:[];
   const add=(record,fichaId,source)=>{
     const text=source==='diary'?getDiaryRecordText(record):getFichaRecordText(record,fichaId);const normalized=norm(text);
     const exact=directPatterns.some(pattern=>pattern.test(normalized));
     const present=terms.filter(term=>hasWholeWord(text,term));
     const positions=terms.map(term=>wordTokens(text).indexOf(term)).filter(position=>position>=0);
     const close=terms.length>1&&present.length===terms.length&&positions.length===terms.length&&Math.max(...positions)-Math.min(...positions)<=50;
-    const score=exact?4:close?2:0;
+    const score=exact?4:close?2:terms.length===1&&present.length?2:0;
     if(score)matches.push({record,fichaId:String(fichaId||record.fichaId||''),score,text});
   };
   diaryCache.forEach(record=>add(record,record.fichaId,'diary'));
@@ -1791,10 +1792,10 @@ function buildUnifiedAiAnalysis(inputText){
   const normalized=norm(text);
   const genericOnly=/^(problema para identificar|problema para verificar|verificar|ha um problema|anomalia|resolver situacao|precisa de manutencao)$/i.test(normalized);
   const hasTechnicalMatch=findCatalogMatches(text).length>0||/\b(autoclismo|wc|sanita|fuga|gerador|elevador|iluminacao|caldeira|aqs|bomba|quadro eletrico|corte de agua|falta de agua|interrupcao de agua)\b/.test(normalized);
-  if(text.length<3||genericOnly||(!hasTechnicalMatch&&text.length<12))return {intent:'insufficient',text:'Informação insuficiente.'};
+  const related=findRelatedRecords(text);
+  if(text.length<3||genericOnly||(!hasTechnicalMatch&&text.length<12&&!related.matches.length))return {intent:'insufficient',text:'Informação insuficiente.'};
   if(/anomalia|pendente|por resolver|resolver/.test(normalized)&&/(quantas|quantos|quais|ha |tem anomalias)/.test(normalized)){const match=norm(text).match(/ficha\s*(\d+)/);const pendingData=getPendingAnomalies(match&&match[1]);return {intent:'pending-anomalies',text:formatPendingAnomaliesAnswer(text),pendingData};}
   if(isGeneralAiQuestion(text))return {intent:'quantitative',text:formatAiLocalAnswer(text)};
-  const related=findRelatedRecords(text);
   const preliminary=formatFichaSuggestion(text);
   if(related.matches.length&&!preliminary.historyFichaId)return {intent:'related-search',text:formatRelatedAnswer(text,related),related};
   const suggestion=preliminary;
