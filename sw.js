@@ -1,7 +1,7 @@
 // Service worker v3 — estratégia "network-first":
 // tenta SEMPRE buscar a versão nova da internet; só usa a cache se estiver offline.
 // Assim a app atualiza-se sozinha sempre que houver ligação.
-const CACHE = 'manutencao-v10';
+const CACHE = 'manutencao-v11';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
