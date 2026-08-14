@@ -1728,7 +1728,7 @@ function formatPendingAnomaliesAnswer(question){
 }
 
 function cleanAiInput(inputText){
-  return normalizeSpaces(String(inputText||'').replace(/^\s*\d+\s*[.)-]\s*/,'').replace(/[→➜➔]/g,' ').replace(/\b(resultado esperado|deve responder|deve mostrar|apenas)\b.*$/i,'').trim();
+  return normalizeSpaces(String(inputText||'').replace(/^\s*\d+\s*[.)-]\s*/,'').replace(/[\u2192\u279c\u2794]/g,' ').replace(/\b(resultado esperado|deve responder|deve mostrar|apenas)\b.*$/i,'').trim());
 }
 
 function buildUnifiedAiAnalysis(inputText){
