@@ -1708,9 +1708,15 @@ function isRelatedCorrection(anomaly,correction){
   return groups.some(group=>group.some(term=>aTerms.includes(term))&&group.some(term=>bTerms.includes(term)));
 }
 
+function isExplicitAnomalyResolution(anomaly,entry){
+  if(String(entry.resolvesAnomalyId||'')===String(anomaly.id||''))return true;
+  const text=norm((entry.origin||'')+' '+(entry.tech||'')+' '+(entry.note||entry.text||''));
+  return text.includes('correcao de anomalia')&&text.includes('anomalia marcada como corrigida')&&isRelatedCorrection(anomaly,entry);
+}
+
 function getPendingAnomalies(scope=''){
   const all=[];
-  Object.entries(CATALOG).forEach(([fichaId,name])=>{if(scope&&String(fichaId)!==String(scope))return;const entries=logsFor(fichaId).map(record=>({...record,_date:new Date(record.date||record.created||record.timestamp||0)})).sort((a,b)=>a._date-b._date);entries.forEach((anomaly,index)=>{if(!norm(anomaly.status||anomaly.type||anomaly.severity||'').includes('anomalia'))return;const later=entries.slice(index+1).filter(entry=>/conclu|corrigid|resolvid|tarefa conclu|intervencao conclu/.test(norm(entry.status||entry.type||'')));const related=later.some(entry=>isRelatedCorrection(anomaly,entry));all.push({id:anomaly.id,fichaId,name,date:anomaly.date||anomaly.created||'',description:anomaly.note||anomaly.text||'Anomalia sem descrição.',state:related?'resolved':'pending',possible:!related&&later.length>0});});});
+  Object.entries(CATALOG).forEach(([fichaId,name])=>{if(scope&&String(fichaId)!==String(scope))return;const entries=logsFor(fichaId).map(record=>({...record,_date:new Date(record.date||record.created||record.timestamp||0)})).sort((a,b)=>a._date-b._date);entries.forEach((anomaly,index)=>{if(!norm(anomaly.status||anomaly.type||anomaly.severity||'').includes('anomalia'))return;const explicit=entries.some(entry=>isExplicitAnomalyResolution(anomaly,entry));const later=entries.slice(index+1).filter(entry=>/conclu|corrigid|resolvid|tarefa conclu|intervencao conclu/.test(norm(entry.status||entry.type||'')));const related=explicit||later.some(entry=>isRelatedCorrection(anomaly,entry));all.push({id:anomaly.id,fichaId,name,date:anomaly.date||anomaly.created||'',description:anomaly.note||anomaly.text||'Anomalia sem descrição.',state:related?'resolved':'pending',possible:!related&&later.length>0});});});
   return {pending:all.filter(x=>x.state==='pending'),possible:all.filter(x=>x.possible),resolved:all.filter(x=>x.state==='resolved')};
 }
 
@@ -1738,7 +1744,7 @@ async function markAnomalyAsResolved(fichaId,anomaly){
   const chosen=window.prompt('Data efetiva da correção (AAAA-MM-DD):',today);
   if(!chosen||!/^\d{4}-\d{2}-\d{2}$/.test(chosen))return;
   const entry={date:chosen,week:isoWeek(new Date(chosen+'T12:00:00')),status:'Concluído',tech:'Correção de anomalia',note:`Anomalia marcada como corrigida: ${buildAiSummary(anomaly.description)}`,origin:'Correção de anomalia',resolvesAnomalyId:anomaly.id,confirmation:'Confirmação humana'};
-  try{await addLog(fichaId,entry);showToast('Anomalia marcada como corrigida.');}catch(err){console.error(err);showToast('Erro ao registar a correção.','err');}
+  try{await addLog(fichaId,entry);render();if(modalFicha)renderLogList();showToast('Anomalia marcada como corrigida.');}catch(err){console.error(err);showToast('Erro ao registar a correção.','err');}
 }
 
 function renderPendingAiResponse(response,analysis){
