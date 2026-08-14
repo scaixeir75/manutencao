@@ -236,3 +236,32 @@ A v1.0 fecha documentalmente a Missão 001 — Assistência ao Registo Técnico 
 ### Futuro
 
 A v1.1 ou v1.2 poderá preparar a Missão 002 — Resumo de Equipamento, incluindo eventual integração de `consultarHistoricoEquipamento` num fluxo próprio. Qualquer ação crítica continuará sujeita a supervisão humana.
+
+## Fecho do ciclo de anomalias pendentes IA
+
+Em 14/08/2026 ficou validado o ciclo operacional de anomalias pendentes no Assistente IA e nos cartões das fichas.
+
+Estado validado:
+
+- Login e PWA funcionam após correção de sintaxe e atualização da cache PWA.
+- A pesquisa `corte de água` filtra resultados irrelevantes como relva, iluminação e luminárias.
+- Texto genérico como `Problema para identificar` devolve apenas `Informação insuficiente.`
+- `Autoclismo` identifica a Ficha 29 — Instalações Sanitárias.
+- `Autoclismo com fuga de água` identifica a Ficha 29 com histórico e recorrência quando existem dados.
+- Anomalias pendentes aparecem como itens/cartões vermelhos individuais na resposta da IA.
+- Cada anomalia pendente tem ação humana explícita `Corrigir`.
+- A ação `Corrigir` cria novo registo de correção e preserva o registo original da anomalia.
+- Anomalias corrigidas manualmente deixam de contar como pendentes.
+- O badge `⚠ ANOMALIA` nos cartões das fichas usa a mesma lista global de pendentes da IA.
+- A Ficha 20 foi validada: a anomalia original do forno permanece no histórico, a correção manual foi criada, deixou de aparecer como pendente e o cartão deixou de mostrar `⚠ ANOMALIA`.
+- O histórico continua a ser a memória técnica pesquisável; não existe memória artificial separada.
+
+Commits relevantes:
+
+- `64ed732` — `fix: resolver anomalias corrigidas manualmente`
+- `caef69b` — `fix: mostrar possiveis anomalias como pendentes`
+- `03c78f3` — `fix: manter possiveis anomalias como pendentes`
+- `22ebc77` — `fix: tornar resolucao de anomalias mais especifica`
+- `bad5b86` — `fix: alinhar badge com lista global de pendentes`
+- `987b04c` — `fix: atualizar cache da pwa`
+- `b51933e` — `fix: corrigir sintaxe que bloqueava login`
