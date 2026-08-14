@@ -1206,8 +1206,9 @@ function render(){
   const list=$('tasks'),empty=$('empty');list.innerHTML='';
   if(!fichas.length){empty.style.display='block';empty.textContent='Nenhum equipamento agendado para a semana '+week+'.';return;}
   empty.style.display='none';
+  const pendingAnomalies=getPendingAnomalies();
   fichas.forEach((f,i)=>{
-    const n=logCount(f);const hasAnomalia=getPendingAnomalies(f).pending.length>0;
+    const n=logCount(f);const hasAnomalia=hasPendingAnomalyForFicha(f,pendingAnomalies);
     const el=document.createElement('article');el.className='task'+(hasAnomalia?' anomalia':'');el.style.animationDelay=(i*22)+'ms';el.setAttribute('role','button');el.tabIndex=0;
     el.innerHTML=`<div class="trow"><div class="badge">${f}</div><div><div class="ficha">FICHA Nº ${f}</div><div class="nome"></div></div><div class="meta">${hasAnomalia?'<span class="anomalia-badge">⚠ ANOMALIA</span>':''}<span class="logchip ${n?'has':''}">${n?n+' registo'+(n>1?'s':''):'+ registo'}</span></div></div>`;
     el.querySelector('.nome').textContent=CATALOG[f];
@@ -1696,6 +1697,10 @@ function getPendingAnomalies(scope=''){
   const all=[];
   Object.entries(CATALOG).forEach(([fichaId,name])=>{if(scope&&String(fichaId)!==String(scope))return;const entries=logsFor(fichaId).map(record=>({...record,_date:new Date(record.date||record.created||record.timestamp||0)})).sort((a,b)=>a._date-b._date);entries.forEach((anomaly,index)=>{if(!norm(anomaly.status||anomaly.type||anomaly.severity||'').includes('anomalia'))return;const later=entries.slice(index+1).filter(entry=>/conclu|corrigid|resolvid|tarefa conclu|intervencao conclu/.test(norm(entry.status||entry.type||'')));const related=later.some(entry=>{const a=norm(anomaly.note||anomaly.text||''),b=norm(entry.note||entry.text||'');return entry.resolvesAnomalyId===anomaly.id||(!a||!b||a.split(/[^a-z0-9]+/).filter(x=>x.length>3).some(x=>b.includes(x)));});all.push({id:anomaly.id,fichaId,name,date:anomaly.date||anomaly.created||'',description:anomaly.note||anomaly.text||'Anomalia sem descrição.',state:related?'resolved':later.length?'possible':'pending'});});});
   return {pending:all.filter(x=>x.state==='pending'),possible:all.filter(x=>x.state==='possible'),resolved:all.filter(x=>x.state==='resolved')};
+}
+
+function hasPendingAnomalyForFicha(fichaId,pendingData=getPendingAnomalies()){
+  return pendingData.pending.some(item=>String(item.fichaId)===String(fichaId));
 }
 
 function pendingAnomalyForEntry(fichaId,entry){
