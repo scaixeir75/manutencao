@@ -231,6 +231,8 @@ h1 .hl{color:var(--accent)}
 .status.Concluído{background:rgba(63,185,80,.15);color:var(--ok)}
 .status.Pendente{background:rgba(210,153,34,.15);color:var(--warn)}
 .status.Anomalia{background:rgba(248,81,73,.15);color:var(--bad)}
+.logentry.anomaly-pending{border-color:rgba(248,81,73,.7);box-shadow:0 0 0 1px rgba(248,81,73,.18)}
+.resolve-anomaly{border:1px solid rgba(248,81,73,.6);background:rgba(248,81,73,.12);color:var(--bad);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:11px;font-weight:700}
 .logentry .lt{color:var(--muted);font-size:12px;margin-top:2px}
 .logentry .ln{font-size:13px;margin-top:5px;white-space:pre-wrap}
 .logentry .del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:3px 7px;border-radius:5px}
@@ -1250,10 +1252,12 @@ function renderLogList(){
   if(!entries.length){list.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:14px 0">Sem registos para esta ficha.</div>';return;}
   entries.forEach(e=>{
     const readOnly=isDiaryMirrorEntry(e);
-    const el=document.createElement('div');el.className='logentry';
-    el.innerHTML=`<div class="lh"><span class="ld">${fmtDate(e.date)}</span><span class="lw">Semana ${pad(e.week)}</span><span class="status ${e.status}">${e.status.toUpperCase()}</span>${readOnly?'<span class="lw">Registo Diário</span>':'<button class="del" title="Apagar">🗑</button>'}</div>${e.tech?'<div class="lt"></div>':''}${e.note?'<div class="ln"></div>':''}`;
+    const pending=pendingAnomalyForEntry(modalFicha,e);const el=document.createElement('div');el.className='logentry'+(pending?' anomaly-pending':'');
+    el.innerHTML=`<div class="lh"><span class="ld">${fmtDate(e.date)}</span><span class="lw">Semana ${pad(e.week)}</span><span class="status ${e.status}">${e.status.toUpperCase()}</span>${pending?'<button class="resolve-anomaly" type="button">Corrigir</button>':readOnly?'<span class="lw">Registo Diário</span>':'<button class="del" title="Apagar">🗑</button>'}</div>${e.tech?'<div class="lt"></div>':''}${e.note?'<div class="ln"></div>':''}`;
     if(e.tech)el.querySelector('.lt').textContent='Técnico: '+e.tech;
     if(e.note)el.querySelector('.ln').textContent=e.note;
+    const resolveBtn=el.querySelector('.resolve-anomaly');
+    if(resolveBtn)resolveBtn.onclick=()=>markAnomalyAsResolved(modalFicha,pending);
     const delBtn=el.querySelector('.del');
     if(delBtn)delBtn.onclick=async()=>{
       const ok=await askConfirm('Apagar o registo de '+fmtDate(e.date)+'?',{title:'Apagar registo'});
@@ -1361,10 +1365,11 @@ function buildReportBody(){
       return b.date.localeCompare(a.date)||(b.created-a.created);
     });
     sortedLogs.forEach(e=>{
-      const el=document.createElement('div');el.className='logentry';
+      const pending=pendingAnomalyForEntry(f,e);const el=document.createElement('div');el.className='logentry'+(pending?' anomaly-pending':'');
       el.innerHTML=`<div class="lh"><span class="ld">${fmtDate(e.date)}</span><span class="lw">Semana ${pad(e.week)}</span><span class="status ${e.status}">${e.status.toUpperCase()}</span></div>${e.tech?'<div class="lt"></div>':''}${e.note?'<div class="ln"></div>':''}`;
       if(e.tech)el.querySelector('.lt').textContent='Técnico: '+e.tech;
       if(e.note)el.querySelector('.ln').textContent=e.note;
+      if(pending){el.setAttribute('role','button');el.tabIndex=0;const resolve=()=>markAnomalyAsResolved(f,pending);el.onclick=resolve;el.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();resolve();}};}
       rl.appendChild(el);
     });
     body.appendChild(sec);
@@ -1669,7 +1674,19 @@ function findRelatedRecords(inputText){
   const generic=new Set(['problema','problemas','verificar','verificacao','manutencao','situacao','anomalia','resolver','precisa','identificar']);
   const terms=[...new Set(norm(inputText).split(/[^a-z0-9]+/).filter(t=>t.length>2&&!generic.has(t)))];
   const matches=[];
-  const add=(record,fichaId,source)=>{const text=source==='diary'?getDiaryRecordText(record):getFichaRecordText(record,fichaId);const score=terms.filter(term=>norm(text).includes(term)).length;if(score)matches.push({record,fichaId:String(fichaId||record.fichaId||''),score,text});};
+  const query=norm(inputText);
+  const directPatterns=query.includes('corte agua')
+    ? [/corte.{0,30}agua/,/interrupcao.{0,30}agua/,/falta.{0,30}agua/,/suspensao.{0,30}agua/,/agua.{0,30}(cortada|interrupcao|falta|suspensao)/]
+    : [new RegExp(terms.join('.{0,30}'))];
+  const add=(record,fichaId,source)=>{
+    const text=source==='diary'?getDiaryRecordText(record):getFichaRecordText(record,fichaId);const normalized=norm(text);
+    const exact=directPatterns.some(pattern=>pattern.test(normalized));
+    const present=terms.filter(term=>normalized.includes(term));
+    const positions=terms.map(term=>normalized.indexOf(term)).filter(position=>position>=0);
+    const close=terms.length>1&&present.length===terms.length&&positions.length===terms.length&&Math.max(...positions)-Math.min(...positions)<=50;
+    const score=exact?4:close?2:0;
+    if(score)matches.push({record,fichaId:String(fichaId||record.fichaId||''),score,text});
+  };
   diaryCache.forEach(record=>add(record,record.fichaId,'diary'));
   Object.entries(LOGS).forEach(([id,entries])=>(entries||[]).forEach(record=>add(record,id,'ficha')));
   return {terms,matches:matches.sort((a,b)=>b.score-a.score).slice(0,8)};
@@ -1677,12 +1694,29 @@ function findRelatedRecords(inputText){
 
 function getPendingAnomalies(scope=''){
   const all=[];
-  Object.entries(CATALOG).forEach(([fichaId,name])=>{if(scope&&String(fichaId)!==String(scope))return;const entries=logsFor(fichaId).map(record=>({...record,_date:new Date(record.date||record.created||record.timestamp||0)})).sort((a,b)=>a._date-b._date);entries.forEach((anomaly,index)=>{if(!norm(anomaly.status||anomaly.type||anomaly.severity||'').includes('anomalia'))return;const later=entries.slice(index+1).filter(entry=>/conclu|corrigid|resolvid|tarefa conclu|intervencao conclu/.test(norm(entry.status||entry.type||'')));const related=later.some(entry=>{const a=norm(anomaly.note||anomaly.text||''),b=norm(entry.note||entry.text||'');return !a||!b||a.split(/[^a-z0-9]+/).filter(x=>x.length>3).some(x=>b.includes(x));});all.push({fichaId,name,date:anomaly.date||anomaly.created||'',description:anomaly.note||anomaly.text||'Anomalia sem descrição.',state:related?'resolved':later.length?'possible':'pending'});});});
+  Object.entries(CATALOG).forEach(([fichaId,name])=>{if(scope&&String(fichaId)!==String(scope))return;const entries=logsFor(fichaId).map(record=>({...record,_date:new Date(record.date||record.created||record.timestamp||0)})).sort((a,b)=>a._date-b._date);entries.forEach((anomaly,index)=>{if(!norm(anomaly.status||anomaly.type||anomaly.severity||'').includes('anomalia'))return;const later=entries.slice(index+1).filter(entry=>/conclu|corrigid|resolvid|tarefa conclu|intervencao conclu/.test(norm(entry.status||entry.type||'')));const related=later.some(entry=>{const a=norm(anomaly.note||anomaly.text||''),b=norm(entry.note||entry.text||'');return entry.resolvesAnomalyId===anomaly.id||(!a||!b||a.split(/[^a-z0-9]+/).filter(x=>x.length>3).some(x=>b.includes(x)));});all.push({id:anomaly.id,fichaId,name,date:anomaly.date||anomaly.created||'',description:anomaly.note||anomaly.text||'Anomalia sem descrição.',state:related?'resolved':later.length?'possible':'pending'});});});
   return {pending:all.filter(x=>x.state==='pending'),possible:all.filter(x=>x.state==='possible'),resolved:all.filter(x=>x.state==='resolved')};
 }
 
+function pendingAnomalyForEntry(fichaId,entry){
+  return getPendingAnomalies(String(fichaId)).pending.find(item=>String(item.id||'')===String(entry.id||''));
+}
+
+async function markAnomalyAsResolved(fichaId,anomaly){
+  if(!anomaly||!window.fb)return;
+  const existing=logsFor(fichaId).find(entry=>String(entry.resolvesAnomalyId||'')===String(anomaly.id||''));
+  if(existing){showToast('Esta anomalia já tem uma correção registada.','err');return;}
+  const ok=await askConfirm('Queres marcar esta anomalia como corrigida?',{title:'Corrigir anomalia',okText:'Confirmar',danger:false});
+  if(!ok)return;
+  const today=new Date().toISOString().slice(0,10);
+  const chosen=window.prompt('Data efetiva da correção (AAAA-MM-DD):',today);
+  if(!chosen||!/^\d{4}-\d{2}-\d{2}$/.test(chosen))return;
+  const entry={date:chosen,week:isoWeek(new Date(chosen+'T12:00:00')),status:'Concluído',tech:'Correção de anomalia',note:`Anomalia marcada como corrigida: ${buildAiSummary(anomaly.description)}`,origin:'Correção de anomalia',resolvesAnomalyId:anomaly.id,confirmation:'Confirmação humana'};
+  try{await addLog(fichaId,entry);showToast('Anomalia marcada como corrigida.');}catch(err){console.error(err);showToast('Erro ao registar a correção.','err');}
+}
+
 function formatRelatedAnswer(question,related){
-  const rows=related.matches.slice(0,3);const areas=[...new Set(rows.map(x=>CATALOG[x.fichaId]).filter(Boolean))];
+  const rows=related.matches.filter(x=>x.score>=2).slice(0,3);const areaTerms=/caldeira|bomba|hidropressora|retorno|aqs|abastecimento|agua/;const areas=[...new Set(rows.map(x=>CATALOG[x.fichaId]).filter(x=>x&&areaTerms.test(norm(x))))];
   return [`Foram encontrados registos relacionados com “${question}”.`,'','Ocorrência recente:',...rows.map(x=>`- ${x.record.date||x.record.timestamp||'Sem data'} — ${buildAiSummary(x.text)}`),'','Possíveis áreas relacionadas:',...areas.map(x=>`- ${x}`),'','Confirmação humana necessária.'].join('\n');
 }
 
@@ -1693,8 +1727,12 @@ function formatPendingAnomaliesAnswer(question){
   return lines.concat(['','Confirmação humana necessária.']).join('\n');
 }
 
+function cleanAiInput(inputText){
+  return normalizeSpaces(String(inputText||'').replace(/^\s*\d+\s*[.)-]\s*/,'').replace(/[→➜➔]/g,' ').replace(/\b(resultado esperado|deve responder|deve mostrar|apenas)\b.*$/i,'').trim();
+}
+
 function buildUnifiedAiAnalysis(inputText){
-  const text=normalizeSpaces(String(inputText||'').trim());
+  const text=cleanAiInput(inputText);
   const normalized=norm(text);
   const genericOnly=/^(problema para identificar|problema para verificar|verificar|ha um problema|anomalia|resolver situacao|precisa de manutencao)$/i.test(normalized);
   const hasTechnicalMatch=findCatalogMatches(text).length>0||/\b(autoclismo|wc|sanita|fuga|gerador|elevador|iluminacao|caldeira|aqs|bomba|quadro eletrico|corte de agua|falta de agua|interrupcao de agua)\b/.test(normalized);
