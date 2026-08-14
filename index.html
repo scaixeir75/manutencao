@@ -1796,6 +1796,7 @@ function buildUnifiedAiAnalysis(inputText){
   if(text.length<3||genericOnly||(!hasTechnicalMatch&&text.length<12&&!related.matches.length))return {intent:'insufficient',text:'Informação insuficiente.'};
   if(/anomalia|pendente|por resolver|resolver/.test(normalized)&&/(quantas|quantos|quais|ha |tem anomalias)/.test(normalized)){const match=norm(text).match(/ficha\s*(\d+)/);const pendingData=getPendingAnomalies(match&&match[1]);return {intent:'pending-anomalies',text:formatPendingAnomaliesAnswer(text),pendingData};}
   if(isGeneralAiQuestion(text))return {intent:'quantitative',text:formatAiLocalAnswer(text)};
+  if(related.matches.length&&wordTokens(text).length===1)return {intent:'related-search',text:formatRelatedAnswer(text,related),related};
   const preliminary=formatFichaSuggestion(text);
   if(related.matches.length&&!preliminary.historyFichaId)return {intent:'related-search',text:formatRelatedAnswer(text,related),related};
   const suggestion=preliminary;
