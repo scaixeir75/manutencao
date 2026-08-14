@@ -1714,8 +1714,14 @@ function getPendingAnomalies(scope=''){
   return {pending:all.filter(x=>x.state==='pending'),possible:all.filter(x=>x.possible),resolved:all.filter(x=>x.state==='resolved')};
 }
 
+function getDisplayPendingAnomalies(data){
+  const byKey=new Map();
+  [...(data.pending||[]),...(data.possible||[])].forEach(item=>byKey.set(String(item.id||`${item.fichaId}-${item.date}-${item.description}`),item));
+  return [...byKey.values()].filter(item=>item.state!=='resolved');
+}
+
 function hasPendingAnomalyForFicha(fichaId,pendingData=getPendingAnomalies()){
-  return pendingData.pending.some(item=>String(item.fichaId)===String(fichaId));
+  return getDisplayPendingAnomalies(pendingData).some(item=>String(item.fichaId)===String(fichaId));
 }
 
 function pendingAnomalyForEntry(fichaId,entry){
@@ -1737,10 +1743,11 @@ async function markAnomalyAsResolved(fichaId,anomaly){
 
 function renderPendingAiResponse(response,analysis){
   const data=analysis.pendingData||{pending:[]};
-  response.textContent=analysis.text.split('\nPendentes:')[0]+'\n\nPendentes:';
-  if(!data.pending.length)return;
+  const pending=getDisplayPendingAnomalies(data);
+  response.textContent=analysis.text.split('\nPendentes:')[0]+(pending.length?'\n\nPendentes:':'');
+  if(!pending.length)return;
   const list=document.createElement('div');list.className='ai-pending-list';
-  data.pending.forEach(anomaly=>{const item=document.createElement('div');item.className='logentry anomaly-pending';item.innerHTML=`<span>${escapeHtml(`Ficha ${anomaly.fichaId} — ${anomaly.name} — ${anomaly.date||'Sem data'} — ${anomaly.description}`)}</span> <button class="resolve-anomaly" type="button">Corrigir</button>`;item.querySelector('.resolve-anomaly').onclick=()=>markAnomalyAsResolved(anomaly.fichaId,anomaly);list.appendChild(item);});
+  pending.forEach(anomaly=>{const item=document.createElement('div');item.className='logentry anomaly-pending';item.innerHTML=`<span>${escapeHtml(`Ficha ${anomaly.fichaId} — ${anomaly.name} — ${anomaly.date||'Sem data'} — ${anomaly.description}`)}</span> <button class="resolve-anomaly" type="button">Corrigir</button>`;item.querySelector('.resolve-anomaly').onclick=()=>markAnomalyAsResolved(anomaly.fichaId,anomaly);list.appendChild(item);});
   response.appendChild(list);
 }
 
@@ -1751,8 +1758,9 @@ function formatRelatedAnswer(question,related){
 
 function formatPendingAnomaliesAnswer(question){
   const match=norm(question).match(/ficha\s*(\d+)/);const data=getPendingAnomalies(match&&match[1]);
-  const lines=[`Foram encontradas ${data.pending.length} anomalia(s) pendente(s).`,`${data.possible.length} possivelmente resolvida(s); ${data.resolved.length} resolvida(s).`];
-  if(data.pending.length)lines.push('','Pendentes:',...data.pending.map(x=>`- Ficha ${x.fichaId} — ${x.name} — ${x.date||'Sem data'} — ${x.description}`));
+  const pending=getDisplayPendingAnomalies(data);
+  const lines=[`Foram encontradas ${pending.length} anomalia(s) pendente(s).`,`${data.possible.length} com correção posterior possível mas não confirmada; ${data.resolved.length} resolvida(s).`];
+  if(pending.length)lines.push('','Pendentes:',...pending.map(x=>`- Ficha ${x.fichaId} — ${x.name} — ${x.date||'Sem data'} — ${x.description}`));
   return lines.concat(['','Confirmação humana necessária.']).join('\n');
 }
 
