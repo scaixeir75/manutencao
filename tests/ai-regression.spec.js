@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 
 const AUTH_STATE_PATH = path.join(__dirname, '..', '.auth', 'pmp-auth.json');
-const AUTH_PROFILE_DIR = path.join(__dirname, '..', '.auth', 'pmp-user-data');
 const APP_URL = process.env.PMP_TEST_BASE_URL || 'https://scaixeir75.github.io/manutencao/';
 
 function loadLocalEnv() {
@@ -25,8 +24,22 @@ function hasSavedAuthState() {
   return fs.existsSync(AUTH_STATE_PATH);
 }
 
-function hasSavedAuthProfile() {
-  return hasSavedAuthState() && fs.existsSync(AUTH_PROFILE_DIR);
+function getSavedAuthState() {
+  if (!hasSavedAuthState()) return null;
+  try {
+    const raw = JSON.parse(fs.readFileSync(AUTH_STATE_PATH, 'utf8'));
+    return raw && raw.storageState ? raw.storageState : raw;
+  } catch (_) {
+    return null;
+  }
+}
+function saveAuthStateSnapshot(storageState) {
+  fs.mkdirSync(path.dirname(AUTH_STATE_PATH), { recursive: true });
+  fs.writeFileSync(AUTH_STATE_PATH, JSON.stringify({
+    createdAt: new Date().toISOString(),
+    baseURL: APP_URL,
+    storageState
+  }, null, 2));
 }
 
 function isHeadlessRun(testInfo) {
@@ -35,20 +48,9 @@ function isHeadlessRun(testInfo) {
 
 async function openSession(testInfo, options = {}) {
   const viewport = options.viewport || null;
-  if (hasSavedAuthProfile()) {
-    const context = await chromium.launchPersistentContext(AUTH_PROFILE_DIR, {
-      headless: isHeadlessRun(testInfo),
-      viewport
-    });
-    const page = context.pages()[0] || await context.newPage();
-    return {
-      page,
-      close: async () => context.close()
-    };
-  }
-
   const browser = await chromium.launch({ headless: isHeadlessRun(testInfo) });
-  const context = await browser.newContext({ baseURL: APP_URL, viewport });
+  const savedAuthState = getSavedAuthState();
+  const context = await browser.newContext({ baseURL: APP_URL, viewport, ...(savedAuthState ? { storageState: savedAuthState } : {}) });
   const page = await context.newPage();
   return {
     page,
@@ -151,11 +153,15 @@ async function login(page) {
   const needsLogin = await loginScreen.isVisible().catch(() => false);
   if (firstState === 'app' && !needsLogin) {
     await page.waitForTimeout(2500);
+    const refreshedState = await page.context().storageState().catch(() => null);
+    if (refreshedState) saveAuthStateSnapshot(refreshedState);
     return;
   }
   if (hasAuthState) {
-    fs.writeFileSync(diagnosticsPath('ai-login-diagnostics.json'), JSON.stringify(await collectLoginDiagnostics(page, events), null, 2));
-    throw new Error('AUTH_STATE_INVALID — executar npm.cmd run test:ai:auth:manual');
+    if (!email || !password) {
+      fs.writeFileSync(diagnosticsPath('ai-login-diagnostics.json'), JSON.stringify(await collectLoginDiagnostics(page, events), null, 2));
+      throw new Error('AUTH_STATE_INVALID — executar npm.cmd run test:ai:auth:manual');
+    }
   }
   if (needsLogin) {
     await loginEmail.waitFor({ state: 'visible', timeout: 10000 });
@@ -182,6 +188,8 @@ async function login(page) {
   }
   await page.waitForTimeout(2500);
   await expect(aiInput, 'A app não carregou o painel IA após o login.').toBeVisible({ timeout: 30000 });
+  const refreshedState = await page.context().storageState().catch(() => null);
+  if (refreshedState) saveAuthStateSnapshot(refreshedState);
 }
 
 const make = category => (prompt, validate, criteria = [], options = {}) => ({ category, prompt, validate, criteria, ...options });
