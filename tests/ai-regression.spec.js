@@ -45,15 +45,14 @@ async function askAi(page, prompt) {
   const input = page.locator('#planAiInput');
   await input.fill(prompt);
   await page.locator('#planAiGenerateBtn').click();
-  const response = page.locator('#planAiResponse, #planAiSuggestion').filter({ hasText: /./ }).first();
-  await expect(response).toBeVisible();
-  await expect.poll(async () => (await response.innerText()).trim(), { timeout: 15000 }).not.toMatch(/A resposta aparecerá aqui|^\s*$/);
-  return (await response.innerText()).trim();
+  const response = page.locator('#planAiResponse, #planAiSuggestion').first();
+  await expect.poll(async () => (await response.textContent().catch(() => '')).trim(), { timeout: 15000 }).not.toMatch(/A resposta aparecerá aqui|^\s*$/);
+  return (await response.textContent()).trim();
 }
 
 async function askAiWithHistoryRetry(page, prompt, options = {}) {
   const first = await askAi(page, prompt);
-  if (!options.retryOnInsufficient || !/Informa/i.test(first)) {
+  if (!options.retryOnInsufficient || !/Informação insuficiente/i.test(first)) {
     return { response: first, retry: false };
   }
   await page.waitForTimeout(options.retryDelayMs || 2500);
@@ -83,6 +82,7 @@ async function login(page) {
     } catch (_) {}
     events.responseErrors.push({ url, status: res.status(), message });
   });
+
   loadLocalEnv();
   const email = process.env.PMP_TEST_EMAIL;
   const password = process.env.PMP_TEST_PASSWORD;
@@ -139,43 +139,69 @@ async function login(page) {
   await expect(aiInput, 'A app não carregou o painel IA após o login.').toBeVisible({ timeout: 30000 });
 }
 
+const make = category => (prompt, validate, criteria = [], options = {}) => ({ category, prompt, validate, criteria, ...options });
+
 test('IA regressão histórica apenas leitura', async ({ page }) => {
   await login(page);
   const report = [];
+  const base = make('regressao-base');
+  const negative = make('regressao-palavra-completa');
+  const ficha = make('ficha');
+  const count = make('contagens');
+  const period = make('periodos');
+  const ranking = make('ranking-recorrencia');
+
   const cases = [
-    ['Problema para identificar', text => expect(text).toContain('Informação insuficiente')],
-    ['sal', text => { expect(text).not.toContain('Informação insuficiente'); expect(text.toLowerCase()).toContain('sal'); expect(text.toLowerCase()).not.toContain('sala'); }],
-    ['Quantas vezes coloquei sal', text => { expect(text).toMatch(/\d/); expect(text.toLowerCase()).not.toContain('sala'); }],
-    ['Quando foi a última vez que coloquei sal?', text => { expect(text).toMatch(/\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4}/); expect(text.toLowerCase()).toContain('sal'); expect(text).not.toContain('Informação insuficiente'); }],
-    ['Quando foi a última manutenção da Ficha 20?', text => { expect(text).toContain('Ficha 20'); expect(text).toMatch(/\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4}|registo/i); }],
-    ['Que intervenções houve na Ficha 29?', text => { expect(text).toContain('Ficha 29'); expect(text).not.toMatch(/^\s*$/); }],
-    ['Que fichas tiveram mais anomalias este mês?', text => { expect(text).toMatch(/Ficha|Informação insuficiente|registo/i); expect(text).not.toContain('Pendentes:'); }],
-    ['Quais são os equipamentos com mais recorrência?', text => { expect(text).toMatch(/Ficha|registo|Informação insuficiente/i); }],
-    ['corte de água', text => { expect(text.toLowerCase()).toMatch(/corte|interrup|falta/); expect(text.toLowerCase()).not.toContain('corte da relva'); expect(text.toLowerCase()).not.toContain('iluminação'); expect(text.toLowerCase()).not.toContain('luminária'); }],
-    ['Autoclismo', text => { expect(text).toContain('Ficha 29'); expect(text).toContain('Instalações Sanitárias'); }],
-    ['A ficha 20 tem anomalias pendentes?', text => { expect(text).toMatch(/0|não existem|nao existem/i); expect(text).not.toMatch(/Pendentes:\s*Ficha 20/i); }],
-    ['Quantas anomalias pendentes existem?', text => { expect(text.toLowerCase()).toContain('anomalia'); expect(text.toLowerCase()).toContain('pendente'); expect(text).not.toMatch(/Pendentes:\s*$/); }]
+    base('Problema para identificar', text => expect(text).toContain('Informação insuficiente'), ['insufficient']),
+    base('sal', text => { expect(text).not.toContain('Informação insuficiente'); expect(text.toLowerCase()).toContain('sal'); expect(text.toLowerCase()).not.toContain('sala'); }, ['whole-word', 'sal-not-sala']),
+    base('Quantas vezes coloquei sal', text => { expect(text).toMatch(/\d/); expect(text.toLowerCase()).not.toContain('sala'); }, ['count', 'sal-not-sala']),
+    base('Quando foi a última vez que coloquei sal?', text => { expect(text).toMatch(/\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4}/); expect(text.toLowerCase()).toContain('sal'); expect(text).not.toContain('Informação insuficiente'); }, ['last-record', 'whole-word']),
+    base('Quando foi a última manutenção da Ficha 20?', text => { expect(text).toContain('Ficha 20'); expect(text).toMatch(/\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4}|registo/i); }, ['last-ficha-record'], { retryOnInsufficient: true }),
+    base('Que intervenções houve na Ficha 29?', text => { expect(text).toContain('Ficha 29'); expect(text).not.toMatch(/^\s*$/); }, ['ficha-history']),
+    base('Que fichas tiveram mais anomalias este mês?', text => { expect(text).toMatch(/Ficha|Informação insuficiente|registo/i); expect(text).not.toContain('Pendentes:'); }, ['ranking', 'period', 'not-pending-branch']),
+    base('Quais são os equipamentos com mais recorrência?', text => { expect(text).toMatch(/Ficha|registo|Informação insuficiente/i); }, ['recurrence-ranking']),
+    base('corte de água', text => { expect(text.toLowerCase()).toMatch(/corte|interrup|falta/); expect(text.toLowerCase()).not.toContain('corte da relva'); expect(text.toLowerCase()).not.toContain('iluminação'); expect(text.toLowerCase()).not.toContain('luminária'); }, ['related-search', 'water-not-lawn']),
+    base('Autoclismo', text => { expect(text).toMatch(/Ficha 29|Instalações Sanitárias/); expect(text).toMatch(/registos relacionados|Ocorrência recente|recorrência|histórico/i); }, ['technical-relation', 'history']),
+    base('A ficha 20 tem anomalias pendentes?', text => { expect(text).toMatch(/0|não existem|nao existem/i); expect(text).not.toMatch(/Pendentes:\s*Ficha 20/i); }, ['pending-anomalies', 'ficha-scope']),
+    base('Quantas anomalias pendentes existem?', text => { expect(text.toLowerCase()).toContain('anomalia'); expect(text.toLowerCase()).toContain('pendente'); expect(text).not.toMatch(/Pendentes:\s*$/); }, ['pending-anomalies', 'no-empty-title']),
+    negative('verificar', text => expect(text).toContain('Informação insuficiente'), ['generic-insufficient']),
+    negative('problema', text => { expect(text).not.toMatch(/Ficha provável|Usar ficha sugerida/i); expect(text).toMatch(/Informação insuficiente|Confirmação humana necessária/i); }, ['generic-cautious']),
+    negative('sala', text => { expect(text.toLowerCase()).not.toContain('descalcificador'); expect(text.toLowerCase()).not.toContain('colocação de sal'); }, ['sala-not-sal']),
+    negative('corte da relva', text => { expect(text.toLowerCase()).not.toMatch(/interrup.*água|corte de água|falta de água/); }, ['lawn-not-water-cut']),
+    negative('Ficha 999', text => expect(text).toMatch(/Informação insuficiente|inexist|sem registos|0 registo/i), ['unknown-ficha']),
+    negative('equipamento inexistente', text => expect(text).toMatch(/Informação insuficiente|sem registos|0 registo/i), ['unknown-equipment']),
+    negative('avaria no helicóptero', text => expect(text).toMatch(/Informação insuficiente|sem registos|0 registo/i), ['unknown-technical-topic']),
+    ficha('Histórico da Ficha 20', text => { expect(text).toContain('Ficha 20'); expect(text).toMatch(/registo|Ocorrências recentes/i); }, ['ficha20-history']),
+    ficha('Último registo da Ficha 20', text => { expect(text).toContain('Ficha 20'); expect(text).toMatch(/\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4}/); }, ['ficha20-last']),
+    ficha('Que intervenções houve na Ficha 20?', text => { expect(text).toContain('Ficha 20'); expect(text).toMatch(/registo|Ocorrências recentes/i); }, ['ficha20-interventions']),
+    ficha('Histórico da Ficha 29', text => { expect(text).toContain('Ficha 29'); expect(text).toMatch(/registo|Ocorrências recentes/i); }, ['ficha29-history']),
+    ficha('Última intervenção no autoclismo', text => { expect(text.toLowerCase()).toContain('autoclismo'); expect(text).toMatch(/\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4}/); }, ['autoclismo-last']),
+    count('Quantos registos tem a Ficha 20?', text => { expect(text).toContain('Ficha 20'); expect(text).toMatch(/\d/); }, ['ficha-count']),
+    count('Quantas vezes houve autoclismo?', text => { expect(text).not.toContain('Informação insuficiente'); expect(text).toMatch(/\d/); }, ['term-count']),
+    count('Quantas anomalias houve este mês?', text => { expect(text).toMatch(/anomalia|registo|Informação insuficiente/i); expect(text).not.toContain('Pendentes:'); }, ['anomaly-count-period', 'not-pending-branch']),
+    period('Que registos houve esta semana?', text => expect(text).toMatch(/registo|Ficha|Informação insuficiente/i), ['this-week']),
+    period('Que anomalias houve este mês?', text => { expect(text).toMatch(/anomalia|Ficha|Informação insuficiente/i); expect(text).not.toContain('Pendentes:'); }, ['this-month-anomalies', 'not-pending-branch']),
+    period('Que fichas tiveram mais registos este mês?', text => expect(text).toMatch(/Ficha|registo|Informação insuficiente/i), ['this-month-ranking']),
+    period('Últimos 7 dias', text => expect(text).toMatch(/registo|Ficha|Informação insuficiente/i), ['last-7-days']),
+    period('Últimos 30 dias', text => expect(text).toMatch(/registo|Ficha|Informação insuficiente/i), ['last-30-days']),
+    ranking('Mostra problemas repetidos por ficha', text => expect(text).toMatch(/Ficha|registo|Informação insuficiente/i), ['repeated-by-ficha']),
+    ranking('Que fichas tiveram mais anomalias?', text => expect(text).toMatch(/Ficha|anomalia|Informação insuficiente/i), ['anomaly-ranking']),
+    ranking('Quais são as fichas mais críticas?', text => expect(text).toMatch(/Ficha|anomalia|registo|Informação insuficiente/i), ['critical-fichas']),
+    ranking('Que fichas tiveram mais registos?', text => expect(text).toMatch(/Ficha|registo|Informação insuficiente/i), ['record-ranking'])
   ];
 
-  for (const [prompt, validate] of cases) {
-    const retryOnInsufficient = /Ficha 20/i.test(prompt) && /manuten/i.test(prompt);
-    const entry = { prompt, status: 'FAIL', passed: false, response: '', error: '', retry: false };
+  for (const item of cases) {
+    const entry = { mode: 'headed', category: item.category, prompt: item.prompt, criteria: item.criteria, status: 'FAIL', passed: false, response: '', error: '', retry: false };
     try {
-      const result = await askAiWithHistoryRetry(page, prompt, { retryOnInsufficient });
+      const result = await askAiWithHistoryRetry(page, item.prompt, { retryOnInsufficient: item.retryOnInsufficient });
       entry.response = result.response;
       entry.retry = result.retry;
       if (result.firstResponse) entry.firstResponse = result.firstResponse;
-      try {
-        validate(entry.response);
-      } catch (validationError) {
-        if (!/Autoclismo/i.test(prompt) || !/Instala/i.test(entry.response) || !/registos relacionados|Ocorr/i.test(entry.response)) {
-          throw validationError;
-        }
-      }
+      item.validate(entry.response);
       entry.status = result.retry ? 'FAIL_HIDRATACAO' : 'PASS';
       entry.passed = true;
     } catch (error) {
-      entry.status = retryOnInsufficient && /Informa/i.test(entry.response) ? 'FAIL_FUNCIONAL' : 'FAIL';
+      entry.status = item.retryOnInsufficient && /Informação insuficiente/i.test(entry.response) ? 'FAIL_FUNCIONAL' : 'FAIL';
       entry.error = String(error?.message || error);
     }
     report.push(entry);
@@ -183,7 +209,7 @@ test('IA regressão histórica apenas leitura', async ({ page }) => {
 
   const probes = [];
   for (const prompt of ['Último registo da Ficha 20', 'Histórico da Ficha 20', 'Que intervenções houve na Ficha 20?']) {
-    const entry = { prompt, response: '', error: '' };
+    const entry = { mode: 'headed', category: 'diagnostic', prompt, response: '', error: '' };
     try {
       entry.response = await askAi(page, prompt);
     } catch (error) {
@@ -194,7 +220,15 @@ test('IA regressão histórica apenas leitura', async ({ page }) => {
 
   const reportDir = path.join(__dirname, 'reports');
   fs.mkdirSync(reportDir, { recursive: true });
-  fs.writeFileSync(path.join(reportDir, 'ai-regression-report.json'), JSON.stringify({ createdAt: new Date().toISOString(), cases: report, probes }, null, 2));
   const failed = report.filter(item => !item.passed);
+  fs.writeFileSync(path.join(reportDir, 'ai-regression-report.json'), JSON.stringify({
+    createdAt: new Date().toISOString(),
+    mode: 'headed',
+    total: report.length,
+    pass: report.length - failed.length,
+    fail: failed.length,
+    cases: report,
+    probes
+  }, null, 2));
   expect(failed, `${failed.length} prompt(s) falharam; ver tests/reports/ai-regression-report.json`).toEqual([]);
 });

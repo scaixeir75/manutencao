@@ -2,7 +2,8 @@
   "scripts": {
     "test": "playwright test",
     "test:ai": "playwright test tests/ai-regression.spec.js",
-    "test:ai:headed": "playwright test tests/ai-regression.spec.js --headed"
+    "test:ai:headed": "playwright test tests/ai-regression.spec.js --headed",
+    "test:ai:backtest": "playwright test tests/ai-backtest.spec.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.46.0"
