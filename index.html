@@ -1229,6 +1229,48 @@ function render(){
   });
 }
 
+function inferFichaIdsFromRecord(record){
+  const text=norm(record?.note||record?.text||'');
+  const inferred=new Set();
+  if(/\belevador(?:es)?\b/.test(text) || (/\bkone\b/.test(text)&&/\b(avaria|anomalia|problema|erro|falha|botao|botoes|cabine|porta|portas|piso)\b/.test(text))) inferred.add('19');
+  return [...inferred];
+}
+
+function getFichaScopedEntries(fichaId){
+  const scopedId=String(fichaId||'');
+  const explicit=logsFor(scopedId).map(entry=>({...entry,__scopedFichaId:scopedId,__inferred:false}));
+  const inferred=diaryCache
+    .filter(entry=>!String(entry.fichaId||'')&&inferFichaIdsFromRecord(entry).includes(scopedId))
+    .map(entry=>({
+      id:`diary_${entry.id}`,
+      diaryId:entry.id,
+      date:diaryDateOf(entry)||entry.date||'',
+      week:entry.week||'',
+      status:entry.status||entry.type||entry.severity||'',
+      type:entry.type||'',
+      severity:entry.severity||'',
+      tech:entry.tech||'Registo Diário',
+      note:entry.text||entry.note||'',
+      text:entry.text||entry.note||'',
+      origin:entry.origin||'Registos Diários',
+      created:entry.timestamp||entry.created||'',
+      timestamp:entry.timestamp||'',
+      fichaId:scopedId,
+      fichaNome:CATALOG[scopedId]||'',
+      __scopedFichaId:scopedId,
+      __inferred:true
+    }));
+  const dedupe=new Map();
+  [...explicit,...inferred].forEach(entry=>dedupe.set(String(entry.id||entry.diaryId||`${scopedId}-${entry.date}-${entry.note||entry.text||''}`),entry));
+  return [...dedupe.values()];
+}
+
+function isAnomalyLikeEntry(entry){
+  const status=norm(entry.status||entry.type||entry.severity||'');
+  const text=norm(entry.note||entry.text||'');
+  return status.includes('anomalia') || (/urgente/.test(status) && /\b(avaria|anomalia|problema|erro|falha|sem funcionar|nao funciona)\b/.test(text));
+}
+
 function doSearch(){
   const raw=$('q').value,query=norm(raw);
   $('clearBtn').style.display=raw?'block':'none';
@@ -1239,10 +1281,11 @@ function doSearch(){
   const asNum=/^\d+$/.test(query)?+query:null;
   const hits=Object.entries(CATALOG).filter(([f,n])=>(asNum!==null&&+f===asNum)||norm(n).includes(query)).sort((a,b)=>a[1].localeCompare(b[1],'pt'));
   if(!hits.length){sv.innerHTML='<div class="empty">Nenhum equipamento encontrado.</div>';return;}
+  const pendingAnomalies=getPendingAnomalies();
   hits.forEach(([f,nome])=>{
     const weeks=Object.entries(SCHEDULE).filter(([,fs])=>fs.includes(+f)).map(([w])=>+w).sort((a,b)=>a-b);
-    const n=logCount(f);const card=document.createElement('div');card.className='sres';
-    card.innerHTML=`<div class="top"><div class="badge">${f}</div><div><div class="ficha" style="color:var(--accent);font-size:10px;font-weight:800;letter-spacing:1px">FICHA Nº ${f}</div><div class="nome"></div></div></div><div class="hint">${weeks.length} intervenções/ano · toca numa semana:</div><div class="wlist"></div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="ghostbtn openlog" style="font-size:11px;padding:7px 10px">📝 ${n?n+' registo'+(n>1?'s':''):'Registos'}</button><button class="ghostbtn goRep" style="font-size:11px;padding:7px 10px">📋 Relatório desta ficha</button></div>`;
+    const n=logCount(f),hasAnomalia=hasPendingAnomalyForFicha(f,pendingAnomalies);const card=document.createElement('div');card.className='sres';
+    card.innerHTML=`<div class="top"><div class="badge">${f}</div><div style="flex:1"><div class="ficha" style="color:var(--accent);font-size:10px;font-weight:800;letter-spacing:1px">FICHA Nº ${f}</div><div class="nome"></div></div><div>${hasAnomalia?'<span class="anomalia-badge">⚠ ANOMALIA</span>':''}</div></div><div class="hint">${weeks.length} intervenções/ano · toca numa semana:</div><div class="wlist"></div><div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="ghostbtn openlog" style="font-size:11px;padding:7px 10px">📝 ${n?n+' registo'+(n>1?'s':''):'Registos'}</button><button class="ghostbtn goRep" style="font-size:11px;padding:7px 10px">📋 Relatório desta ficha</button></div>`;
     card.querySelector('.nome').textContent=nome;
     const wl=card.querySelector('.wlist');
     weeks.forEach(w=>{const b=document.createElement('button');b.textContent=pad(w);b.onclick=()=>{$('q').value='';doSearch();selectWeek(w);};wl.appendChild(b);});
@@ -1617,8 +1660,10 @@ function scoreFichaSuggestion(contextText){
   const keywords=getQuestionKeywords(contextText);
   const normalizedText=norm(contextText||'');
   const sanitaryContext=/\b(wc|sanita|sanitario|sanitarios|instalacoes sanitarias|autoclismo|descarga|sem descarga|fuga de agua|fuga agua)\b/.test(normalizedText);
+  const elevatorContext=/\b(elevador(?:es)?|kone|cabine|botao|botoes|porta|portas|piso)\b/.test(normalizedText);
   const fichaBoosts={
     '25':['gerador','emergencia','arranca','arranque'],
+    '19':['elevador','elevadores','kone','cabine','botao','botoes','porta','portas','piso'],
     '29':['autoclismo','sanitario','sanitarios','sanita','wc','casa banho','lavatorio','torneira','descarga','sem descarga','fuga agua','fuga de agua','instalacoes sanitarias']
   };
   const scores=Object.entries(CATALOG).map(([id,name])=>{
@@ -1634,6 +1679,8 @@ function scoreFichaSuggestion(contextText){
     }
     if(sanitaryContext&&id==='29'){score+=5;reasons.push('contexto sanitário/WC');}
     if(sanitaryContext&&id==='20'){score-=4;reasons.push('contexto sanitário não corresponde a cozinha');}
+    if(elevatorContext&&id==='19'){score+=5;reasons.push('contexto de elevadores/Kone');}
+    if(elevatorContext&&id==='20'){score-=5;reasons.push('contexto de elevadores não corresponde a cozinha');}
     const diaryHits=diaryCache.filter(record=>String(record.fichaId||'')===String(id)&&matchesQuestionText(getDiaryRecordText(record),keywords)).length;
     const logHits=(LOGS[id]||[]).filter(record=>matchesQuestionText(getFichaRecordText(record,id),keywords)).length;
     if(diaryHits){score+=Math.min(diaryHits,2);reasons.push(`${diaryHits} registo(s) diário(s) relacionado(s)`);}
@@ -1732,7 +1779,7 @@ function isExplicitAnomalyResolution(anomaly,entry){
 
 function getPendingAnomalies(scope=''){
   const all=[];
-  Object.entries(CATALOG).forEach(([fichaId,name])=>{if(scope&&String(fichaId)!==String(scope))return;const entries=logsFor(fichaId).map(record=>({...record,_date:new Date(record.date||record.created||record.timestamp||0)})).sort((a,b)=>a._date-b._date);entries.forEach((anomaly,index)=>{if(!norm(anomaly.status||anomaly.type||anomaly.severity||'').includes('anomalia'))return;const explicit=entries.some(entry=>isExplicitAnomalyResolution(anomaly,entry));const later=entries.slice(index+1).filter(entry=>/conclu|corrigid|resolvid|tarefa conclu|intervencao conclu/.test(norm(entry.status||entry.type||'')));const related=explicit||later.some(entry=>isRelatedCorrection(anomaly,entry));all.push({id:anomaly.id,fichaId,name,date:anomaly.date||anomaly.created||'',description:anomaly.note||anomaly.text||'Anomalia sem descrição.',state:related?'resolved':'pending',possible:!related&&later.length>0});});});
+  Object.entries(CATALOG).forEach(([fichaId,name])=>{if(scope&&String(fichaId)!==String(scope))return;const entries=getFichaScopedEntries(fichaId).map(record=>({...record,_date:new Date(record.date||record.created||record.timestamp||0)})).sort((a,b)=>a._date-b._date);entries.forEach((anomaly,index)=>{if(!isAnomalyLikeEntry(anomaly))return;const explicit=entries.some(entry=>isExplicitAnomalyResolution(anomaly,entry));const later=entries.slice(index+1).filter(entry=>/conclu|corrigid|resolvid|tarefa conclu|intervencao conclu/.test(norm(entry.status||entry.type||'')));const related=explicit||later.some(entry=>isRelatedCorrection(anomaly,entry));all.push({id:anomaly.id,fichaId,name,date:anomaly.date||anomaly.created||'',description:anomaly.note||anomaly.text||'Anomalia sem descrição.',state:related?'resolved':'pending',possible:!related&&later.length>0});});});
   return {pending:all.filter(x=>x.state==='pending'),possible:all.filter(x=>x.possible),resolved:all.filter(x=>x.state==='resolved')};
 }
 
@@ -1790,9 +1837,15 @@ function cleanAiInput(inputText){
   return normalizeSpaces(String(inputText||'').replace(/^\s*\d+\s*[.)-]\s*/,'').replace(/[\u2192\u279c\u2794]/g,' ').replace(/\b(resultado esperado|deve responder|deve mostrar|apenas)\b.*$/i,'').trim());
 }
 
+function inferContextFichaId(text){
+  const normalized=norm(text||'');
+  if(/\b(elevador(?:es)?|kone|cabine|botao|botoes|porta|portas|piso)\b/.test(normalized))return '19';
+  return '';
+}
+
 function extractAiFichaId(text){
   const match=norm(text).match(/\bficha\s*(?:n\s*\.?\s*º?|nº|numero|#|:|_|-)?\s*(\d+)\b/);
-  return match?match[1]:'';
+  return match?match[1]:inferContextFichaId(text);
 }
 
 function isIncompleteFichaReference(text){
@@ -2047,6 +2100,10 @@ function aiRecordDateValue(record){const value=record.date||record.created||reco
 function getAiSearchableRecords(){
   const rows=[];
   diaryCache.forEach(record=>rows.push({source:'Registos Diários',fichaId:String(record.fichaId||''),name:record.fichaNome||CATALOG[record.fichaId]||'',date:diaryDateOf(record)||record.timestamp||'',status:record.severity||'',text:getDiaryRecordText(record),record}));
+  diaryCache.forEach(record=>{
+    if(String(record.fichaId||''))return;
+    inferFichaIdsFromRecord(record).forEach(fichaId=>rows.push({source:'Registos Diários',fichaId:String(fichaId),name:CATALOG[fichaId]||'',date:diaryDateOf(record)||record.timestamp||'',status:record.severity||'',text:getDiaryRecordText(record),record}));
+  });
   Object.entries(LOGS).forEach(([fichaId,entries])=>(entries||[]).forEach(record=>rows.push({source:'Histórico de Fichas',fichaId:String(fichaId),name:CATALOG[fichaId]||'',date:record.date||record.created||'',status:record.status||record.type||'',text:getFichaRecordText(record,fichaId),record})));
   return rows.map(row=>({...row,_date:aiRecordDateValue(row)})).sort((a,b)=>b._date-a._date);
 }
@@ -2061,17 +2118,33 @@ function getAiPeriod(question){
   return {label:'todos os dados disponíveis',start:null,end:null};
 }
 function getAiHistoryTerms(question){
-  const stop=new Set(['quando','ultima','ultimo','vez','coloquei','colocar','colocacao','houve','teve','tiveram','quais','qual','que','mais','menos','por','ficha','fichas','intervencoes','intervencao','manutencao','manutencoes','anomalias','anomalia','registos','registo','historico','problemas','problema','este','esta','mes','ano','semana','hoje','ontem','ultimos','dias']);
+  const stop=new Set(['quando','ultima','ultimo','vez','coloquei','colocar','colocacao','houve','teve','tiveram','quais','qual','que','mais','menos','por','ficha','fichas','intervencoes','intervencao','manutencao','manutencoes','anomalias','anomalia','registos','registo','historico','problemas','problema','este','esta','mes','ano','semana','hoje','ontem','ultimos','dias','sao','são','recente','recentes','urgente','urgentes','ficou','foram','corrigido','corrigida','corrigidos','corrigidas','resolvido','resolvida','resolvidos','resolvidas','pendentes','pendente','aberto','aberta','abertas','abertos','ainda','elevador','elevadores','boa','tarde','estive','aqui','zona','tecnica','tecnico','acho','pode','podera','ter','havido','novamente','qualquer','relacionado','relacionada','nao','não','tenho','certeza','foi','podes','poder','ver']);
   return getQuestionKeywords(question).filter(term=>!stop.has(term));
 }
-function getAiFilteredRecords(question){
-  const q=norm(question),ficha=extractAiFichaId(question),isLastFicha=!!ficha&&/\b(quando|ultima|ultimo)\b/.test(q),isFichaCount=!!ficha&&/\b(quantas|quantos|numero|total)\b/.test(q)&&/\b(registos|intervencoes|ocorrencias)\b/.test(q),terms=isLastFicha||isFichaCount||/mais recorrencia|repetidos|mais registos|mais anomalias/.test(q)?[]:getAiHistoryTerms(question),period=getAiPeriod(question);
-  return {period,terms,records:getAiSearchableRecords().filter(row=>(!ficha||row.fichaId===ficha)&&(!period.start||(row._date>=period.start&&row._date<=period.end))&&(!terms.length||terms.some(term=>hasWholeWord(row.text,term))))};
+function getAiPriorityHistoryTerms(question){
+  const priorityGroups=[
+    ['autoclismo','wc','sanita','sanitario','sanitarios','descarga','fuga','instalacoes','sanitarias'],
+    ['elevador','elevadores','kone','cabine','botao','botoes','porta','portas','piso'],
+    ['sal','descalcificador'],
+    ['corte','agua','interrupcao','falta','suspensao'],
+    ['gerador'],
+    ['caldeira','aqs','retorno'],
+    ['bomba','hidropressora'],
+    ['quadro','eletrico','disjuntor','diferencial']
+  ];
+  const terms=getAiHistoryTerms(question);
+  const matched=new Set();
+  priorityGroups.forEach(group=>group.forEach(term=>{if(hasWholeWord(question,term))matched.add(term);}));
+  return terms.filter(term=>matched.has(term));
 }
-function isAiAnomalyRecord(row){return /anomalia|urgente/.test(norm(row.status+' '+row.text));}
+function getAiFilteredRecords(question){
+  const q=norm(question),explicitFicha=extractAiFichaId(question),isLastFicha=!!explicitFicha&&/\b(quando|ultima|ultimo)\b/.test(q),isFichaCount=!!explicitFicha&&/\b(quantas|quantos|numero|total)\b/.test(q)&&/\b(registos|intervencoes|ocorrencias)\b/.test(q),terms=isLastFicha||isFichaCount||/mais recorrencia|repetidos|mais registos|mais anomalias/.test(q)?[]:getAiHistoryTerms(question),priorityTerms=terms.length?getAiPriorityHistoryTerms(question):[],suggestedFicha=!explicitFicha&&priorityTerms.length?scoreFichaSuggestion(question).historyFichaId:'',ficha=explicitFicha||suggestedFicha,period=getAiPeriod(question);
+  return {period,terms,priorityTerms,ficha,records:getAiSearchableRecords().filter(row=>(!ficha||row.fichaId===ficha)&&(!period.start||(row._date>=period.start&&row._date<=period.end))&&(!priorityTerms.length?(!terms.length||terms.some(term=>hasWholeWord(row.text,term))):priorityTerms.some(term=>hasWholeWord(row.text,term))))};
+}
+function isAiAnomalyRecord(row){return /anomalia|urgente/.test(norm(row.status+' '+row.text)) || /\b(avaria|problema|erro|falha)\b/.test(norm(row.text));}
 function formatAiHistoryAnswer(question){
   const q=norm(question),data=getAiFilteredRecords(question);let records=data.records;
-  if(/anomalia/.test(q))records=records.filter(isAiAnomalyRecord);
+  if(/anomalia|avaria|problema|urgente/.test(q))records=records.filter(isAiAnomalyRecord);
   if(!records.length)return 'Informação insuficiente.';
   const ficha=extractAiFichaId(question);
   const wantsLast=/\b(quando|ultima|ultimo)\b/.test(q),wantsTop=/mais recorrencia|repetidos|mais registos|mais anomalias/.test(q),wantsCount=/\b(quantas|quantos|numero|total)\b/.test(q);
