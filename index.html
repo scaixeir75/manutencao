@@ -1616,9 +1616,10 @@ function resetPlanAssistant({clearInput=false}={}){
 function scoreFichaSuggestion(contextText){
   const keywords=getQuestionKeywords(contextText);
   const normalizedText=norm(contextText||'');
+  const sanitaryContext=/\b(wc|sanita|sanitario|sanitarios|instalacoes sanitarias|autoclismo|descarga|sem descarga|fuga de agua|fuga agua)\b/.test(normalizedText);
   const fichaBoosts={
     '25':['gerador','emergencia','arranca','arranque'],
-    '29':['autoclismo','sanitario','sanitarios','sanita','wc','casa banho','lavatorio','torneira']
+    '29':['autoclismo','sanitario','sanitarios','sanita','wc','casa banho','lavatorio','torneira','descarga','sem descarga','fuga agua','fuga de agua','instalacoes sanitarias']
   };
   const scores=Object.entries(CATALOG).map(([id,name])=>{
     const normalizedName=norm(name);
@@ -1631,6 +1632,8 @@ function scoreFichaSuggestion(contextText){
     for(const hint of (fichaBoosts[id]||[])){
       if(normalizedText.includes(norm(hint))){score+=3;reasons.push(`indício específico: ${hint}`);}
     }
+    if(sanitaryContext&&id==='29'){score+=5;reasons.push('contexto sanitário/WC');}
+    if(sanitaryContext&&id==='20'){score-=4;reasons.push('contexto sanitário não corresponde a cozinha');}
     const diaryHits=diaryCache.filter(record=>String(record.fichaId||'')===String(id)&&matchesQuestionText(getDiaryRecordText(record),keywords)).length;
     const logHits=(LOGS[id]||[]).filter(record=>matchesQuestionText(getFichaRecordText(record,id),keywords)).length;
     if(diaryHits){score+=Math.min(diaryHits,2);reasons.push(`${diaryHits} registo(s) diário(s) relacionado(s)`);}
@@ -1684,7 +1687,7 @@ function isGeneralAiQuestion(question){
 }
 
 function findRelatedRecords(inputText){
-  const generic=new Set(['problema','problemas','verificar','verificacao','manutencao','situacao','anomalia','resolver','precisa','identificar']);
+  const generic=new Set(['problema','problemas','verificar','verificacao','manutencao','situacao','anomalia','avaria','avarias','resolver','precisa','identificar']);
   const terms=[...new Set(norm(inputText).split(/[^a-z0-9]+/).filter(t=>t.length>2&&!generic.has(t)))];
   const matches=[];
   if(!terms.length)return {terms,matches};
@@ -1776,7 +1779,7 @@ function formatRelatedAnswer(question,related){
 }
 
 function formatPendingAnomaliesAnswer(question){
-  const match=norm(question).match(/ficha\s*(\d+)/);const data=getPendingAnomalies(match&&match[1]);
+  const ficha=extractAiFichaId(question);const data=getPendingAnomalies(ficha);
   const pending=getDisplayPendingAnomalies(data);
   const lines=[`Foram encontradas ${pending.length} anomalia(s) pendente(s).`,`${data.possible.length} com correção posterior possível mas não confirmada; ${data.resolved.length} resolvida(s).`];
   if(pending.length)lines.push('','Pendentes:',...pending.map(x=>`- Ficha ${x.fichaId} — ${x.name} — ${x.date||'Sem data'} — ${x.description}`));
@@ -1787,14 +1790,35 @@ function cleanAiInput(inputText){
   return normalizeSpaces(String(inputText||'').replace(/^\s*\d+\s*[.)-]\s*/,'').replace(/[\u2192\u279c\u2794]/g,' ').replace(/\b(resultado esperado|deve responder|deve mostrar|apenas)\b.*$/i,'').trim());
 }
 
+function extractAiFichaId(text){
+  const match=norm(text).match(/\bficha\s*(?:n\s*\.?\s*º?|nº|numero|#|:|_|-)?\s*(\d+)\b/);
+  return match?match[1]:'';
+}
+
+function isIncompleteFichaReference(text){
+  return /^\s*ficha\s*(?:n\s*\.?\s*º?|nº|numero|#|:|_|-)?\s*$/i.test(norm(text));
+}
+
+function isPendingAnomaliesQuestion(text){
+  const q=norm(text);
+  return /\b(anomalias?\s+pendentes?|pendentes?|anomalias?\s+(por corrigir|em aberto)|avarias?\s+pendentes?|problemas?\s+pendentes?|por resolver|a resolver)\b/.test(q);
+}
+
+function isForbiddenAiAction(text){
+  const q=norm(text);
+  return /\b(corrige automaticamente|corrigir automaticamente|marca todas|marcar todas|apaga todos|apagar todos|cria um registo|criar um registo|muda a data|alterar a data)\b/.test(q);
+}
+
 function buildUnifiedAiAnalysis(inputText){
   const text=cleanAiInput(inputText);
   const normalized=norm(text);
+  if(isIncompleteFichaReference(text))return {intent:'insufficient',text:'Informação insuficiente.'};
+  if(isForbiddenAiAction(text))return {intent:'insufficient',text:'Não posso executar alterações automáticas nem alterar dados. Só uso dados reais existentes; qualquer correção ou registo exige ação humana explícita.'};
   const genericOnly=/^(problema para identificar|problema para verificar|verificar|ha um problema|anomalia|resolver situacao|precisa de manutencao)$/i.test(normalized);
   const hasTechnicalMatch=findCatalogMatches(text).length>0||/\b(autoclismo|wc|sanita|fuga|gerador|elevador|iluminacao|caldeira|aqs|bomba|quadro eletrico|corte de agua|falta de agua|interrupcao de agua)\b/.test(normalized);
   const related=findRelatedRecords(text);
+  if(isPendingAnomaliesQuestion(text)){const ficha=extractAiFichaId(text);const pendingData=getPendingAnomalies(ficha);return {intent:'pending-anomalies',text:formatPendingAnomaliesAnswer(text),pendingData};}
   if(text.length<3||genericOnly||(!hasTechnicalMatch&&text.length<12&&!related.matches.length))return {intent:'insufficient',text:'Informação insuficiente.'};
-  if(/(anomalias?\s+pendentes?|pendentes?.*anomalias?|por resolver|a resolver)/.test(normalized)&&/(quantas|quantos|quais|ha |tem anomalias)/.test(normalized)){const match=norm(text).match(/ficha\s*(\d+)/);const pendingData=getPendingAnomalies(match&&match[1]);return {intent:'pending-anomalies',text:formatPendingAnomaliesAnswer(text),pendingData};}
   if(isAiHistoryQuestion(text))return {intent:'history-query',text:formatAiHistoryAnswer(text)};
   if(isGeneralAiQuestion(text))return {intent:'quantitative',text:formatAiLocalAnswer(text)};
   if(related.matches.length&&wordTokens(text).length===1)return {intent:'related-search',text:formatRelatedAnswer(text,related),related};
@@ -1906,7 +1930,7 @@ async function copyAiSuggestion(){
 }
 
 function getQuestionKeywords(question){
-  const stop=new Set(['a','o','os','as','de','da','do','das','dos','e','em','no','na','nos','nas','um','uma','este','esta','isto','houve','vezes','quantas','quantos','manutencao','manutencoes','registo','registos','historico','ficha','equipamento','semana','ano','meses','anteriores','parecidas','problemas','intervencoes']);
+  const stop=new Set(['a','o','os','as','de','da','do','das','dos','e','em','no','na','nos','nas','um','uma','este','esta','isto','houve','vezes','quantas','quantos','manutencao','manutencoes','registo','registos','historico','ficha','equipamento','semana','ano','meses','anteriores','parecidas','problemas','problema','avaria','avarias','intervencoes']);
   return norm(question).split(/[^a-z0-9]+/).filter(word=>word.length>2&&!stop.has(word));
 }
 
@@ -1991,7 +2015,7 @@ function getAiHistoryTerms(question){
   return getQuestionKeywords(question).filter(term=>!stop.has(term));
 }
 function getAiFilteredRecords(question){
-  const q=norm(question),ficha=(q.match(/ficha\s*(\d+)/)||[])[1],isLastFicha=!!ficha&&/\b(quando|ultima|ultimo)\b/.test(q),isFichaCount=!!ficha&&/\b(quantas|quantos|numero|total)\b/.test(q)&&/\b(registos|intervencoes|ocorrencias)\b/.test(q),terms=isLastFicha||isFichaCount||/mais recorrencia|repetidos|mais registos|mais anomalias/.test(q)?[]:getAiHistoryTerms(question),period=getAiPeriod(question);
+  const q=norm(question),ficha=extractAiFichaId(question),isLastFicha=!!ficha&&/\b(quando|ultima|ultimo)\b/.test(q),isFichaCount=!!ficha&&/\b(quantas|quantos|numero|total)\b/.test(q)&&/\b(registos|intervencoes|ocorrencias)\b/.test(q),terms=isLastFicha||isFichaCount||/mais recorrencia|repetidos|mais registos|mais anomalias/.test(q)?[]:getAiHistoryTerms(question),period=getAiPeriod(question);
   return {period,terms,records:getAiSearchableRecords().filter(row=>(!ficha||row.fichaId===ficha)&&(!period.start||(row._date>=period.start&&row._date<=period.end))&&(!terms.length||terms.some(term=>hasWholeWord(row.text,term))))};
 }
 function isAiAnomalyRecord(row){return /anomalia|urgente/.test(norm(row.status+' '+row.text));}
@@ -1999,7 +2023,7 @@ function formatAiHistoryAnswer(question){
   const q=norm(question),data=getAiFilteredRecords(question);let records=data.records;
   if(/anomalia/.test(q))records=records.filter(isAiAnomalyRecord);
   if(!records.length)return 'Informação insuficiente.';
-  const ficha=(q.match(/ficha\s*(\d+)/)||[])[1];
+  const ficha=extractAiFichaId(question);
   const wantsLast=/\b(quando|ultima|ultimo)\b/.test(q),wantsTop=/mais recorrencia|repetidos|mais registos|mais anomalias/.test(q),wantsCount=/\b(quantas|quantos|numero|total)\b/.test(q);
   if(wantsTop){
     const onlyAnom=/anomalias/.test(q);const grouped=new Map();
@@ -2018,7 +2042,7 @@ function formatAiHistoryAnswer(question){
 
 function isAiHistoryQuestion(question){
   const q=norm(question);
-  return /\b(ultima|ultimo|quando|historico|intervencoes|intervencao|recorrencia|repetidos|mais registos|mais anomalias|anomalias houve|registos tem)\b/.test(q)||/ficha\s*\d+/.test(q);
+  return /\b(ultima|ultimo|quando|historico|intervencoes|intervencao|recorrencia|repetidos|mais registos|mais anomalias|anomalias houve|registos tem)\b/.test(q)||!!extractAiFichaId(question);
 }
 
 function formatAiLocalAnswer(question){
@@ -2101,6 +2125,7 @@ function generatePlanAiSuggestion(){
   const response=$('planAiResponse');
   if(analysis.intent==='occurrence'){
     const s=analysis.suggestion,h=analysis.history;
+    response.textContent=analysis.text;
     response.style.display='none';
     $('planAiProbableFicha').textContent=s.probable;
     $('planAiFichaReason').textContent=s.reason;
