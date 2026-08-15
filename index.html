@@ -1991,7 +1991,7 @@ function getAiHistoryTerms(question){
   return getQuestionKeywords(question).filter(term=>!stop.has(term));
 }
 function getAiFilteredRecords(question){
-  const q=norm(question),ficha=(q.match(/ficha\s*(\d+)/)||[])[1],terms=/mais recorrencia|repetidos|mais registos|mais anomalias/.test(q)?[]:getAiHistoryTerms(question),period=getAiPeriod(question);
+  const q=norm(question),ficha=(q.match(/ficha\s*(\d+)/)||[])[1],isLastFicha=!!ficha&&/\b(quando|ultima|ultimo)\b/.test(q),terms=isLastFicha||/mais recorrencia|repetidos|mais registos|mais anomalias/.test(q)?[]:getAiHistoryTerms(question),period=getAiPeriod(question);
   return {period,terms,records:getAiSearchableRecords().filter(row=>(!ficha||row.fichaId===ficha)&&(!period.start||(row._date>=period.start&&row._date<=period.end))&&(!terms.length||terms.some(term=>hasWholeWord(row.text,term))))};
 }
 function isAiAnomalyRecord(row){return /anomalia|urgente/.test(norm(row.status+' '+row.text));}
