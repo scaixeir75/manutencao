@@ -453,3 +453,56 @@ Limites mantidos:
 - sem alteração da gravação normal;
 - sem alteração de layout global;
 - sem modelo externo de IA.
+
+15/08/2026
+
+Registada a versão estável IA v0.3.
+
+Tag criada:
+
+`v0.3-ai-historico-seguranca-robustez-stable`
+
+Mensagem da tag:
+
+`stable: IA historico seguranca robustez e anomalias validadas`
+
+Objetivo:
+
+Fechar uma base estável do Assistente IA com histórico, segurança, robustez linguística, anomalias pendentes e validação remota/publicada concluída.
+
+Estado validado:
+
+- app publicada refletiu os commits relevantes;
+- headed remoto concluído com `9 passed`;
+- backtest concluído com sucesso;
+- working tree limpa no momento da criação da tag.
+
+Funcionalidades e robustez incluídas:
+
+- histórico IA por ficha;
+- contagens por ficha;
+- parser robusto de ficha explícita;
+- anomalias pendentes com resolução manual controlada;
+- segurança e anti-exfiltração;
+- bloqueio temporário por pedidos proibidos;
+- autenticação manual Playwright com `storageState`;
+- suite IA dividida em grupos estáveis;
+- elevadores/Ficha 19 com badge de anomalia;
+- autoclismo/Ficha 29 preservado em prompts longos;
+- regressões críticas controladas (`sal/sala`, `corte de água/relva`, `Ficha #20`, `ANOMALIAS PENDENTES`, `wc autoclismo fuga`).
+
+Commits relevantes da linha v0.3:
+
+- `1fcfca3` — `fix: formalizar bloqueio de pedidos proibidos na IA`
+- `05aea8a` — `test: adicionar auth manual e dividir regressao IA`
+- `1915676` — `fix: corrigir pendencias dos elevadores e relevancia IA`
+- `1f0845d` — `test: usar storageState na autenticacao IA`
+- `5a237b4` — `test: estabilizar anti-exfiltracao remota da IA`
+
+Próximos blocos sugeridos:
+
+- melhorar explicabilidade das respostas IA;
+- criar painel de pendências por ficha;
+- documentar o mapa de estados das anomalias;
+- separar o motor IA do `index.html` para testes unitários mais fortes;
+- continuar a adicionar testes novos sem duplicar casos já cobertos.

@@ -265,3 +265,55 @@ Commits relevantes:
 - `bad5b86` — `fix: alinhar badge com lista global de pendentes`
 - `987b04c` — `fix: atualizar cache da pwa`
 - `b51933e` — `fix: corrigir sintaxe que bloqueava login`
+
+## Versão estável IA v0.3
+
+Em 15/08/2026 foi criada e publicada a tag estável `v0.3-ai-historico-seguranca-robustez-stable`.
+
+Estado validado:
+
+- app publicada validada após push para `origin/main`;
+- headed remoto concluído com `9 passed`;
+- backtest concluído com sucesso;
+- working tree limpa no momento da criação da tag;
+- versão publicada alinhada com a validação local e remota.
+
+Objetivo da v0.3:
+
+- fechar uma base estável do Assistente IA transversal ao PMP;
+- consolidar histórico, segurança, robustez linguística e pendências reais;
+- garantir validação rastreável antes de novos blocos funcionais.
+
+Melhorias principais consolidadas:
+
+- histórico IA por ficha com perguntas sobre última intervenção, histórico e contagens;
+- parser robusto de ficha explícita, incluindo variantes como `Ficha #20`, `Ficha: 20`, `ficha_20` e `ficha-20`;
+- contagens por ficha com resposta baseada em dados reais;
+- pesquisa por palavra completa, preservando regras como `sal ≠ sala`;
+- pesquisa relacional mais criteriosa, preservando regras como `corte de água ≠ corte da relva`;
+- anomalias pendentes com lógica comum entre IA, histórico e badge visual;
+- ação humana `Corrigir` com criação de registo posterior e preservação do histórico original;
+- elevadores associados à Ficha 19 quando existem registos fortes sem `fichaId` explícito;
+- badge `⚠ ANOMALIA` coerente com a lista global de pendências;
+- prompts longos de autoclismo focados em Ficha 29 — Instalações Sanitárias;
+- segurança e anti-exfiltração com resposta formal, recusa reforçada e bloqueio temporário por sessão;
+- automação Playwright com `storageState`, autenticação manual e suite dividida em grupos estáveis.
+
+Riscos resolvidos na v0.3:
+
+- login bloqueado por erro de sintaxe local;
+- PWA instalada presa a cache antiga;
+- falsas sugestões de ficha em texto genérico;
+- confusão entre badge histórico e pendência real;
+- correções não relacionadas a fechar anomalias indevidamente;
+- falhas por substring simples na pesquisa (`sal`/`sala`);
+- timeout remoto no grupo de anti-exfiltração;
+- confusão entre elevadores e cozinha em perguntas ambíguas.
+
+Próximos blocos sugeridos:
+
+- melhorar explicabilidade das respostas IA, separando melhor factos, inferências e limites;
+- criar painel de pendências por ficha com navegação mais direta;
+- documentar o mapa de estados das anomalias pendentes, possíveis e resolvidas;
+- separar gradualmente o motor IA do `index.html` para testes unitários mais fortes;
+- continuar a expandir testes com novos casos sem repetir cenários já cobertos.
