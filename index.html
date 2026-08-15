@@ -1991,7 +1991,7 @@ function getAiHistoryTerms(question){
   return getQuestionKeywords(question).filter(term=>!stop.has(term));
 }
 function getAiFilteredRecords(question){
-  const q=norm(question),ficha=(q.match(/ficha\s*(\d+)/)||[])[1],isLastFicha=!!ficha&&/\b(quando|ultima|ultimo)\b/.test(q),terms=isLastFicha||/mais recorrencia|repetidos|mais registos|mais anomalias/.test(q)?[]:getAiHistoryTerms(question),period=getAiPeriod(question);
+  const q=norm(question),ficha=(q.match(/ficha\s*(\d+)/)||[])[1],isLastFicha=!!ficha&&/\b(quando|ultima|ultimo)\b/.test(q),isFichaCount=!!ficha&&/\b(quantas|quantos|numero|total)\b/.test(q)&&/\b(registos|intervencoes|ocorrencias)\b/.test(q),terms=isLastFicha||isFichaCount||/mais recorrencia|repetidos|mais registos|mais anomalias/.test(q)?[]:getAiHistoryTerms(question),period=getAiPeriod(question);
   return {period,terms,records:getAiSearchableRecords().filter(row=>(!ficha||row.fichaId===ficha)&&(!period.start||(row._date>=period.start&&row._date<=period.end))&&(!terms.length||terms.some(term=>hasWholeWord(row.text,term))))};
 }
 function isAiAnomalyRecord(row){return /anomalia|urgente/.test(norm(row.status+' '+row.text));}
@@ -2012,7 +2012,7 @@ function formatAiHistoryAnswer(question){
     const latest=records.filter(row=>row._date.getTime()===records[0]._date.getTime());
     return [`Última intervenção encontrada${ficha?' na Ficha '+ficha:''}:`,'',...latest.slice(0,3).map(row=>`- ${row.date||'Sem data'} — Ficha ${row.fichaId||'sem ficha'} — ${row.name||'Sem ficha'} — ${buildAiSummary(row.text)} (${row.source})`),'','Confirmação humana necessária.'].join('\n');
   }
-  if(wantsCount)return [`Foram encontrados ${records.length} registo(s) relacionados em ${data.period.label}.`,'','Detalhe:',`- ${records.filter(x=>x.source==='Registos Diários').length} em Registos Diários`,`- ${records.filter(x=>x.source==='Histórico de Fichas').length} no Histórico de Fichas`,'','Confirmação humana necessária.'].join('\n');
+  if(wantsCount)return [`${ficha?`Ficha ${ficha} — ${CATALOG[ficha]||'Sem ficha'} tem`:'Foram encontrados'} ${records.length} registo(s) relacionados em ${data.period.label}.`,'','Detalhe:',`- ${records.filter(x=>x.source==='Registos Diários').length} em Registos Diários`,`- ${records.filter(x=>x.source==='Histórico de Fichas').length} no Histórico de Fichas`,'','Confirmação humana necessária.'].join('\n');
   return [`Foram encontrados ${records.length} registo(s) relacionados${ficha?' com a Ficha '+ficha:''}.`,'','Ocorrências recentes:',...records.slice(0,5).map(row=>`- ${row.date||'Sem data'} — Ficha ${row.fichaId||'sem ficha'} — ${buildAiSummary(row.text)} (${row.source})`),'','Confirmação humana necessária.'].join('\n');
 }
 
