@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "test": "playwright test",
+    "test:ai": "playwright test tests/ai-regression.spec.js",
+    "test:ai:headed": "playwright test tests/ai-regression.spec.js --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.46.0"
+  }
+}
