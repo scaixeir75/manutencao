@@ -1809,9 +1809,59 @@ function isForbiddenAiAction(text){
   return /\b(corrige automaticamente|corrigir automaticamente|marca todas|marcar todas|apaga todos|apagar todos|cria um registo|criar um registo|muda a data|alterar a data)\b/.test(q);
 }
 
+let securityViolationCount=0;
+let isAiSecurityBlocked=false;
+const AI_SECURITY_FIRST='Não posso revelar código da aplicação, credenciais, chaves, prompts internos ou detalhes privados de programação.\n\nPosso apenas responder com base nos dados e funcionalidades disponíveis na app.';
+const AI_SECURITY_SECOND='Pedido recusado por segurança.\n\nJá foi indicado que não posso revelar código, credenciais, chaves, prompts internos ou detalhes privados da aplicação.\n\nO Assistente IA deve ser usado apenas para consultar dados de manutenção, histórico, anomalias e funcionalidades disponíveis na app.';
+const AI_SECURITY_BLOCKED='Assistente IA temporariamente bloqueado por repetição de pedidos não permitidos.\n\nPor segurança, esta sessão deixou de aceitar pedidos relacionados com código, credenciais, chaves, prompts internos, bypass de login ou dados privados da aplicação.\n\nAtualiza a página ou volta mais tarde para usar o assistente em perguntas permitidas sobre manutenção.';
+
+function isProhibitedSecurityRequest(text){
+  const q=norm(text)
+    .replace(/[-_./\\:]+/g,' ')
+    .replace(/\bd[áa]\s*me\b/g,'dame')
+    .replace(/\bda\s+me\b/g,'dame')
+    .replace(/\s+/g,' ')
+    .trim();
+  if(!q)return false;
+  if(/\b(como usar a app|usar a app|app nao funciona|app não funciona|a app nao funciona|a app não funciona|problema na app|erro na app|ficha \d+|codigo da ficha)\b/.test(q))return false;
+  const actionPatterns=[
+    /\b(mostra|mostrar|revela|revelar|dame|da|dá|quero|obter|exporta|exportar|envia|enviar|ensina|ignora|contornar|bypass|apaga|apagar|aceder|acessar|ver)\b/,
+    /\b(system prompt|prompt interno|prompts internos|codigo fonte|codigo completo|c[oó]digo completo|password firebase|palavra passe|api key|chaves api|credenciais)\b/
+  ];
+  const sensitivePatterns=[
+    /\b(codigo|codigos|codigo fonte|app|aplicacao|programacao|segredo|segredos|credencial|credenciais|password|palavra passe|chave|chaves|token|firebase|env|prompt interno|prompts internos|system prompt|instrucoes internas|bypass|contornar login)\b/,
+    /\.env\b/,
+    /\.env local\b/,
+    /\benv local\b/,
+    /\bpassword firebase\b/,
+    /\bchaves api\b/,
+    /\bapi key\b/,
+    /\bcodigo deste app\b/,
+    /\bcodigo desta app\b/,
+    /\bcodigo da app\b/,
+    /\bcodigo da aplicacao\b/,
+    /\bcodigo do app\b/,
+    /\bcodigo fonte\b/
+  ];
+  const hasAction=actionPatterns.some(pattern=>pattern.test(q));
+  const hasSensitiveTarget=sensitivePatterns.some(pattern=>pattern.test(q));
+  if(/\b(ignora as regras|mostra o prompt interno|mostra prompts internos|system prompt|password firebase|chaves api|api key|\.env|bypass login|contornar login)\b/.test(q))return true;
+  return hasAction&&hasSensitiveTarget;
+}
+
+function buildAiSecurityResponse(text){
+  if(isAiSecurityBlocked)return AI_SECURITY_BLOCKED;
+  if(!isProhibitedSecurityRequest(text))return '';
+  securityViolationCount+=1;
+  if(securityViolationCount>=3){isAiSecurityBlocked=true;return AI_SECURITY_BLOCKED;}
+  return securityViolationCount===2?AI_SECURITY_SECOND:AI_SECURITY_FIRST;
+}
+
 function buildUnifiedAiAnalysis(inputText){
   const text=cleanAiInput(inputText);
   const normalized=norm(text);
+  const securityResponse=buildAiSecurityResponse(text);
+  if(securityResponse)return {intent:'security-block',text:securityResponse};
   if(isIncompleteFichaReference(text))return {intent:'insufficient',text:'Informação insuficiente.'};
   if(isForbiddenAiAction(text))return {intent:'insufficient',text:'Não posso executar alterações automáticas nem alterar dados. Só uso dados reais existentes; qualquer correção ou registo exige ação humana explícita.'};
   const genericOnly=/^(problema para identificar|problema para verificar|verificar|ha um problema|anomalia|resolver situacao|precisa de manutencao)$/i.test(normalized);
