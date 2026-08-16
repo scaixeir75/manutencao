@@ -1748,7 +1748,7 @@ function formatFichaSuggestion(contextText){
 
 function isGeneralAiQuestion(question){
   const normalized=norm(question||'');
-  return /\?$/.test(question.trim())||/\b(quantas|quantos|numero|número|total|houve|ha|há|existem|existe|quais|qual|quando|onde|historico|histórico|manutencao|manutenção)\b/.test(normalized);
+  return /\?$/.test(question.trim())||/\b(quantas|quantos|numero|número|total|soma|quantidade|quanto|houve|ha|há|existem|existe|quais|qual|quando|onde|historico|histórico|manutencao|manutenção)\b/.test(normalized);
 }
 
 function findRelatedRecords(inputText){
@@ -2076,6 +2076,71 @@ function recordYear(value){
   return Number.isNaN(date.getTime())?null:date.getFullYear();
 }
 
+function getAiRequestedYear(question){
+  const normalized=norm(question||'');
+  const match=normalized.match(/\b(20\d{2})\b/);
+  return match?Number(match[1]):null;
+}
+
+function parseAiQuantityMentions(text){
+  const normalized=norm(text||'');
+  const pattern=/(cerca de|aproximadamente|aprox\.?|~)?\s*(\d+(?:[.,]\d+)?)\s*(kg|quilo(?:s)?|kgs?)\b/g;
+  const mentions=[];
+  for(const match of normalized.matchAll(pattern)){
+    const value=Number(String(match[2]).replace(',','.'));
+    if(Number.isNaN(value))continue;
+    const around=normalized.slice(Math.max(0,(match.index||0)-18),(match.index||0)+match[0].length+18);
+    const approximate=/cerca|aproximad|aprox|~/.test(around);
+    mentions.push({value,approximate,raw:match[0].trim()});
+  }
+  return mentions;
+}
+
+function summarizeAiQuantityMentions(question,records){
+  const mentions=records.map(row=>{
+    const sourceText=row.source==='Registos Diários'
+      ? getDiaryRecordText(row.record)
+      : getFichaRecordText(row.record,row.fichaId);
+    const quantityMentions=parseAiQuantityMentions(sourceText);
+    const total=quantityMentions.reduce((sum,item)=>sum+item.value,0);
+    return {
+      ...row,
+      quantityMentions,
+      quantityTotal:total,
+      quantityApproximate:quantityMentions.some(item=>item.approximate)
+    };
+  });
+  const withQuantity=mentions.filter(row=>row.quantityMentions.length>0);
+  const withoutQuantity=mentions.filter(row=>row.quantityMentions.length===0);
+  const total=withQuantity.reduce((sum,row)=>sum+row.quantityTotal,0);
+  const approximate=withQuantity.some(row=>row.quantityApproximate);
+  return {mentions,withQuantity,withoutQuantity,total,approximate,question};
+}
+
+function aiQuantitySortValue(row){
+  const value=row.date||row.record?.date||row.record?.created||row.record?.timestamp||'';
+  const date=new Date(String(value).length===10?value+'T12:00:00':value);
+  return Number.isNaN(date.getTime())?0:date.getTime();
+}
+
+function formatAmbiguousQuantityAnswer(question,facts,total){
+  const period=facts.requestedYear||facts.wantsThisYear?(facts.requestedYear||facts.currentYear):null;
+  const term=facts.keywords.find(word=>!['total','soma','quantidade','quanto','valor','peso','custo','acumulado'].includes(word))||'termo indicado';
+  const periodText=period?` em ${period}`:'';
+  return [
+    `Informação insuficiente para calcular um total de “${term}”${periodText}.`,
+    '',
+    `Foram encontrados ${total} registo(s) relacionados com “${term}”${periodText}, mas a pergunta não indica que total pretende calcular.`,
+    '',
+    'Pode perguntar, por exemplo:',
+    `- quantos registos houve sobre “${term}”${periodText};`,
+    `- quais foram as intervenções relacionadas com “${term}”;`,
+    `- última intervenção relacionada com “${term}”.`,
+    '',
+    'Confirmação humana necessária.'
+  ].join('\n');
+}
+
 function getDiaryRecordText(record){
   return [record.text,record.fichaNome,record.severity].filter(Boolean).join(' ');
 }
@@ -2093,13 +2158,15 @@ function collectAiLocalFacts(question){
   const catalogMatches=findCatalogMatches(question);
   const matchedFichaIds=new Set(catalogMatches.map(match=>String(match.id)));
   const wantsThisYear=norm(question).includes('este ano');
+  const requestedYear=getAiRequestedYear(question);
   const currentYear=new Date().getFullYear();
+  const yearFilter=requestedYear|| (wantsThisYear?currentYear:null);
   const weeklyFichaIds=new Set((SCHEDULE[String(week)]||[]).map(id=>String(id)));
 
   const relatedDiary=diaryCache.filter(record=>{
     const sameFicha=record.fichaId&&matchedFichaIds.has(String(record.fichaId));
     const textMatch=keywords.length&&matchesQuestionText(getDiaryRecordText(record),keywords);
-    const sameYear=!wantsThisYear||recordYear(diaryDateOf(record)||record.timestamp)===currentYear;
+    const sameYear=!yearFilter||recordYear(diaryDateOf(record)||record.timestamp)===yearFilter;
     return sameYear&&(sameFicha||textMatch);
   });
 
@@ -2108,13 +2175,13 @@ function collectAiLocalFacts(question){
     const sameFicha=matchedFichaIds.has(String(fichaId));
     (entries||[]).forEach(record=>{
       const textMatch=keywords.length&&matchesQuestionText(getFichaRecordText(record,fichaId),keywords);
-      const sameYear=!wantsThisYear||recordYear(record.date||record.created)===currentYear;
+      const sameYear=!yearFilter||recordYear(record.date||record.created)===yearFilter;
       if(sameYear&&(sameFicha||textMatch))relatedFicha.push({fichaId,record});
     });
   });
 
   const weeklyMatches=catalogMatches.filter(match=>weeklyFichaIds.has(String(match.id)));
-  return {keywords,catalogMatches,relatedDiary,relatedFicha,weeklyMatches,wantsThisYear,currentYear};
+  return {keywords,catalogMatches,relatedDiary,relatedFicha,weeklyMatches,wantsThisYear,currentYear,requestedYear,yearFilter};
 }
 
 function aiRecordDateValue(record){const value=record.date||record.created||record.timestamp||'';const date=typeof value==='number'?new Date(value):new Date(String(value).length===10?value+'T12:00:00':value);return Number.isNaN(date.getTime())?new Date(0):date;}
@@ -2203,6 +2270,8 @@ function formatAiLocalAnswer(question){
   const total=facts.relatedDiary.length+facts.relatedFicha.length;
   const normalizedQuestion=norm(question);
   const isQuantitativeQuestion=/\b(quantas|quantos|numero|número|total)\b/.test(normalizedQuestion);
+  const wantsQuantitySum=/\b(total|soma|quantidade|quanto)\b/.test(normalizedQuestion)||/\bkg\b/.test(normalizedQuestion)||/\bquilo(?:s|s)?\b/.test(normalizedQuestion);
+  const quantityFacts=summarizeAiQuantityMentions(question,[...facts.relatedDiary.map(record=>({source:'Registos Diários',fichaId:String(record.fichaId||''),name:record.fichaNome||CATALOG[record.fichaId]||'',date:diaryDateOf(record)||record.timestamp||'',record})),...facts.relatedFicha.map(item=>({source:'Histórico de Fichas',fichaId:String(item.fichaId||''),name:CATALOG[item.fichaId]||'',date:item.record.date||item.record.created||'',record:item.record}))]);
   const factsLines=[];
   const inferenceLines=[];
   const recommendationLines=[];
@@ -2220,6 +2289,47 @@ function formatAiLocalAnswer(question){
   factsLines.push(`${facts.relatedFicha.length} registos estão no histórico de fichas.`);
   if(facts.weeklyMatches.length){
     factsLines.push('No plano da semana atual existem intervenções para: '+facts.weeklyMatches.map(match=>`Ficha ${match.id} — ${match.name}`).join('; ')+'.');
+  }
+
+  if(wantsQuantitySum){
+    const salContext=hasWholeWord(question,'sal')||hasWholeWord(question,'descalcificador')||facts.catalogMatches.some(match=>hasWholeWord(match.name,'sal')||hasWholeWord(match.name,'descalcificador'));
+    const hasExplicitMetric=/\b(kg|kgs|quilo|quilos|litro|litros|eur|euro|euros|hora|horas|unidade|unidades)\b/.test(normalizedQuestion);
+    const hasCountMetric=/\b(registo|registos|manutencao|manutencoes|intervencao|intervencoes|ocorrencia|ocorrencias)\b/.test(normalizedQuestion);
+    if(salContext){
+      const quantityLines=quantityFacts.withQuantity
+        .slice()
+        .sort((a,b)=>aiQuantitySortValue(b)-aiQuantitySortValue(a))
+        .map(row=>{
+          const quantityText=row.quantityMentions.map(item=>item.raw).join(' + ');
+          return `- ${row.date||'Sem data'} — ${quantityText}${row.name?` — ${row.name}`:''}`;
+        });
+      const quantityYear=facts.requestedYear||(facts.wantsThisYear?facts.currentYear:null);
+      const header=quantityYear
+        ? `Em ${quantityYear} foram encontradas ${quantityFacts.mentions.length} colocações de sal.`
+        : `Foram encontradas ${quantityFacts.mentions.length} colocações de sal.`;
+      if(quantityFacts.withQuantity.length){
+        return [
+          header,
+          '',
+          `${quantityFacts.approximate?'Total aproximado':'Total identificado'}: ${quantityFacts.total} kg${quantityFacts.approximate?' (aproximado)':''}.`,
+          '',
+          'Detalhe:',
+          ...quantityLines,
+          ...(quantityFacts.withoutQuantity.length?[``,`Registos sem quantidade explícita: ${quantityFacts.withoutQuantity.length}.`]:[]),
+          '',
+          'Confirmação humana necessária.'
+        ].join('\n');
+      }
+      return [
+        header,
+        '',
+        'Não há quantidade explícita suficiente para calcular o total.',
+        ...(quantityFacts.withoutQuantity.length?[``,`Registos sem quantidade explícita: ${quantityFacts.withoutQuantity.length}.`]:[]),
+        '',
+        'Confirmação humana necessária.'
+      ].join('\n');
+    }
+    if(total>0&&!hasExplicitMetric&&!hasCountMetric)return formatAmbiguousQuantityAnswer(question,facts,total);
   }
 
   if(total>=2)inferenceLines.push('A existência de vários registos pode indicar recorrência, mas deve ser confirmada manualmente.');
