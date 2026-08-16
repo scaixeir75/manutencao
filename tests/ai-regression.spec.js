@@ -46,9 +46,19 @@ function isHeadlessRun(testInfo) {
   return testInfo.project.use.headless !== false;
 }
 
+function getConfiguredBrowserLaunchOptions(){
+  const channel=process.env.PMP_PLAYWRIGHT_CHANNEL?.trim();
+  const executablePath=process.env.PMP_PLAYWRIGHT_EXECUTABLE_PATH?.trim();
+  const options={};
+  if(channel) options.channel=channel;
+  if(executablePath) options.executablePath=executablePath;
+  return options;
+}
+
 async function openSession(testInfo, options = {}) {
   const viewport = options.viewport || null;
-  const browser = await chromium.launch({ headless: isHeadlessRun(testInfo) });
+  const launchOptions = { headless: isHeadlessRun(testInfo), ...getConfiguredBrowserLaunchOptions() };
+  const browser = await chromium.launch(launchOptions);
   const savedAuthState = getSavedAuthState();
   const context = await browser.newContext({ baseURL: APP_URL, viewport, ...(savedAuthState ? { storageState: savedAuthState } : {}) });
   const page = await context.newPage();
