@@ -2120,7 +2120,7 @@ async function copyAiBoxText(btn){
   if(!text){setCopyButtonFeedback(btn,'Vazio','empty');return;}
   try{
     await writeTextToClipboard(text);
-    setCopyButtonFeedback(btn,'OK','copied');
+    setCopyButtonFeedback(btn,'✓','copied');
   }catch(e){
     setCopyButtonFeedback(btn,'Erro','empty');
   }
