@@ -394,6 +394,13 @@ footer{margin-top:34px;text-align:center;color:var(--muted);font-size:12px}
 .ai-helper-list{margin:0;padding-left:17px;color:var(--text);font-size:13px;line-height:1.45}
 .ai-helper-note{color:var(--muted);font-size:12px;line-height:1.4;margin-top:8px}
 .ai-helper-actions{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.ai-copy-wrap{position:relative}
+.ai-copy-wrap .ai-helper-input,.ai-copy-wrap .ai-helper-response{padding-right:54px}
+.ai-copy-mini{position:absolute;top:7px;right:7px;z-index:2;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:6px;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.5px;padding:4px 7px;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.ai-copy-mini[data-copy-output]{display:none}
+.ai-copy-mini:hover{border-color:var(--accent);color:var(--accent)}
+.ai-copy-mini.copied{background:rgba(63,185,80,.16);color:var(--ok);border-color:rgba(63,185,80,.55)}
+.ai-copy-mini.empty{background:rgba(240,165,0,.12);color:var(--warn);border-color:rgba(240,165,0,.45)}
 .ai-helper-input{width:100%;background:#0A0E13;border:1px solid var(--border);border-radius:8px;color:var(--text);
   font-size:13px;line-height:1.4;padding:9px 10px;outline:none;font-family:inherit;resize:vertical;min-height:48px}
 .ai-helper-input:focus{border-color:var(--accent)}
@@ -672,17 +679,23 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
           </div>
         </div>
         <div class="ai-helper-state" id="planAiState">Podes escrever ou ditar uma pergunta sobre o plano da semana.</div>
-        <textarea class="ai-helper-input" id="planAiInput" rows="2" placeholder="Pergunta ou observação sobre o plano da semana"></textarea>
+        <div class="ai-copy-wrap">
+          <textarea class="ai-helper-input" id="planAiInput" rows="2" placeholder="Pergunta ou observação sobre o plano da semana"></textarea>
+          <button type="button" class="ai-copy-mini" data-copy-source="planAiInput" title="Copiar" aria-label="Copiar texto">⧉</button>
+        </div>
         <div class="ai-helper-label">RESPOSTA DA IA</div>
-        <div class="ai-helper-response" id="planAiResponse">A resposta aparecerá aqui depois de perguntares à IA.</div>
-        <div class="ai-helper-grid" id="planAiSuggestion">
-          <div class="ai-helper-item"><div class="ai-helper-label">FICHA PROVÁVEL</div><div class="ai-helper-text" id="planAiProbableFicha"></div></div>
-          <div class="ai-helper-item"><div class="ai-helper-label">MOTIVO DA SUGESTÃO</div><div class="ai-helper-text" id="planAiFichaReason"></div></div>
-          <div class="ai-helper-item"><div class="ai-helper-label">RESUMO</div><div class="ai-helper-text" id="planAiSummary"></div></div>
-          <div class="ai-helper-item"><div class="ai-helper-label">PRÓXIMA AÇÃO</div><div class="ai-helper-text" id="planAiNextAction"></div></div>
-          <div class="ai-helper-item"><div class="ai-helper-label">INFORMAÇÃO EM FALTA</div><ul class="ai-helper-list" id="planAiMissing"></ul></div>
-          <div class="ai-helper-item"><div class="ai-helper-label">HISTÓRICO RECENTE</div><ul class="ai-helper-list" id="planAiRecentHistory"></ul></div>
-          <div class="ai-helper-item"><div class="ai-helper-label">RECORRÊNCIA</div><div class="ai-helper-text" id="planAiRecurrence"></div></div>
+        <div class="ai-copy-wrap">
+          <button type="button" class="ai-copy-mini" data-copy-output="plan" title="Copiar" aria-label="Copiar texto">⧉</button>
+          <div class="ai-helper-response" id="planAiResponse">A resposta aparecerá aqui depois de perguntares à IA.</div>
+          <div class="ai-helper-grid" id="planAiSuggestion">
+            <div class="ai-helper-item"><div class="ai-helper-label">FICHA PROVÁVEL</div><div class="ai-helper-text" id="planAiProbableFicha"></div></div>
+            <div class="ai-helper-item"><div class="ai-helper-label">MOTIVO DA SUGESTÃO</div><div class="ai-helper-text" id="planAiFichaReason"></div></div>
+            <div class="ai-helper-item"><div class="ai-helper-label">RESUMO</div><div class="ai-helper-text" id="planAiSummary"></div></div>
+            <div class="ai-helper-item"><div class="ai-helper-label">PRÓXIMA AÇÃO</div><div class="ai-helper-text" id="planAiNextAction"></div></div>
+            <div class="ai-helper-item"><div class="ai-helper-label">INFORMAÇÃO EM FALTA</div><ul class="ai-helper-list" id="planAiMissing"></ul></div>
+            <div class="ai-helper-item"><div class="ai-helper-label">HISTÓRICO RECENTE</div><ul class="ai-helper-list" id="planAiRecentHistory"></ul></div>
+            <div class="ai-helper-item"><div class="ai-helper-label">RECORRÊNCIA</div><div class="ai-helper-text" id="planAiRecurrence"></div></div>
+          </div>
         </div>
         <div class="ai-helper-note">Supervisão humana necessária: esta sugestão não altera o plano nem executa ações críticas.</div>
       </section>
@@ -775,37 +788,43 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
           </div>
         </div>
         <div class="ai-helper-state" id="aiHelperState">Escreve primeiro a descrição do registo e depois faz uma pergunta à IA.</div>
-        <textarea class="ai-helper-input" id="aiDiaryInput" rows="2" placeholder="Pergunta ou observação sobre este registo"></textarea>
+        <div class="ai-copy-wrap">
+          <textarea class="ai-helper-input" id="aiDiaryInput" rows="2" placeholder="Pergunta ou observação sobre este registo"></textarea>
+          <button type="button" class="ai-copy-mini" data-copy-source="aiDiaryInput" title="Copiar" aria-label="Copiar texto">⧉</button>
+        </div>
         <div class="ai-helper-label" id="aiGeneralResponseLabel" style="display:none">RESPOSTA DA IA</div>
-        <div class="ai-helper-response" id="aiGeneralResponse" style="display:none"></div>
-        <div class="ai-helper-grid" id="aiHelperSuggestion">
-          <div class="ai-helper-item">
-            <div class="ai-helper-label">FICHA PROVÁVEL</div>
-            <div class="ai-helper-text" id="aiProbableFicha"></div>
-          </div>
-          <div class="ai-helper-item">
-            <div class="ai-helper-label">MOTIVO DA SUGESTÃO</div>
-            <div class="ai-helper-text" id="aiFichaReason"></div>
-          </div>
-          <div class="ai-helper-item">
-            <div class="ai-helper-label">RESUMO</div>
-            <div class="ai-helper-text" id="aiSummary"></div>
-          </div>
-          <div class="ai-helper-item">
-            <div class="ai-helper-label">PRÓXIMA AÇÃO</div>
-            <div class="ai-helper-text" id="aiNextAction"></div>
-          </div>
-          <div class="ai-helper-item">
-            <div class="ai-helper-label">INFORMAÇÃO EM FALTA</div>
-            <ul class="ai-helper-list" id="aiMissing"></ul>
-          </div>
-          <div class="ai-helper-item">
-            <div class="ai-helper-label">HISTÓRICO RECENTE</div>
-            <ul class="ai-helper-list" id="aiRecentHistory"></ul>
-          </div>
-          <div class="ai-helper-item">
-            <div class="ai-helper-label">RECORRÊNCIA</div>
-            <div class="ai-helper-text" id="aiRecurrence"></div>
+        <div class="ai-copy-wrap">
+          <button type="button" class="ai-copy-mini" data-copy-output="diary" title="Copiar" aria-label="Copiar texto">⧉</button>
+          <div class="ai-helper-response" id="aiGeneralResponse" style="display:none"></div>
+          <div class="ai-helper-grid" id="aiHelperSuggestion">
+            <div class="ai-helper-item">
+              <div class="ai-helper-label">FICHA PROVÁVEL</div>
+              <div class="ai-helper-text" id="aiProbableFicha"></div>
+            </div>
+            <div class="ai-helper-item">
+              <div class="ai-helper-label">MOTIVO DA SUGESTÃO</div>
+              <div class="ai-helper-text" id="aiFichaReason"></div>
+            </div>
+            <div class="ai-helper-item">
+              <div class="ai-helper-label">RESUMO</div>
+              <div class="ai-helper-text" id="aiSummary"></div>
+            </div>
+            <div class="ai-helper-item">
+              <div class="ai-helper-label">PRÓXIMA AÇÃO</div>
+              <div class="ai-helper-text" id="aiNextAction"></div>
+            </div>
+            <div class="ai-helper-item">
+              <div class="ai-helper-label">INFORMAÇÃO EM FALTA</div>
+              <ul class="ai-helper-list" id="aiMissing"></ul>
+            </div>
+            <div class="ai-helper-item">
+              <div class="ai-helper-label">HISTÓRICO RECENTE</div>
+              <ul class="ai-helper-list" id="aiRecentHistory"></ul>
+            </div>
+            <div class="ai-helper-item">
+              <div class="ai-helper-label">RECORRÊNCIA</div>
+              <div class="ai-helper-text" id="aiRecurrence"></div>
+            </div>
           </div>
         </div>
         <div class="ai-helper-note">Supervisão humana necessária: esta sugestão não altera registos nem executa ações críticas.</div>
@@ -1613,6 +1632,15 @@ function setDiaryAssistantMode(mode){
   response.style.display=showGeneral?'block':'none';
   responseLabel.style.display=showGeneral?'block':'none';
   grid.style.display=showSuggestion?'grid':'none';
+  setAiOutputCopyVisible('diary',showGeneral||showSuggestion);
+}
+
+function setAiOutputCopyVisible(kind,visible){
+  document.querySelectorAll(`[data-copy-output="${kind}"]`).forEach(btn=>{
+    btn.style.display=visible?'block':'none';
+    btn.textContent=btn.dataset.label||'⧉';
+    btn.classList.remove('copied','empty');
+  });
 }
 
 function setDiarySuggestionItemVisibility(id, visible){
@@ -1672,6 +1700,7 @@ function resetPlanAssistant({clearInput=false}={}){
   ['planAiProbableFicha','planAiFichaReason','planAiSummary','planAiNextAction','planAiRecurrence'].forEach(id=>$(id).textContent='');
   ['planAiMissing','planAiRecentHistory'].forEach(id=>$(id).innerHTML='');
   if(clearInput&&$('planAiInput'))$('planAiInput').value='';
+  setAiOutputCopyVisible('plan',false);
 }
 
 function scoreFichaSuggestion(contextText){
@@ -2045,11 +2074,55 @@ async function copyAiSuggestion(){
   if(!aiSuggestionText)return;
   const btn=$('aiCopyBtn');
   try{
-    if(navigator.clipboard&&navigator.clipboard.writeText)await navigator.clipboard.writeText(aiSuggestionText);
-    else throw new Error('clipboard indisponível');
+    await writeTextToClipboard(aiSuggestionText);
     if(btn){btn.textContent='Copiado';setTimeout(()=>{btn.textContent='Copiar sugestão';},1600);}
   }catch(e){
     if(btn){btn.textContent='Não copiado';setTimeout(()=>{btn.textContent='Copiar sugestão';},1600);}
+  }
+}
+
+async function writeTextToClipboard(text){
+  if(navigator.clipboard&&navigator.clipboard.writeText)return navigator.clipboard.writeText(text);
+  const ta=document.createElement('textarea');
+  ta.value=text;ta.setAttribute('readonly','');ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);ta.select();
+  const ok=document.execCommand&&document.execCommand('copy');
+  document.body.removeChild(ta);
+  if(!ok)throw new Error('clipboard indisponível');
+}
+
+function visibleTextFrom(ids){
+  return ids.map(id=>$(id)).filter(el=>el&&getComputedStyle(el).display!=='none')
+    .map(el=>el.innerText||el.textContent||'').join('\n').trim();
+}
+
+function aiOutputText(kind){
+  const text=kind==='plan'
+    ? visibleTextFrom(['planAiResponse','planAiSuggestion'])
+    : visibleTextFrom(['aiGeneralResponse','aiHelperSuggestion']);
+  return /^A resposta aparecerá aqui/i.test(text)?'':text;
+}
+
+function setCopyButtonFeedback(btn,text,cls){
+  const original=btn.dataset.label||btn.textContent;
+  btn.dataset.label=original;
+  clearTimeout(btn._copyFeedbackTimer);
+  btn.classList.remove('copied','empty');
+  btn.textContent=text;btn.classList.add(cls);
+  btn._copyFeedbackTimer=setTimeout(()=>{btn.textContent=original;btn.classList.remove(cls);},1400);
+}
+
+async function copyAiBoxText(btn){
+  const sourceId=btn.dataset.copySource;
+  const outputKind=btn.dataset.copyOutput;
+  const source=sourceId?$(sourceId):null;
+  const text=(source?source.value:aiOutputText(outputKind)).trim();
+  if(!text){setCopyButtonFeedback(btn,'Vazio','empty');return;}
+  try{
+    await writeTextToClipboard(text);
+    setCopyButtonFeedback(btn,'OK','copied');
+  }catch(e){
+    setCopyButtonFeedback(btn,'Erro','empty');
   }
 }
 
@@ -2404,6 +2477,7 @@ function generatePlanAiSuggestion(){
     $('planAiSuggestion').style.display='none';
   }
   panel.classList.add('has-response');
+  setAiOutputCopyVisible('plan',true);
 }
 
 function switchView(view){
@@ -2549,6 +2623,7 @@ $('planAiMicBtn').onclick=()=>startAiDictation({
 });
 $('planAiGenerateBtn').onclick=generatePlanAiSuggestion;
 $('planAiClearBtn').onclick=()=>resetPlanAssistant({clearInput:true});
+document.querySelectorAll('.ai-copy-mini').forEach(btn=>btn.onclick=()=>copyAiBoxText(btn));
 resetDiaryAssistant({clearInput:false,forceInitialState:true});
 
 function initDiaryListener(){
