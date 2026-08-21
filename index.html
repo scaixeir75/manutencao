@@ -398,9 +398,10 @@ footer{margin-top:34px;text-align:center;color:var(--muted);font-size:12px}
 .ai-copy-wrap .ai-helper-input,.ai-copy-wrap .ai-helper-response{padding-right:54px}
 .ai-learning-actions{display:none;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin-top:8px}
 .ai-learning-actions.show{display:flex}
+.ai-learning-options{display:flex;gap:8px;flex-wrap:wrap;flex:1 1 100%;justify-content:flex-start}
 .ai-learning-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:var(--text);font-size:11px;font-weight:800;letter-spacing:.4px;padding:8px 10px;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
 .ai-learning-btn:hover{border-color:var(--accent);color:var(--accent)}
-.ai-learning-btn.confirmed{background:rgba(63,185,80,.16);border-color:rgba(63,185,80,.55);color:var(--ok)}
+.ai-learning-btn.applied{background:rgba(63,185,80,.16);border-color:rgba(63,185,80,.55);color:var(--ok)}
 .ai-learning-feedback{color:var(--muted);font-size:12px;line-height:1.35;min-height:16px;flex:1 1 220px;text-align:right}
 .ai-copy-mini{position:absolute;top:7px;right:7px;z-index:2;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:6px;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.5px;padding:4px 7px;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
 .ai-copy-mini[data-copy-output]{display:none}
@@ -704,7 +705,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
           </div>
           <div class="ai-learning-actions" id="planAiLearningActions">
             <div class="ai-learning-feedback" id="planAiLearningFeedback"></div>
-            <button type="button" class="ai-learning-btn" id="planAiConfirmSuggestionBtn">Confirmar sugestão</button>
+            <div class="ai-learning-options" id="planAiLearningOptions"></div>
             <button type="button" class="ai-learning-btn" id="planAiEditSuggestionBtn">Editar</button>
           </div>
         </div>
@@ -839,7 +840,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
           </div>
           <div class="ai-learning-actions" id="diaryAiLearningActions">
             <div class="ai-learning-feedback" id="diaryAiLearningFeedback"></div>
-            <button type="button" class="ai-learning-btn" id="diaryAiConfirmSuggestionBtn">Confirmar sugestão</button>
+            <div class="ai-learning-options" id="diaryAiLearningOptions"></div>
             <button type="button" class="ai-learning-btn" id="diaryAiEditSuggestionBtn">Editar</button>
           </div>
         </div>
@@ -1667,25 +1668,55 @@ function hasAiLearningSuggestion(text){
 function setAiLearningActionsVisible(kind, visible){
   const wrap=$(kind==='plan'?'planAiLearningActions':'diaryAiLearningActions');
   const feedback=$(kind==='plan'?'planAiLearningFeedback':'diaryAiLearningFeedback');
-  const confirmBtn=$(kind==='plan'?'planAiConfirmSuggestionBtn':'diaryAiConfirmSuggestionBtn');
+  const options=$(kind==='plan'?'planAiLearningOptions':'diaryAiLearningOptions');
   if(!wrap)return;
   wrap.classList.toggle('show',!!visible);
   wrap.style.display=visible?'flex':'none';
   if(!visible){
     if(feedback)feedback.textContent='';
-    if(confirmBtn)confirmBtn.classList.remove('confirmed');
+    if(options)options.querySelectorAll('.ai-learning-btn').forEach(btn=>btn.classList.remove('applied'));
   }
 }
 
-function setAiLearningFeedback(kind,text='',confirmed=false){
+function setAiLearningFeedback(kind,text=''){
   const feedback=$(kind==='plan'?'planAiLearningFeedback':'diaryAiLearningFeedback');
-  const confirmBtn=$(kind==='plan'?'planAiConfirmSuggestionBtn':'diaryAiConfirmSuggestionBtn');
   if(feedback)feedback.textContent=text;
-  if(confirmBtn)confirmBtn.classList.toggle('confirmed',!!confirmed);
 }
 
-function confirmAiLearningSuggestion(kind){
-  setAiLearningFeedback(kind,'Sugestão confirmada apenas nesta sessão. Nenhuma ação foi feita automaticamente.',true);
+function extractAiReformulations(text){
+  const lines=String(text||'').split('\n').map(line=>line.trim()).filter(Boolean);
+  const startIndex=lines.findIndex(line=>/^Pode reformular, por exemplo:/i.test(line));
+  if(startIndex<0)return [];
+  const options=[];
+  for(let i=startIndex+1;i<lines.length;i+=1){
+    const line=lines[i];
+    if(/^Nenhuma ação foi feita automaticamente\./i.test(line)||/^Confirmação humana necessária\./i.test(line)||/^🧠\s*/.test(line))break;
+    const match=line.match(/^(?:-|•)\s+(.+?)\s*;?$/);
+    if(match&&match[1])options.push(match[1].trim());
+  }
+  return options;
+}
+
+function applyAiReformulation(kind,question,btn){
+  const input=$(kind==='plan'?'planAiInput':'aiDiaryInput');
+  const state=$(kind==='plan'?'planAiState':'aiHelperState');
+  const options=$(kind==='plan'?'planAiLearningOptions':'diaryAiLearningOptions');
+  if(!input)return;
+  input.value=question;
+  input.focus();
+  const end=input.value.length;
+  if(input.setSelectionRange)input.setSelectionRange(end,end);
+  if(options)options.querySelectorAll('.ai-learning-btn').forEach(node=>node.classList.remove('applied'));
+  if(btn)btn.classList.add('applied');
+  if(state)state.textContent='Reformulação aplicada. Podes perguntar novamente à IA.';
+  setAiLearningFeedback(kind,'Nenhuma ação foi feita automaticamente.');
+}
+
+function renderAiLearningOptions(kind,text){
+  const optionsWrap=$(kind==='plan'?'planAiLearningOptions':'diaryAiLearningOptions');
+  if(!optionsWrap)return;
+  const options=extractAiReformulations(text).slice(0,3);
+  optionsWrap.innerHTML=options.map((option,index)=>`<button type="button" class="ai-learning-btn" data-learning-kind="${kind}" data-learning-option="${escapeHtml(option)}" title="Aplicar reformulação ${index+1}" aria-label="Aplicar reformulação">${escapeHtml(option)}</button>`).join('');
 }
 
 function editAiLearningSuggestion(kind){
@@ -1703,7 +1734,9 @@ function syncAiLearningActions(kind){
   const text=kind==='plan'
     ? (($('planAiResponse')&&$('planAiResponse').innerText)||'')
     : (($('aiGeneralResponse')&&$('aiGeneralResponse').innerText)||'');
-  setAiLearningActionsVisible(kind,hasAiLearningSuggestion(text));
+  const visible=hasAiLearningSuggestion(text);
+  renderAiLearningOptions(kind,text);
+  setAiLearningActionsVisible(kind,visible&&extractAiReformulations(text).length>0);
 }
 
 function setDiarySuggestionItemVisibility(id, visible){
@@ -2723,10 +2756,13 @@ $('planAiMicBtn').onclick=()=>startAiDictation({
 $('planAiGenerateBtn').onclick=generatePlanAiSuggestion;
 $('planAiClearBtn').onclick=()=>resetPlanAssistant({clearInput:true});
 document.querySelectorAll('.ai-copy-mini').forEach(btn=>btn.onclick=()=>copyAiBoxText(btn));
-$('diaryAiConfirmSuggestionBtn').onclick=()=>confirmAiLearningSuggestion('diary');
 $('diaryAiEditSuggestionBtn').onclick=()=>editAiLearningSuggestion('diary');
-$('planAiConfirmSuggestionBtn').onclick=()=>confirmAiLearningSuggestion('plan');
 $('planAiEditSuggestionBtn').onclick=()=>editAiLearningSuggestion('plan');
+document.addEventListener('click',event=>{
+  const btn=event.target.closest('[data-learning-kind][data-learning-option]');
+  if(!btn)return;
+  applyAiReformulation(btn.dataset.learningKind,btn.dataset.learningOption||'',btn);
+});
 resetDiaryAssistant({clearInput:false,forceInitialState:true});
 
 function initDiaryListener(){
