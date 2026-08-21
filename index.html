@@ -396,6 +396,12 @@ footer{margin-top:34px;text-align:center;color:var(--muted);font-size:12px}
 .ai-helper-actions{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
 .ai-copy-wrap{position:relative}
 .ai-copy-wrap .ai-helper-input,.ai-copy-wrap .ai-helper-response{padding-right:54px}
+.ai-learning-actions{display:none;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin-top:8px}
+.ai-learning-actions.show{display:flex}
+.ai-learning-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:var(--text);font-size:11px;font-weight:800;letter-spacing:.4px;padding:8px 10px;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.ai-learning-btn:hover{border-color:var(--accent);color:var(--accent)}
+.ai-learning-btn.confirmed{background:rgba(63,185,80,.16);border-color:rgba(63,185,80,.55);color:var(--ok)}
+.ai-learning-feedback{color:var(--muted);font-size:12px;line-height:1.35;min-height:16px;flex:1 1 220px;text-align:right}
 .ai-copy-mini{position:absolute;top:7px;right:7px;z-index:2;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:6px;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.5px;padding:4px 7px;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
 .ai-copy-mini[data-copy-output]{display:none}
 .ai-copy-mini:hover{border-color:var(--accent);color:var(--accent)}
@@ -696,6 +702,11 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
             <div class="ai-helper-item"><div class="ai-helper-label">HISTÓRICO RECENTE</div><ul class="ai-helper-list" id="planAiRecentHistory"></ul></div>
             <div class="ai-helper-item"><div class="ai-helper-label">RECORRÊNCIA</div><div class="ai-helper-text" id="planAiRecurrence"></div></div>
           </div>
+          <div class="ai-learning-actions" id="planAiLearningActions">
+            <div class="ai-learning-feedback" id="planAiLearningFeedback"></div>
+            <button type="button" class="ai-learning-btn" id="planAiConfirmSuggestionBtn">Confirmar sugestão</button>
+            <button type="button" class="ai-learning-btn" id="planAiEditSuggestionBtn">Editar</button>
+          </div>
         </div>
         <div class="ai-helper-note">Supervisão humana necessária: esta sugestão não altera o plano nem executa ações críticas.</div>
       </section>
@@ -825,6 +836,11 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
               <div class="ai-helper-label">RECORRÊNCIA</div>
               <div class="ai-helper-text" id="aiRecurrence"></div>
             </div>
+          </div>
+          <div class="ai-learning-actions" id="diaryAiLearningActions">
+            <div class="ai-learning-feedback" id="diaryAiLearningFeedback"></div>
+            <button type="button" class="ai-learning-btn" id="diaryAiConfirmSuggestionBtn">Confirmar sugestão</button>
+            <button type="button" class="ai-learning-btn" id="diaryAiEditSuggestionBtn">Editar</button>
           </div>
         </div>
         <div class="ai-helper-note">Supervisão humana necessária: esta sugestão não altera registos nem executa ações críticas.</div>
@@ -1633,6 +1649,7 @@ function setDiaryAssistantMode(mode){
   responseLabel.style.display=showGeneral?'block':'none';
   grid.style.display=showSuggestion?'grid':'none';
   setAiOutputCopyVisible('diary',showGeneral||showSuggestion);
+  if(!showGeneral)setAiLearningActionsVisible('diary',false);
 }
 
 function setAiOutputCopyVisible(kind,visible){
@@ -1641,6 +1658,52 @@ function setAiOutputCopyVisible(kind,visible){
     btn.textContent=btn.dataset.label||'⧉';
     btn.classList.remove('copied','empty');
   });
+}
+
+function hasAiLearningSuggestion(text){
+  return /🧠\s*(Sugestão da IA|Nota da IA):/i.test(String(text||''));
+}
+
+function setAiLearningActionsVisible(kind, visible){
+  const wrap=$(kind==='plan'?'planAiLearningActions':'diaryAiLearningActions');
+  const feedback=$(kind==='plan'?'planAiLearningFeedback':'diaryAiLearningFeedback');
+  const confirmBtn=$(kind==='plan'?'planAiConfirmSuggestionBtn':'diaryAiConfirmSuggestionBtn');
+  if(!wrap)return;
+  wrap.classList.toggle('show',!!visible);
+  wrap.style.display=visible?'flex':'none';
+  if(!visible){
+    if(feedback)feedback.textContent='';
+    if(confirmBtn)confirmBtn.classList.remove('confirmed');
+  }
+}
+
+function setAiLearningFeedback(kind,text='',confirmed=false){
+  const feedback=$(kind==='plan'?'planAiLearningFeedback':'diaryAiLearningFeedback');
+  const confirmBtn=$(kind==='plan'?'planAiConfirmSuggestionBtn':'diaryAiConfirmSuggestionBtn');
+  if(feedback)feedback.textContent=text;
+  if(confirmBtn)confirmBtn.classList.toggle('confirmed',!!confirmed);
+}
+
+function confirmAiLearningSuggestion(kind){
+  setAiLearningFeedback(kind,'Sugestão confirmada apenas nesta sessão. Nenhuma ação foi feita automaticamente.',true);
+}
+
+function editAiLearningSuggestion(kind){
+  const input=$(kind==='plan'?'planAiInput':'aiDiaryInput');
+  const state=$(kind==='plan'?'planAiState':'aiHelperState');
+  if(state)state.textContent='Edita a pergunta antes de voltar a confirmar com a IA.';
+  if(input){
+    input.focus();
+    const end=input.value.length;
+    if(input.setSelectionRange)input.setSelectionRange(0,end);
+  }
+}
+
+function syncAiLearningActions(kind){
+  const text=kind==='plan'
+    ? (($('planAiResponse')&&$('planAiResponse').innerText)||'')
+    : (($('aiGeneralResponse')&&$('aiGeneralResponse').innerText)||'');
+  setAiLearningActionsVisible(kind,hasAiLearningSuggestion(text));
 }
 
 function setDiarySuggestionItemVisibility(id, visible){
@@ -1688,6 +1751,7 @@ function resetDiaryAssistant({clearInput=false,forceInitialState=false}={}){
   if(useFichaBtn)useFichaBtn.style.display='none';
   delete panel.dataset.suggestedFichaId;
   aiSuggestionText='';
+  setAiLearningActionsVisible('diary',false);
 }
 
 function resetPlanAssistant({clearInput=false}={}){
@@ -1701,6 +1765,7 @@ function resetPlanAssistant({clearInput=false}={}){
   ['planAiMissing','planAiRecentHistory'].forEach(id=>$(id).innerHTML='');
   if(clearInput&&$('planAiInput'))$('planAiInput').value='';
   setAiOutputCopyVisible('plan',false);
+  setAiLearningActionsVisible('plan',false);
 }
 
 function scoreFichaSuggestion(contextText){
@@ -2002,7 +2067,7 @@ function generateDiaryAiSuggestion(){
   const question=$('aiDiaryInput')&&$('aiDiaryInput').value?$('aiDiaryInput').value.trim():'';
   const copyBtn=$('aiCopyBtn');
   const useFichaBtn=$('aiUseFichaBtn');
-  const contextText=text||question;
+  const contextText=question||text;
   const analysis=buildUnifiedAiAnalysis(contextText);
   if(!contextText||analysis.intent==='insufficient'){
     resetDiaryAssistant();
@@ -2013,6 +2078,7 @@ function generateDiaryAiSuggestion(){
     const response=analysis.text;
     setDiaryAssistantMode('general');
     if(analysis.intent==='pending-anomalies')renderPendingAiResponse($('aiGeneralResponse'),analysis);else $('aiGeneralResponse').innerHTML=formatAiResponseHtml(response);
+    syncAiLearningActions('diary');
     panel.dataset.suggestedFichaId='';
     aiSuggestionText=response;
     panel.classList.add('ready');
@@ -2494,6 +2560,7 @@ function generatePlanAiSuggestion(){
     const s=analysis.suggestion,h=analysis.history;
     response.innerHTML=formatAiResponseHtml(analysis.text);
     response.style.display='none';
+    setAiLearningActionsVisible('plan',false);
     setAiTextContent('planAiProbableFicha',s.probable);
     setAiTextContent('planAiFichaReason',s.reason);
     setAiTextContent('planAiSummary',buildAiSummary(analysis.input));
@@ -2506,6 +2573,7 @@ function generatePlanAiSuggestion(){
     response.style.display='block';
     if(analysis.intent==='pending-anomalies')renderPendingAiResponse(response,analysis);else response.innerHTML=formatAiResponseHtml(analysis.text);
     $('planAiSuggestion').style.display='none';
+    syncAiLearningActions('plan');
   }
   panel.classList.add('has-response');
   setAiOutputCopyVisible('plan',true);
@@ -2655,6 +2723,10 @@ $('planAiMicBtn').onclick=()=>startAiDictation({
 $('planAiGenerateBtn').onclick=generatePlanAiSuggestion;
 $('planAiClearBtn').onclick=()=>resetPlanAssistant({clearInput:true});
 document.querySelectorAll('.ai-copy-mini').forEach(btn=>btn.onclick=()=>copyAiBoxText(btn));
+$('diaryAiConfirmSuggestionBtn').onclick=()=>confirmAiLearningSuggestion('diary');
+$('diaryAiEditSuggestionBtn').onclick=()=>editAiLearningSuggestion('diary');
+$('planAiConfirmSuggestionBtn').onclick=()=>confirmAiLearningSuggestion('plan');
+$('planAiEditSuggestionBtn').onclick=()=>editAiLearningSuggestion('plan');
 resetDiaryAssistant({clearInput:false,forceInitialState:true});
 
 function initDiaryListener(){
