@@ -1992,6 +1992,7 @@ function buildUnifiedAiAnalysis(inputText){
       `Histórico recente: ${history.entries.length?history.entries.map(getHistoryEntrySummary).join('; '):'Informação insuficiente sobre histórico anterior.'}`,
       `Recorrência: ${recurrence}`,
       `Informação em falta: ${missing.length?missing.join('; '):'Nenhuma identificada'}`,
+      ...getAiSupervisedLearningLines(text,{related,suggestion,missing}),
       'Confirmação humana necessária.'].join('\n')};
 }
 
@@ -2205,13 +2206,40 @@ function formatAmbiguousQuantityAnswer(question,facts,total){
     '',
     `Foram encontrados ${total} registo(s) relacionados com “${term}”${periodText}, mas a pergunta não indica que total pretende calcular.`,
     '',
-    'Pode perguntar, por exemplo:',
+    '🧠 Sugestão da IA:',
+    '',
+    'A pergunta usa “total”, mas não indica que tipo de total pretende calcular.',
+    '',
+    'Pode reformular, por exemplo:',
     `- quantos registos houve sobre “${term}”${periodText};`,
     `- quais foram as intervenções relacionadas com “${term}”;`,
     `- última intervenção relacionada com “${term}”.`,
     '',
+    'Nenhuma ação foi feita automaticamente.',
+    '',
     'Confirmação humana necessária.'
   ].join('\n');
+}
+
+function getAiSupervisedLearningLines(question,{facts=null,related=null,suggestion=null,missing=[]}={}){
+  const q=norm(question||'');
+  const lines=[];
+  const vague=/\b(coisa|qualquer|problema|verificar|ver|historico|histórico|nao sei|não sei|talvez)\b/.test(q);
+  const technicalTerms=getAiPriorityHistoryTerms(question);
+  if(vague&&technicalTerms.length){
+    lines.push(`Ambiguidade detetada: a pergunta tem termos genéricos, mas também contém sinais técnicos (${technicalTerms.slice(0,3).join(', ')}).`);
+    lines.push('Se pretender uma resposta mais precisa, indique o equipamento ou a área principal.');
+  }
+  if(facts&&facts.catalogMatches&&facts.catalogMatches.length>1){
+    lines.push('Risco de associação incorreta: existe mais do que uma ficha/equipamento possível.');
+  }
+  if(related&&related.matches&&related.matches.length>3){
+    lines.push('Padrão observado: existem vários registos relacionados; pode haver recorrência, mas precisa de confirmação humana.');
+  }
+  if(suggestion&&suggestion.suggestedFichaId&&missing&&missing.length){
+    lines.push('Ainda falta informação para transformar esta sugestão numa indicação mais confiante.');
+  }
+  return lines.length?['','🧠 Nota da IA:',...lines.map(line=>'- '+line),'- Nenhuma ação foi feita automaticamente.']:[];
 }
 
 function getDiaryRecordText(record){
@@ -2349,6 +2377,7 @@ function formatAiLocalAnswer(question){
   const inferenceLines=[];
   const recommendationLines=[];
   const insufficientLines=[];
+  const learningLines=()=>getAiSupervisedLearningLines(question,{facts,related:null});
 
   if(facts.catalogMatches.length){
     factsLines.push('Foram identificadas fichas/equipamentos possíveis: '+facts.catalogMatches.map(match=>`Ficha ${match.id} — ${match.name}`).join('; ')+'.');
@@ -2435,6 +2464,7 @@ function formatAiLocalAnswer(question){
       `- ${facts.relatedDiary.length} em Registos Diários`,
       `- ${facts.relatedFicha.length} no Histórico de Fichas`,
       ...(facts.catalogMatches.length>1?['- Fichas possíveis: '+facts.catalogMatches.map(match=>`${match.id} — ${match.name}`).join('; ')]:[]),
+      ...learningLines(),
       '',
       'Confirmação humana necessária.'
     ].join('\n');
@@ -2449,6 +2479,7 @@ function formatAiLocalAnswer(question){
     '',
     ...(recommendationLines.length?['Recomendação:', ...recommendationLines.map(line=>'- '+line), '']:[]),
     ...(insufficientLines.length?['Informação insuficiente:', ...insufficientLines.map(line=>'- '+line), '']:[]),
+    ...learningLines(),
     'Confirmação humana necessária.'
   ].join('\n');
 }
