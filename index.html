@@ -2227,7 +2227,7 @@ async function copyAiBoxText(btn){
 }
 
 function getQuestionKeywords(question){
-  const stop=new Set(['a','o','os','as','de','da','do','das','dos','e','em','no','na','nos','nas','um','uma','este','esta','isto','houve','vezes','quantas','quantos','manutencao','manutencoes','registo','registos','historico','ficha','equipamento','semana','ano','meses','anteriores','parecidas','problemas','problema','avaria','avarias','intervencoes']);
+  const stop=new Set(['a','o','os','as','de','da','do','das','dos','e','em','no','na','nos','nas','um','uma','este','esta','isto','houve','vezes','quantas','quantos','manutencao','manutencoes','registo','registos','historico','ficha','equipamento','semana','ano','meses','anteriores','parecidas','problemas','problema','avaria','avarias','intervencoes','total','soma','quantidade','quanto','valor','peso','custo','acumulado']);
   return norm(question).split(/[^a-z0-9]+/).filter(word=>word.length>2&&!stop.has(word));
 }
 
@@ -2456,13 +2456,20 @@ function formatAiHistoryAnswer(question){
     const latest=records.filter(row=>row._date.getTime()===records[0]._date.getTime());
     return [`Última intervenção encontrada${ficha?' na Ficha '+ficha:''}:`,'',...latest.slice(0,3).map(row=>`- ${row.date||'Sem data'} — Ficha ${row.fichaId||'sem ficha'} — ${row.name||'Sem ficha'} — ${buildAiSummary(row.text)} (${row.source})`),'','Confirmação humana necessária.'].join('\n');
   }
-  if(wantsCount)return [`${ficha?`Ficha ${ficha} — ${CATALOG[ficha]||'Sem ficha'} tem`:'Foram encontrados'} ${records.length} registo(s) relacionados em ${data.period.label}.`,'','Detalhe:',`- ${records.filter(x=>x.source==='Registos Diários').length} em Registos Diários`,`- ${records.filter(x=>x.source==='Histórico de Fichas').length} no Histórico de Fichas`,'','Confirmação humana necessária.'].join('\n');
+  if(wantsCount){
+    if(!ficha){
+      const facts=collectAiLocalFacts(question);
+      const total=facts.relatedDiary.length+facts.relatedFicha.length;
+      return [`Foram encontrados ${total} registo(s) relacionados em ${data.period.label}.`,'','Detalhe:',`- ${facts.relatedDiary.length} em Registos Diários`,`- ${facts.relatedFicha.length} no Histórico de Fichas`,'','Confirmação humana necessária.'].join('\n');
+    }
+    return [`${ficha?`Ficha ${ficha} — ${CATALOG[ficha]||'Sem ficha'} tem`:'Foram encontrados'} ${records.length} registo(s) relacionados em ${data.period.label}.`,'','Detalhe:',`- ${records.filter(x=>x.source==='Registos Diários').length} em Registos Diários`,`- ${records.filter(x=>x.source==='Histórico de Fichas').length} no Histórico de Fichas`,'','Confirmação humana necessária.'].join('\n');
+  }
   return [`Foram encontrados ${records.length} registo(s) relacionados${ficha?' com a Ficha '+ficha:''}.`,'','Ocorrências recentes:',...records.slice(0,5).map(row=>`- ${row.date||'Sem data'} — Ficha ${row.fichaId||'sem ficha'} — ${buildAiSummary(row.text)} (${row.source})`),'','Confirmação humana necessária.'].join('\n');
 }
 
 function isAiHistoryQuestion(question){
   const q=norm(question);
-  return /\b(ultima|ultimo|quando|historico|intervencoes|intervencao|recorrencia|repetidos|mais registos|mais anomalias|anomalias houve|registos tem)\b/.test(q)||!!extractAiFichaId(question);
+  return /\b(ultima|ultimo|quando|historico|intervencoes|intervencao|recorrencia|repetidos|mais registos|mais anomalias|anomalias houve|registos tem|registos houve|intervencoes houve|ocorrencias houve)\b/.test(q)||!!extractAiFichaId(question);
 }
 
 function formatAiLocalAnswer(question){
@@ -2556,8 +2563,16 @@ function formatAiLocalAnswer(question){
         'Confirmação humana necessária.'
       ].join('\n');
     }
+    const hasCountMetric=/\b(registo|registos|manutencao|manutencoes|intervencao|intervencoes|ocorrencia|ocorrencias)\b/.test(normalizedQuestion);
+    const countLabel=/\bregisto|registos\b/.test(normalizedQuestion)
+      ? 'registos relacionados'
+      : /\bintervencao|intervencoes\b/.test(normalizedQuestion)
+        ? 'intervenções relacionadas'
+        : /\bocorrencia|ocorrencias\b/.test(normalizedQuestion)
+          ? 'ocorrências relacionadas'
+          : 'manutenções relacionadas';
     return [
-      `Foram encontradas ${total} manutenções relacionadas${facts.catalogMatches.length===1?' com '+facts.catalogMatches[0].name.toLowerCase():''}${facts.wantsThisYear?' este ano':''}.`,
+      `Foram encontrad${countLabel==='manutenções relacionadas'?'as':'os'} ${total} ${countLabel}${facts.catalogMatches.length===1?' com '+facts.catalogMatches[0].name.toLowerCase():''}${facts.wantsThisYear?' este ano':''}.`,
       '',
       'Detalhe:',
       `- ${facts.relatedDiary.length} em Registos Diários`,
