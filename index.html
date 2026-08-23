@@ -1901,6 +1901,11 @@ function isGeneralAiQuestion(question){
   return /\?$/.test(question.trim())||/\b(quantas|quantos|numero|número|total|soma|quantidade|quanto|houve|ha|há|existem|existe|quais|qual|quando|onde|historico|histórico|manutencao|manutenção)\b/.test(normalized);
 }
 
+function isAiTermAndPeriodQuery(question){
+  const terms=getQuestionKeywords(question).filter(term=>!/^\d{4}$/.test(term));
+  return !!getAiRequestedYear(question)&&terms.length>0;
+}
+
 function findRelatedRecords(inputText){
   const generic=new Set(['problema','problemas','verificar','verificacao','manutencao','situacao','anomalia','avaria','avarias','resolver','precisa','identificar']);
   const terms=[...new Set(norm(inputText).split(/[^a-z0-9]+/).filter(t=>t.length>2&&!generic.has(t)))];
@@ -2090,11 +2095,12 @@ function buildUnifiedAiAnalysis(inputText){
   if(isForbiddenAiAction(text))return {intent:'insufficient',text:'Não posso executar alterações automáticas nem alterar dados. Só uso dados reais existentes; qualquer correção ou registo exige ação humana explícita.'};
   const genericOnly=/^(problema para identificar|problema para verificar|verificar|ha um problema|anomalia|resolver situacao|precisa de manutencao)$/i.test(normalized);
   const hasTechnicalMatch=findCatalogMatches(text).length>0||/\b(autoclismo|wc|sanita|fuga|gerador|elevador|iluminacao|caldeira|aqs|bomba|quadro eletrico|corte de agua|falta de agua|interrupcao de agua)\b/.test(normalized);
+  const hasTermAndPeriod=isAiTermAndPeriodQuery(text);
   const related=findRelatedRecords(text);
   if(isPendingAnomaliesQuestion(text)){const ficha=extractAiFichaId(text);const pendingData=getPendingAnomalies(ficha);return {intent:'pending-anomalies',text:formatPendingAnomaliesAnswer(text),pendingData};}
-  if(text.length<3||genericOnly||(!hasTechnicalMatch&&text.length<12&&!related.matches.length))return {intent:'insufficient',text:'Informação insuficiente.'};
+  if(text.length<3||genericOnly||(!hasTermAndPeriod&&!hasTechnicalMatch&&text.length<12&&!related.matches.length))return {intent:'insufficient',text:'Informação insuficiente.'};
   if(isAiHistoryQuestion(text))return {intent:'history-query',text:formatAiHistoryAnswer(text)};
-  if(isGeneralAiQuestion(text))return {intent:'quantitative',text:formatAiLocalAnswer(text)};
+  if(isGeneralAiQuestion(text)||hasTermAndPeriod)return {intent:'quantitative',text:formatAiLocalAnswer(text)};
   if(related.matches.length&&wordTokens(text).length===1)return {intent:'related-search',text:formatRelatedAnswer(text,related),related};
   const preliminary=formatFichaSuggestion(text);
   if(related.matches.length&&!preliminary.historyFichaId)return {intent:'related-search',text:formatRelatedAnswer(text,related),related};
@@ -2313,6 +2319,34 @@ function summarizeAiQuantityMentions(question,records){
   return {mentions,withQuantity,withoutQuantity,total,approximate,question};
 }
 
+function wantsAiTaskRecordCheck(question){
+  const q=norm(question||'');
+  return /\b(tarefa|tarefas)\b/.test(q)&&/\b(registo|registos|diario|diarios|diaria|diarias|esta|estao|ficou|ficaram)\b/.test(q);
+}
+
+function formatAiTaskRecordCheck(quantityFacts){
+  const totalRows=quantityFacts.withQuantity.length;
+  if(!totalRows)return 'Registos de tarefas: não há colocações com quantidade explícita para confirmar.';
+  const labels={info:'Tarefa',aviso:'Visita',urgente:'Importante'};
+  const counts=new Map();
+  quantityFacts.withQuantity.forEach(row=>{
+    const label=row.source==='Registos Diários'
+      ? (labels[row.record&&row.record.severity]||'Sem classificação')
+      : 'Histórico de fichas (sem classificação de Registo Diário)';
+    counts.set(label,(counts.get(label)||0)+1);
+  });
+  const taskCount=counts.get('Tarefa')||0;
+  const nonTask=Array.from(counts).filter(([label])=>label!=='Tarefa');
+  const formatLabels=items=>items.map(([label,count])=>`${label} (${count})`).join(' e ');
+  const nonTaskText=nonTask.length===1?nonTask[0][0]:formatLabels(nonTask);
+  const conclusion=taskCount===totalRows
+    ? `Sim. Os ${totalRows} registo${totalRows===1?'':'s'} de sal com quantidade explícita estão classificados como Tarefa.`
+    : taskCount
+      ? `Parcialmente. ${taskCount} de ${totalRows} registos de sal com quantidade explícita estão classificados como Tarefa; os restantes ${nonTask.length===1?`estão classificados como ${nonTaskText}`:`dividem-se entre ${nonTaskText}`}.`
+      : `Não. Os ${totalRows} registo${totalRows===1?'':'s'} de sal com quantidade explícita ${nonTask.length===1?`estão classificados como ${nonTaskText}`:`dividem-se entre ${nonTaskText}`}, não como Tarefa.`;
+  return [conclusion,'','Classificação real dos registos de sal com quantidade:',...Array.from(counts,([label,count])=>`- ${label}: ${count}.`)].join('\n');
+}
+
 function aiQuantitySortValue(row){
   const value=row.date||row.record?.date||row.record?.created||row.record?.timestamp||'';
   const date=new Date(String(value).length===10?value+'T12:00:00':value);
@@ -2507,11 +2541,15 @@ function formatAiLocalAnswer(question){
   const recommendationLines=[];
   const insufficientLines=[];
   const learningLines=()=>getAiSupervisedLearningLines(question,{facts,related:null});
+  const shortTermPeriodQuery=isAiTermAndPeriodQuery(question);
+  const queryTerm=facts.keywords.find(term=>!/^\d{4}$/.test(term));
 
   if(facts.catalogMatches.length){
     factsLines.push('Foram identificadas fichas/equipamentos possíveis: '+facts.catalogMatches.map(match=>`Ficha ${match.id} — ${match.name}`).join('; ')+'.');
   }
-  if(facts.wantsThisYear){
+  if(shortTermPeriodQuery&&queryTerm){
+    factsLines.push(`Pesquisa por “${queryTerm}” em ${facts.requestedYear}: ${total} registo${total===1?'':'s'} encontrado${total===1?'':'s'}.`);
+  }else if(facts.wantsThisYear){
     factsLines.push(`Foram encontrados ${total} registos relacionados em ${facts.currentYear}.`);
   }else{
     factsLines.push(`Foram encontrados ${total} registos relacionados nas caches locais.`);
@@ -2538,11 +2576,13 @@ function formatAiLocalAnswer(question){
       const header=quantityYear
         ? `Em ${quantityYear} foram encontradas ${quantityFacts.mentions.length} colocações de sal.`
         : `Foram encontradas ${quantityFacts.mentions.length} colocações de sal.`;
+      const taskRecordCheck=wantsAiTaskRecordCheck(question)?formatAiTaskRecordCheck(quantityFacts):'';
       if(quantityFacts.withQuantity.length){
         return [
           header,
           '',
-          `${quantityFacts.approximate?'Total aproximado':'Total identificado'}: ${quantityFacts.total} kg${quantityFacts.approximate?' (aproximado)':''}.`,
+          `${quantityFacts.approximate?'Total aproximado':'Total identificado'}: ${quantityFacts.total} kg.`,
+          ...(taskRecordCheck?[``,taskRecordCheck]:[]),
           '',
           'Detalhe:',
           ...quantityLines,
@@ -2556,11 +2596,52 @@ function formatAiLocalAnswer(question){
         '',
         'Não há quantidade explícita suficiente para calcular o total.',
         ...(quantityFacts.withoutQuantity.length?[``,`Registos sem quantidade explícita: ${quantityFacts.withoutQuantity.length}.`]:[]),
+        ...(taskRecordCheck?[``,taskRecordCheck]:[]),
         '',
         'Confirmação humana necessária.'
       ].join('\n');
     }
     if(total>0&&!hasExplicitMetric&&!hasCountMetric)return formatAmbiguousQuantityAnswer(question,facts,total);
+  }
+
+  if(shortTermPeriodQuery&&queryTerm){
+    if(!total)return [`Pesquisa por “${queryTerm}” em ${facts.requestedYear}.`,'','Total: 0 registos.','','Não foram encontrados registos para esta pesquisa.'].join('\n');
+    const severityLabels={info:'Tarefa',aviso:'Visita',urgente:'Importante'};
+    const isSalQuery=hasWholeWord(queryTerm,'sal')||hasWholeWord(queryTerm,'descalcificador');
+    const quantityTotalLine=isSalQuery
+      ? (quantityFacts.withQuantity.length
+          ? `Total aproximado: ${quantityFacts.total} kg.`
+          : 'Total de sal em kg: não há quantidade explícita suficiente para calcular.')
+      : '';
+    const origins=[
+      facts.relatedDiary.length?`- Registos Diários: ${facts.relatedDiary.length}.`:'',
+      facts.relatedFicha.length?`- Histórico de Fichas: ${facts.relatedFicha.length}.`:''
+    ].filter(Boolean);
+    const details=[
+      ...facts.relatedDiary.map(record=>({
+        date:diaryDateOf(record)||record.timestamp||'',
+        source:`Registos Diários · ${severityLabels[record.severity]||'Sem classificação'}`,
+        text:getDiaryRecordText(record)
+      })),
+      ...facts.relatedFicha.map(item=>({
+        date:item.record.date||item.record.created||'',
+        source:'Histórico de Fichas',
+        text:getFichaRecordText(item.record,item.fichaId)
+      }))
+    ].sort((a,b)=>aiRecordDateValue(b).getTime()-aiRecordDateValue(a).getTime());
+    return [
+      `Pesquisa por “${queryTerm}” em ${facts.requestedYear}.`,
+      '',
+      `Total: ${total} registo${total===1?'':'s'}.`,
+      ...(quantityTotalLine?[quantityTotalLine]:[]),
+      '',
+      'Origem:',
+      ...origins,
+      '',
+      'Detalhe:',
+      ...details.slice(0,8).map(item=>`- ${item.date||'Sem data'} — ${item.source} — ${buildAiSummary(item.text)}`),
+      ...(details.length>8?[``, `São mostrados os 8 registos mais recentes de ${details.length}.`]:[])
+    ].join('\n');
   }
 
   if(total>=2)inferenceLines.push('A existência de vários registos pode indicar recorrência, mas deve ser confirmada manualmente.');
