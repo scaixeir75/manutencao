@@ -382,15 +382,25 @@ footer{margin-top:34px;text-align:center;color:var(--muted);font-size:12px}
 .diary-save:hover{filter:brightness(1.08)}
 .diary-save:disabled{opacity:.5;cursor:default}
 .ai-helper{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:10px;box-shadow:var(--shadow-sm)}
-.ai-helper:not(.is-open){display:inline-flex;align-items:center;padding:0;border:none;background:none;box-shadow:none}
-.ai-helper-toggle{display:inline-flex;align-items:center;gap:6px;background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.35);border-radius:999px;color:var(--accent);font:800 11px/1 inherit;letter-spacing:.8px;padding:7px 11px;cursor:pointer}
+.ai-helper:not(.is-open){position:fixed;top:62px;right:max(14px,calc((100vw - 760px)/2));z-index:70;display:flex;align-items:center;justify-content:flex-end;padding:0;margin:0;border:none;background:none;box-shadow:none}
+.ai-helper-toggle{display:inline-flex;align-items:center;gap:6px;background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.35);border-radius:999px;color:var(--accent);font:800 11px/1 inherit;letter-spacing:.8px;padding:8px 12px;cursor:pointer}
 .ai-helper-toggle:hover{background:rgba(240,165,0,.16);border-color:var(--accent)}
+.ai-helper:not(.is-open) .ai-helper-toggle{background:linear-gradient(135deg,rgba(63,185,80,.2),rgba(197,204,212,.12));border-color:rgba(197,204,212,.5);color:#d5dbe2;box-shadow:0 4px 14px rgba(0,0,0,.26)}
+.ai-helper:not(.is-open) .ai-helper-toggle:hover{background:linear-gradient(135deg,rgba(63,185,80,.32),rgba(197,204,212,.18));border-color:#79d99d;color:#eff4f7}
+.ai-helper-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 .ai-helper-toggle .ai-toggle-open-label{display:none}
 .ai-helper.is-open .ai-toggle-closed-label{display:none}
 .ai-helper.is-open .ai-toggle-open-label{display:inline}
 .ai-helper:not(.is-open)>.ai-helper-head{margin:0}
 .ai-helper:not(.is-open)>.ai-helper-head .ai-helper-actions{display:none}
 .ai-helper:not(.is-open)>:not(.ai-helper-head){display:none}
+.ai-helper.is-open{position:fixed;inset:0;z-index:120;display:block;overflow-y:auto;margin:0;padding:clamp(16px,4vw,42px);border:none;border-radius:0;background:rgba(5,8,12,.68);box-shadow:none;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.ai-helper.is-open>.ai-helper-head,.ai-helper.is-open>div[id$="HelperContent"]{width:min(680px,100%);margin:0 auto;background:var(--surface);border:1px solid var(--border);box-shadow:0 18px 50px rgba(0,0,0,.5)}
+.ai-helper.is-open>.ai-helper-head{position:sticky;top:0;z-index:1;border-radius:14px 14px 0 0;padding:12px 14px;margin-top:clamp(6px,8vh,72px);margin-bottom:0}
+.ai-helper.is-open>div[id$="HelperContent"]{border-top:none;border-radius:0 0 14px 14px;padding:14px}
+.ai-helper.is-open .ai-helper-toggle{background:rgba(240,165,0,.14)}
+body:has(.ai-helper.is-open){overflow:hidden}
+@media(max-width:560px){.ai-helper:not(.is-open){top:58px;right:14px}.ai-helper.is-open{padding:12px}.ai-helper.is-open>.ai-helper-head{margin-top:8px;padding:10px;align-items:flex-start}.ai-helper.is-open>.ai-helper-head .ai-helper-actions{justify-content:flex-start}.ai-helper.is-open>div[id$="HelperContent"]{padding:12px}.ai-helper.is-open .ai-helper-toggle{max-width:160px;white-space:normal;text-align:left;line-height:1.2}}
 .ai-helper-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
 .ai-helper-title{font-size:11px;font-weight:800;letter-spacing:2px;color:var(--muted)}
 .ai-helper-state{color:var(--muted);font-size:13px;line-height:1.4}
@@ -642,6 +652,44 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
         </div>
       </section>
 
+      <section class="ai-helper" id="planAiHelper" aria-live="polite">
+        <div class="ai-helper-head">
+          <button type="button" class="ai-helper-toggle" aria-label="Abrir Assistente IA" aria-expanded="false" aria-controls="planAiHelperContent"><span class="ai-toggle-closed-label">✨</span><span class="ai-toggle-open-label">🤖 Assistente IA · Recolher</span></button>
+          <div class="ai-helper-actions">
+            <button type="button" class="ai-copy" id="planAiMicBtn">🎙️ Ditar</button>
+            <button type="button" class="ai-copy" id="planAiGenerateBtn">Perguntar à IA</button>
+            <button type="button" class="ai-copy" id="planAiClearBtn">Limpar</button>
+          </div>
+        </div>
+        <div id="planAiHelperContent">
+        <div class="ai-helper-state" id="planAiState">Podes escrever ou ditar uma pergunta sobre o plano da semana.</div>
+        <div class="ai-copy-wrap">
+          <textarea class="ai-helper-input" id="planAiInput" rows="2" placeholder="Pergunta ou observação sobre o plano da semana"></textarea>
+          <button type="button" class="ai-copy-mini" data-copy-source="planAiInput" title="Copiar" aria-label="Copiar texto">⧉</button>
+        </div>
+        <div class="ai-helper-label">RESPOSTA DA IA</div>
+        <div class="ai-copy-wrap">
+          <button type="button" class="ai-copy-mini" data-copy-output="plan" title="Copiar" aria-label="Copiar texto">⧉</button>
+          <div class="ai-helper-response" id="planAiResponse">A resposta aparecerá aqui depois de perguntares à IA.</div>
+          <div class="ai-helper-grid" id="planAiSuggestion">
+            <div class="ai-helper-item"><div class="ai-helper-label">FICHA PROVÁVEL</div><div class="ai-helper-text" id="planAiProbableFicha"></div></div>
+            <div class="ai-helper-item"><div class="ai-helper-label">MOTIVO DA SUGESTÃO</div><div class="ai-helper-text" id="planAiFichaReason"></div></div>
+            <div class="ai-helper-item"><div class="ai-helper-label">RESUMO</div><div class="ai-helper-text" id="planAiSummary"></div></div>
+            <div class="ai-helper-item"><div class="ai-helper-label">PRÓXIMA AÇÃO</div><div class="ai-helper-text" id="planAiNextAction"></div></div>
+            <div class="ai-helper-item"><div class="ai-helper-label">INFORMAÇÃO EM FALTA</div><ul class="ai-helper-list" id="planAiMissing"></ul></div>
+            <div class="ai-helper-item"><div class="ai-helper-label">HISTÓRICO RECENTE</div><ul class="ai-helper-list" id="planAiRecentHistory"></ul></div>
+            <div class="ai-helper-item"><div class="ai-helper-label">RECORRÊNCIA</div><div class="ai-helper-text" id="planAiRecurrence"></div></div>
+          </div>
+          <div class="ai-learning-actions" id="planAiLearningActions">
+            <div class="ai-learning-feedback" id="planAiLearningFeedback"></div>
+            <div class="ai-learning-options" id="planAiLearningOptions"></div>
+            <button type="button" class="ai-learning-btn" id="planAiEditSuggestionBtn">Editar</button>
+          </div>
+        </div>
+        <div class="ai-helper-note">Supervisão humana necessária: esta sugestão não altera o plano nem executa ações críticas.</div>
+        </div>
+      </section>
+
       <div class="weekhead">
         <div class="weekhead-inner">
           <div class="bignum seg7 bignum-7" id="bignum"></div>
@@ -682,44 +730,6 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
           </button>
           <input type="file" id="importFile" accept="application/json" style="display:none">
           
-        </div>
-      </section>
-
-      <section class="ai-helper" id="planAiHelper" aria-live="polite">
-        <div class="ai-helper-head">
-          <button type="button" class="ai-helper-toggle" aria-expanded="false" aria-controls="planAiHelperContent"><span class="ai-toggle-closed-label">✨ IA</span><span class="ai-toggle-open-label">🤖 Assistente IA · Recolher</span></button>
-          <div class="ai-helper-actions">
-            <button type="button" class="ai-copy" id="planAiMicBtn">🎙️ Ditar</button>
-            <button type="button" class="ai-copy" id="planAiGenerateBtn">Perguntar à IA</button>
-            <button type="button" class="ai-copy" id="planAiClearBtn">Limpar</button>
-          </div>
-        </div>
-        <div id="planAiHelperContent">
-        <div class="ai-helper-state" id="planAiState">Podes escrever ou ditar uma pergunta sobre o plano da semana.</div>
-        <div class="ai-copy-wrap">
-          <textarea class="ai-helper-input" id="planAiInput" rows="2" placeholder="Pergunta ou observação sobre o plano da semana"></textarea>
-          <button type="button" class="ai-copy-mini" data-copy-source="planAiInput" title="Copiar" aria-label="Copiar texto">⧉</button>
-        </div>
-        <div class="ai-helper-label">RESPOSTA DA IA</div>
-        <div class="ai-copy-wrap">
-          <button type="button" class="ai-copy-mini" data-copy-output="plan" title="Copiar" aria-label="Copiar texto">⧉</button>
-          <div class="ai-helper-response" id="planAiResponse">A resposta aparecerá aqui depois de perguntares à IA.</div>
-          <div class="ai-helper-grid" id="planAiSuggestion">
-            <div class="ai-helper-item"><div class="ai-helper-label">FICHA PROVÁVEL</div><div class="ai-helper-text" id="planAiProbableFicha"></div></div>
-            <div class="ai-helper-item"><div class="ai-helper-label">MOTIVO DA SUGESTÃO</div><div class="ai-helper-text" id="planAiFichaReason"></div></div>
-            <div class="ai-helper-item"><div class="ai-helper-label">RESUMO</div><div class="ai-helper-text" id="planAiSummary"></div></div>
-            <div class="ai-helper-item"><div class="ai-helper-label">PRÓXIMA AÇÃO</div><div class="ai-helper-text" id="planAiNextAction"></div></div>
-            <div class="ai-helper-item"><div class="ai-helper-label">INFORMAÇÃO EM FALTA</div><ul class="ai-helper-list" id="planAiMissing"></ul></div>
-            <div class="ai-helper-item"><div class="ai-helper-label">HISTÓRICO RECENTE</div><ul class="ai-helper-list" id="planAiRecentHistory"></ul></div>
-            <div class="ai-helper-item"><div class="ai-helper-label">RECORRÊNCIA</div><div class="ai-helper-text" id="planAiRecurrence"></div></div>
-          </div>
-          <div class="ai-learning-actions" id="planAiLearningActions">
-            <div class="ai-learning-feedback" id="planAiLearningFeedback"></div>
-            <div class="ai-learning-options" id="planAiLearningOptions"></div>
-            <button type="button" class="ai-learning-btn" id="planAiEditSuggestionBtn">Editar</button>
-          </div>
-        </div>
-        <div class="ai-helper-note">Supervisão humana necessária: esta sugestão não altera o plano nem executa ações críticas.</div>
         </div>
       </section>
 
@@ -801,7 +811,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
       </div>
       <div class="ai-helper" id="aiHelper" aria-live="polite">
         <div class="ai-helper-head">
-          <button type="button" class="ai-helper-toggle" aria-expanded="false" aria-controls="aiHelperContent"><span class="ai-toggle-closed-label">✨ IA</span><span class="ai-toggle-open-label">🤖 Assistente IA · Recolher</span></button>
+          <button type="button" class="ai-helper-toggle" aria-label="Abrir Assistente IA" aria-expanded="false" aria-controls="aiHelperContent"><span class="ai-toggle-closed-label">✨</span><span class="ai-toggle-open-label">🤖 Assistente IA · Recolher</span></button>
           <div class="ai-helper-actions">
             <button type="button" class="ai-copy" id="aiUseFichaBtn" style="display:none">Usar ficha sugerida</button>
             <button type="button" class="ai-copy" id="aiDictateBtn">🎙️ Ditar</button>
@@ -2776,13 +2786,35 @@ $('aiDictateBtn').onclick=()=>startAiDictation({
   status:$('aiMicStatus')
 });
 $('aiGenerateBtn').onclick=generateDiaryAiSuggestion;
+function setAiHelperOpen(panel,open){
+  const toggle=panel.querySelector('.ai-helper-toggle');
+  if(!toggle)return;
+  panel.classList.toggle('is-open',open);
+  toggle.setAttribute('aria-expanded',String(open));
+  toggle.setAttribute('aria-label',open?'Recolher Assistente IA':'Abrir Assistente IA');
+  if(open){
+    panel.setAttribute('role','dialog');
+    panel.setAttribute('aria-modal','true');
+    const input=panel.querySelector('.ai-helper-input');
+    if(input)setTimeout(()=>input.focus(),0);
+  }else{
+    panel.removeAttribute('role');
+    panel.removeAttribute('aria-modal');
+    toggle.focus();
+  }
+}
 document.querySelectorAll('.ai-helper').forEach(panel=>{
   const toggle=panel.querySelector('.ai-helper-toggle');
   if(!toggle)return;
-  toggle.addEventListener('click',()=>{
-    const open=panel.classList.toggle('is-open');
-    toggle.setAttribute('aria-expanded',String(open));
+  toggle.addEventListener('click',()=>setAiHelperOpen(panel,!panel.classList.contains('is-open')));
+  panel.addEventListener('click',event=>{
+    if(event.target===panel)setAiHelperOpen(panel,false);
   });
+});
+document.addEventListener('keydown',event=>{
+  if(event.key!=='Escape')return;
+  const panel=document.querySelector('.ai-helper.is-open');
+  if(panel)setAiHelperOpen(panel,false);
 });
 $('planAiMicBtn').onclick=()=>startAiDictation({
   button:$('planAiMicBtn'),
