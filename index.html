@@ -1835,15 +1835,14 @@ function scoreFichaSuggestion(contextText){
     '29':['autoclismo','sanitario','sanitarios','sanita','wc','casa banho','lavatorio','torneira','descarga','sem descarga','fuga agua','fuga de agua','instalacoes sanitarias']
   };
   const scores=Object.entries(CATALOG).map(([id,name])=>{
-    const normalizedName=norm(name);
     let score=0;
     const reasons=[];
-    if(normalizedText.includes(normalizedName)){score+=6;reasons.push('nome da ficha encontrado no texto');}
+    if(hasAllWholeWords(normalizedText,wordTokens(name))){score+=6;reasons.push('nome da ficha encontrado no texto');}
     for(const word of keywords){
       if(hasWholeWord(name,word)){score+=2;reasons.push(`termo relacionado: ${word}`);}
     }
     for(const hint of (fichaBoosts[id]||[])){
-      if(normalizedText.includes(norm(hint))){score+=3;reasons.push(`indício específico: ${hint}`);}
+      if(hasAllWholeWords(normalizedText,wordTokens(hint))){score+=3;reasons.push(`indício específico: ${hint}`);}
     }
     if(sanitaryContext&&id==='29'){score+=5;reasons.push('contexto sanitário/WC');}
     if(sanitaryContext&&id==='20'){score-=4;reasons.push('contexto sanitário não corresponde a cozinha');}
@@ -1902,13 +1901,13 @@ function isGeneralAiQuestion(question){
 }
 
 function isAiTermAndPeriodQuery(question){
-  const terms=getQuestionKeywords(question).filter(term=>!/^\d{4}$/.test(term));
+  const terms=getAiContentTerms(question);
   return !!getAiRequestedYear(question)&&terms.length>0;
 }
 
 function findRelatedRecords(inputText){
   const generic=new Set(['problema','problemas','verificar','verificacao','manutencao','situacao','anomalia','avaria','avarias','resolver','precisa','identificar']);
-  const terms=[...new Set(norm(inputText).split(/[^a-z0-9]+/).filter(t=>t.length>2&&!generic.has(t)))];
+  const terms=[...new Set(getAiContentTerms(inputText).filter(term=>!generic.has(term)))];
   const matches=[];
   if(!terms.length)return {terms,matches};
   const query=norm(inputText);
@@ -2260,14 +2259,23 @@ function getQuestionKeywords(question){
   return norm(question).split(/[^a-z0-9]+/).filter(word=>word.length>2&&!stop.has(word));
 }
 
+function isAiPeriodToken(term){
+  return /^\d{4}$/.test(term);
+}
+
+function getAiContentTerms(question){
+  const structuralTerms=new Set(['tarefa','tarefas','visita','visitas','importante','importantes','classificacao','classificacoes','classificado','classificados','diario','diarios','diaria','diarias','esta','estao','ficou','ficaram']);
+  return getQuestionKeywords(question).filter(term=>!isAiPeriodToken(term)&&!structuralTerms.has(term));
+}
+
 function findCatalogMatches(question){
   const normalizedQuestion=norm(question);
-  const words=getQuestionKeywords(question);
+  const words=getAiContentTerms(question);
   const numberTokens=new Set(normalizedQuestion.split(/[^0-9]+/).filter(Boolean));
   return Object.entries(CATALOG).filter(([id,name])=>{
-    const normalizedName=norm(name);
+    const nameTerms=wordTokens(name);
     return numberTokens.has(String(id))||
-      normalizedQuestion.includes(normalizedName)||
+      hasAllWholeWords(normalizedQuestion,nameTerms)||
       words.some(word=>hasWholeWord(name,word));
   }).map(([id,name])=>({id,name}));
 }
@@ -2407,11 +2415,11 @@ function getFichaRecordText(record,fichaId){
 }
 
 function matchesQuestionText(text,keywords){
-  return keywords.some(word=>hasWholeWord(text,word));
+  return keywords.length>0&&hasAllWholeWords(text,keywords);
 }
 
 function collectAiLocalFacts(question){
-  const keywords=getQuestionKeywords(question);
+  const keywords=getAiContentTerms(question);
   const catalogMatches=findCatalogMatches(question);
   const matchedFichaIds=new Set(catalogMatches.map(match=>String(match.id)));
   const wantsThisYear=norm(question).includes('este ano');
@@ -2464,7 +2472,7 @@ function getAiPeriod(question){
 }
 function getAiHistoryTerms(question){
   const stop=new Set(['quando','ultima','ultimo','vez','coloquei','colocar','colocacao','houve','teve','tiveram','quais','qual','que','mais','menos','por','ficha','fichas','intervencoes','intervencao','manutencao','manutencoes','anomalias','anomalia','registos','registo','historico','problemas','problema','este','esta','mes','ano','semana','hoje','ontem','ultimos','dias','sao','são','recente','recentes','urgente','urgentes','ficou','foram','corrigido','corrigida','corrigidos','corrigidas','resolvido','resolvida','resolvidos','resolvidas','pendentes','pendente','aberto','aberta','abertas','abertos','ainda','elevador','elevadores','boa','tarde','estive','aqui','zona','tecnica','tecnico','acho','pode','podera','ter','havido','novamente','qualquer','relacionado','relacionada','nao','não','tenho','certeza','foi','podes','poder','ver']);
-  return getQuestionKeywords(question).filter(term=>!stop.has(term));
+  return getAiContentTerms(question).filter(term=>!stop.has(term));
 }
 function getAiPriorityHistoryTerms(question){
   const priorityGroups=[
@@ -2493,7 +2501,8 @@ function isWaterOperationalRecord(text){
 function getAiFilteredRecords(question){
   const q=norm(question),explicitFicha=extractAiFichaId(question),isLastFicha=!!explicitFicha&&/\b(quando|ultima|ultimo)\b/.test(q),isFichaCount=!!explicitFicha&&/\b(quantas|quantos|numero|total)\b/.test(q)&&/\b(registos|intervencoes|ocorrencias)\b/.test(q),terms=isLastFicha||isFichaCount||/mais recorrencia|repetidos|mais registos|mais anomalias/.test(q)?[]:getAiHistoryTerms(question),priorityTerms=terms.length?getAiPriorityHistoryTerms(question):[],suggestedFicha=!explicitFicha&&priorityTerms.length?scoreFichaSuggestion(question).historyFichaId:'',ficha=explicitFicha||suggestedFicha,period=getAiPeriod(question);
   const waterOperationalQuery=isWaterOperationalHistoryQuery(question);
-  return {period,terms,priorityTerms,ficha,records:getAiSearchableRecords().filter(row=>(!ficha||row.fichaId===ficha)&&(!period.start||(row._date>=period.start&&row._date<=period.end))&&(!priorityTerms.length?(!terms.length||terms.some(term=>hasWholeWord(row.text,term))):priorityTerms.some(term=>hasWholeWord(row.text,term)))&&(!waterOperationalQuery||isWaterOperationalRecord(row.text)))};
+  const contentTerms=priorityTerms.length?priorityTerms:terms;
+  return {period,terms,priorityTerms,ficha,records:getAiSearchableRecords().filter(row=>(!ficha||row.fichaId===ficha)&&(!period.start||(row._date>=period.start&&row._date<=period.end))&&(!contentTerms.length||hasAllWholeWords(row.text,contentTerms))&&(!waterOperationalQuery||isWaterOperationalRecord(row.text)))};
 }
 function isAiAnomalyRecord(row){return /anomalia|urgente/.test(norm(row.status+' '+row.text)) || /\b(avaria|problema|erro|falha)\b/.test(norm(row.text));}
 function formatAiHistoryAnswer(question){
