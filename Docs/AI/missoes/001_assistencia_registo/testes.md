@@ -76,6 +76,19 @@ Máquina de lavar faz ruído durante a centrifugação.
 - Botões de cópia de resumo, próxima ação e sugestão completa com feedback visual.
 - Desktop e móvel 390x844 validados em marcos anteriores.
 
+## Complemento v0.4 — interface e consultas locais
+
+O assistente local implementado em `index.html` foi validado também no Plano Semanal e nos Registos Diários com launcher recolhido, spotlight, overlay/blur, fecho por `Recolher`, clique fora e `Esc`.
+
+As consultas locais foram validadas com:
+
+- `sal em 2026`, com total de registos, total aproximado em kg, origens não nulas e detalhe;
+- pergunta composta de sal e classificação `Tarefa`, com resposta baseada no `severity` realmente gravado;
+- regra de palavra completa `sal` versus `sala`;
+- reformulações clicáveis e ações de cópia preservadas.
+
+O backtest atual é executado por `npm.cmd run test:ai:backtest`. Este complemento não altera o contrato histórico da Missão 001 nem introduz chamadas externas.
+
 ## Limites validados
 
 - Nenhum campo do formulário é alterado automaticamente.

@@ -1,0 +1,10 @@
+## 23/08/2026 — Estado estável v0.4
+
+- A implementação ativa do Assistente IA está concentrada em `index.html`.
+- O launcher visual é `✨`, fixo abaixo do logout nos dois ecrãs, e abre um spotlight com overlay/blur.
+- Fecho do spotlight: `Recolher`, clique fora e `Esc`.
+- O launcher e o spotlight não gravam dados nem alteram Firebase.
+- Perguntas curtas com termo + ano são pesquisas válidas; `sal em 2026` apresenta total de registos, total aproximado em kg quando possível, origens não vazias e detalhe real.
+- Perguntas compostas respondem à classificação real dos registos e não inferem `Tarefa` quando a classificação é `Visita`, `Importante` ou histórico sem classificação diária.
+- A fonte de verdade continua a ser Registos Diários, Histórico de Fichas, catálogo e plano semanal já carregados.
+- Referência detalhada: `AI_CURRENT_STATE.md`.

@@ -317,3 +317,19 @@ Próximos blocos sugeridos:
 - documentar o mapa de estados das anomalias pendentes, possíveis e resolvidas;
 - separar gradualmente o motor IA do `index.html` para testes unitários mais fortes;
 - continuar a expandir testes com novos casos sem repetir cenários já cobertos.
+
+## Versão estável IA v0.4
+
+Em 23/08/2026 foi estabilizada a experiência local do Assistente IA no Plano Semanal e nos Registos Diários.
+
+O Assistente começa recolhido como launcher `✨`, fixo abaixo do logout. Ao abrir, é apresentado em diálogo com overlay e blur; fecha por `Recolher`, clique fora ou `Esc`. Este comportamento é apenas visual e não altera dados, Firebase, plano ou formulário.
+
+As respostas locais passam também a suportar:
+
+- perguntas quantitativas compostas, incluindo total de sal em kg e confirmação baseada na classificação real dos registos;
+- classificação `Tarefa`, `Visita` e `Importante` obtida do estado efetivamente gravado;
+- pesquisas curtas com termo e ano explícito, como `sal em 2026`;
+- resumo separado de total, origem e detalhe, sem mostrar origens com zero resultados;
+- limite declarado de oito registos no detalhe e ausência de cálculo quando faltam quantidades explícitas.
+
+A referência operacional completa está em `AI_CURRENT_STATE.md`. A implementação atual continua local e determinística em `index.html`, sem serviços externos nem persistência adicional.

@@ -506,3 +506,24 @@ Próximos blocos sugeridos:
 - documentar o mapa de estados das anomalias;
 - separar o motor IA do `index.html` para testes unitários mais fortes;
 - continuar a adicionar testes novos sem duplicar casos já cobertos.
+23/08/2026
+
+Registada a versão estável IA v0.4 — interface e respostas locais.
+
+Decisões:
+
+- o Assistente IA começa recolhido como launcher `✨`, fixo abaixo do logout no Plano Semanal e nos Registos Diários;
+- o painel abre em destaque com overlay escura e blur, e fecha por `Recolher`, clique fora ou `Esc`;
+- o launcher mantém acessibilidade com rótulos `Abrir Assistente IA` e `Recolher Assistente IA`;
+- a abertura do painel é apenas visual e não altera Firebase, dados, plano ou formulário;
+- perguntas compostas combinam total quantitativo e classificação efetivamente gravada, sem inventar classificações;
+- pesquisas curtas com termo e ano explícito são consultas válidas e apresentam total, kg quando existem quantidades explícitas, origens não nulas e detalhe limitado aos oito registos mais recentes;
+- as respostas curtas não exibem origens com zero resultados.
+
+Validação:
+
+- `npm.cmd run test:ai:backtest` passou;
+- `git diff --check` passou;
+- launcher, spotlight, fecho por clique fora/Esc e viewport móvel 390px foram validados visualmente.
+
+Referência operacional: `AI_CURRENT_STATE.md`.

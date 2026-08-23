@@ -6,6 +6,12 @@ Versão: 1.0
 
 ---
 
+## Referência operacional atual
+
+Para retomar trabalho na aplicação atual, começar por `AI_CURRENT_STATE.md`. Este ficheiro descreve a versão estável v0.4, a implementação concentrada em `index.html`, o launcher/spotlight do Assistente IA, as consultas locais, os limites e as validações recentes.
+
+Os restantes documentos preservam a arquitetura e o histórico da Missão 001; quando houver divergência sobre comportamento corrente da interface ou das respostas locais, prevalece `AI_CURRENT_STATE.md`.
+
 # Objetivo
 
 Este diretório contém toda a documentação relacionada com a Inteligência Artificial do projeto PMP.
