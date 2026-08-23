@@ -382,6 +382,15 @@ footer{margin-top:34px;text-align:center;color:var(--muted);font-size:12px}
 .diary-save:hover{filter:brightness(1.08)}
 .diary-save:disabled{opacity:.5;cursor:default}
 .ai-helper{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;margin-top:10px;box-shadow:var(--shadow-sm)}
+.ai-helper:not(.is-open){display:inline-flex;align-items:center;padding:0;border:none;background:none;box-shadow:none}
+.ai-helper-toggle{display:inline-flex;align-items:center;gap:6px;background:rgba(240,165,0,.08);border:1px solid rgba(240,165,0,.35);border-radius:999px;color:var(--accent);font:800 11px/1 inherit;letter-spacing:.8px;padding:7px 11px;cursor:pointer}
+.ai-helper-toggle:hover{background:rgba(240,165,0,.16);border-color:var(--accent)}
+.ai-helper-toggle .ai-toggle-open-label{display:none}
+.ai-helper.is-open .ai-toggle-closed-label{display:none}
+.ai-helper.is-open .ai-toggle-open-label{display:inline}
+.ai-helper:not(.is-open)>.ai-helper-head{margin:0}
+.ai-helper:not(.is-open)>.ai-helper-head .ai-helper-actions{display:none}
+.ai-helper:not(.is-open)>:not(.ai-helper-head){display:none}
 .ai-helper-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
 .ai-helper-title{font-size:11px;font-weight:800;letter-spacing:2px;color:var(--muted)}
 .ai-helper-state{color:var(--muted);font-size:13px;line-height:1.4}
@@ -678,13 +687,14 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
 
       <section class="ai-helper" id="planAiHelper" aria-live="polite">
         <div class="ai-helper-head">
-          <div class="ai-helper-title">🤖 Assistente IA</div>
+          <button type="button" class="ai-helper-toggle" aria-expanded="false" aria-controls="planAiHelperContent"><span class="ai-toggle-closed-label">✨ IA</span><span class="ai-toggle-open-label">🤖 Assistente IA · Recolher</span></button>
           <div class="ai-helper-actions">
             <button type="button" class="ai-copy" id="planAiMicBtn">🎙️ Ditar</button>
             <button type="button" class="ai-copy" id="planAiGenerateBtn">Perguntar à IA</button>
             <button type="button" class="ai-copy" id="planAiClearBtn">Limpar</button>
           </div>
         </div>
+        <div id="planAiHelperContent">
         <div class="ai-helper-state" id="planAiState">Podes escrever ou ditar uma pergunta sobre o plano da semana.</div>
         <div class="ai-copy-wrap">
           <textarea class="ai-helper-input" id="planAiInput" rows="2" placeholder="Pergunta ou observação sobre o plano da semana"></textarea>
@@ -710,6 +720,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
           </div>
         </div>
         <div class="ai-helper-note">Supervisão humana necessária: esta sugestão não altera o plano nem executa ações críticas.</div>
+        </div>
       </section>
 
       <section class="tasks" id="tasks"></section>
@@ -790,7 +801,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
       </div>
       <div class="ai-helper" id="aiHelper" aria-live="polite">
         <div class="ai-helper-head">
-          <div class="ai-helper-title">🤖 Assistente IA</div>
+          <button type="button" class="ai-helper-toggle" aria-expanded="false" aria-controls="aiHelperContent"><span class="ai-toggle-closed-label">✨ IA</span><span class="ai-toggle-open-label">🤖 Assistente IA · Recolher</span></button>
           <div class="ai-helper-actions">
             <button type="button" class="ai-copy" id="aiUseFichaBtn" style="display:none">Usar ficha sugerida</button>
             <button type="button" class="ai-copy" id="aiDictateBtn">🎙️ Ditar</button>
@@ -799,6 +810,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
             <button type="button" class="ai-copy" id="aiClearBtn">Limpar</button>
           </div>
         </div>
+        <div id="aiHelperContent">
         <div class="ai-helper-state" id="aiHelperState">Escreve primeiro a descrição do registo e depois faz uma pergunta à IA.</div>
         <div class="ai-copy-wrap">
           <textarea class="ai-helper-input" id="aiDiaryInput" rows="2" placeholder="Pergunta ou observação sobre este registo"></textarea>
@@ -846,6 +858,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
         </div>
         <div class="ai-helper-note">Supervisão humana necessária: esta sugestão não altera registos nem executa ações críticas.</div>
         <div class="ai-helper-note" id="aiMicStatus"></div>
+        </div>
       </div>
       <div class="drow">
         <label class="dlabel">FOTOGRAFIAS (OPCIONAL)</label>
@@ -2763,6 +2776,14 @@ $('aiDictateBtn').onclick=()=>startAiDictation({
   status:$('aiMicStatus')
 });
 $('aiGenerateBtn').onclick=generateDiaryAiSuggestion;
+document.querySelectorAll('.ai-helper').forEach(panel=>{
+  const toggle=panel.querySelector('.ai-helper-toggle');
+  if(!toggle)return;
+  toggle.addEventListener('click',()=>{
+    const open=panel.classList.toggle('is-open');
+    toggle.setAttribute('aria-expanded',String(open));
+  });
+});
 $('planAiMicBtn').onclick=()=>startAiDictation({
   button:$('planAiMicBtn'),
   target:$('planAiInput'),
