@@ -1,9 +1,11 @@
 const { test, expect, chromium } = require('@playwright/test');
 const fs = require('fs');
 const path = require('path');
+const { authStatePathFor, sameOrigin } = require('./auth-state');
 
-const AUTH_STATE_PATH = path.join(__dirname, '..', '.auth', 'pmp-auth.json');
 const APP_URL = process.env.PMP_TEST_BASE_URL || 'https://scaixeir75.github.io/manutencao/';
+const AUTH_STATE_PATH = authStatePathFor(APP_URL);
+const LEGACY_AUTH_STATE_PATH = path.join(__dirname, '..', '.auth', 'pmp-auth.json');
 
 function loadLocalEnv() {
   const envPath = path.join(__dirname, '..', '.env.local');
@@ -20,18 +22,23 @@ function diagnosticsPath(name) {
   return path.join(reportDir, name);
 }
 
-function hasSavedAuthState() {
-  return fs.existsSync(AUTH_STATE_PATH);
+function getSavedAuthSession() {
+  const paths = [AUTH_STATE_PATH];
+  if (LEGACY_AUTH_STATE_PATH !== AUTH_STATE_PATH) paths.push(LEGACY_AUTH_STATE_PATH);
+  for (const statePath of paths) {
+    if (!fs.existsSync(statePath)) continue;
+    try {
+      const raw = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+      if (raw?.baseURL && !sameOrigin(raw.baseURL, APP_URL)) continue;
+      const profileDir = raw?.profileDir && fs.existsSync(raw.profileDir) ? raw.profileDir : '';
+      return { storageState: raw?.storageState || raw, profileDir };
+    } catch (_) {}
+  }
+  return null;
 }
 
-function getSavedAuthState() {
-  if (!hasSavedAuthState()) return null;
-  try {
-    const raw = JSON.parse(fs.readFileSync(AUTH_STATE_PATH, 'utf8'));
-    return raw && raw.storageState ? raw.storageState : raw;
-  } catch (_) {
-    return null;
-  }
+function hasSavedAuthState() {
+  return !!getSavedAuthSession();
 }
 function saveAuthStateSnapshot(storageState) {
   fs.mkdirSync(path.dirname(AUTH_STATE_PATH), { recursive: true });
@@ -58,13 +65,14 @@ function getConfiguredBrowserLaunchOptions(){
 async function openSession(testInfo, options = {}) {
   const viewport = options.viewport || null;
   const launchOptions = { headless: isHeadlessRun(testInfo), ...getConfiguredBrowserLaunchOptions() };
-  const browser = await chromium.launch(launchOptions);
-  const savedAuthState = getSavedAuthState();
-  const context = await browser.newContext({ baseURL: APP_URL, viewport, ...(savedAuthState ? { storageState: savedAuthState } : {}) });
+  const savedAuthSession = getSavedAuthSession();
+  const context = savedAuthSession?.profileDir
+    ? await chromium.launchPersistentContext(savedAuthSession.profileDir, { ...launchOptions, baseURL: APP_URL, viewport })
+    : await (await chromium.launch(launchOptions)).newContext({ baseURL: APP_URL, viewport, ...(savedAuthSession?.storageState ? { storageState: savedAuthSession.storageState } : {}) });
   const page = await context.newPage();
   return {
     page,
-    close: async () => browser.close()
+    close: async () => context.close()
   };
 }
 
@@ -93,12 +101,22 @@ async function askAi(page, prompt) {
   if (await page.locator('#loginScreen').isVisible().catch(() => false)) {
     throw new Error('O ecrã de login está visível antes de perguntar à IA.');
   }
+  await ensurePlanAiOpen(page);
   const input = page.locator('#planAiInput');
   await input.fill(prompt);
   await page.locator('#planAiGenerateBtn').click();
   const response = page.locator('#planAiResponse, #planAiSuggestion').first();
   await expect.poll(async () => (await response.textContent().catch(() => '')).trim(), { timeout: 15000 }).not.toMatch(/A resposta aparecerá aqui|^\s*$/);
   return (await response.textContent()).trim();
+}
+
+async function ensurePlanAiOpen(page) {
+  const input = page.locator('#planAiInput');
+  if (await input.isVisible().catch(() => false)) return;
+  const toggle = page.locator('#planAiHelper .ai-helper-toggle');
+  await expect(toggle, 'O launcher do Assistente IA não está disponível.').toBeVisible({ timeout: 30000 });
+  await toggle.click();
+  await expect(input, 'O painel do Assistente IA não abriu.').toBeVisible({ timeout: 15000 });
 }
 
 async function askAiWithHistoryRetry(page, prompt, options = {}) {
@@ -138,7 +156,7 @@ async function login(page) {
   const email = process.env.PMP_TEST_EMAIL;
   const password = process.env.PMP_TEST_PASSWORD;
   const hasAuthState = hasSavedAuthState();
-  if (!hasAuthState && (!email || !password)) test.skip(true, 'Definir PMP_TEST_EMAIL e PMP_TEST_PASSWORD em .env.local');
+  if (!hasAuthState && (!email || !password)) test.skip(true, `Não existe sessão para ${APP_URL}. Executar npm.cmd run test:ai:auth:manual com PMP_TEST_BASE_URL definido para esta URL.`);
   events.credentialsShape = {
     emailLength: email?.length || 0,
     passwordLength: password?.length || 0,
@@ -149,19 +167,21 @@ async function login(page) {
 
   await page.goto('./', { waitUntil: 'domcontentloaded' });
   const aiInput = page.locator('#planAiInput');
+  const aiToggle = page.locator('#planAiHelper .ai-helper-toggle');
   const loginScreen = page.locator('#loginScreen');
   const loginEmail = page.locator('#loginEmail');
   const loginPass = page.locator('#loginPass');
   const loginBtn = page.locator('#loginBtn');
 
   const firstState = await Promise.race([
-    aiInput.waitFor({ state: 'visible', timeout: 30000 }).then(() => 'app').catch(() => null),
+    aiToggle.waitFor({ state: 'visible', timeout: 30000 }).then(() => 'app').catch(() => null),
     loginEmail.waitFor({ state: 'visible', timeout: 30000 }).then(() => 'login').catch(() => null)
   ]);
 
   if (firstState === 'app') await page.waitForTimeout(1500);
   const needsLogin = await loginScreen.isVisible().catch(() => false);
   if (firstState === 'app' && !needsLogin) {
+    await ensurePlanAiOpen(page);
     await page.waitForTimeout(2500);
     const refreshedState = await page.context().storageState().catch(() => null);
     if (refreshedState) saveAuthStateSnapshot(refreshedState);
@@ -197,6 +217,7 @@ async function login(page) {
     throw error;
   }
   await page.waitForTimeout(2500);
+  await ensurePlanAiOpen(page);
   await expect(aiInput, 'A app não carregou o painel IA após o login.').toBeVisible({ timeout: 30000 });
   const refreshedState = await page.context().storageState().catch(() => null);
   if (refreshedState) saveAuthStateSnapshot(refreshedState);
@@ -367,6 +388,10 @@ const aiCases = [
     base('Que intervenções houve na Ficha 29?', text => { expect(text).toContain('Ficha 29'); expect(text).not.toMatch(/^\s*$/); }, ['ficha-history']),
     base('Que fichas tiveram mais anomalias este mês?', text => { expect(text).toMatch(/Ficha|Informação insuficiente|registo/i); expect(text).not.toContain('Pendentes:'); }, ['ranking', 'period', 'not-pending-branch']),
     base('Quais são os equipamentos com mais recorrência?', text => { expect(text).toMatch(/Ficha|registo|Informação insuficiente/i); }, ['recurrence-ranking']),
+    base('Há recorrência nos elevadores?', text => { expect(text).toMatch(/Ficha 19|Elevadores/); expect(text).toMatch(/recorrência|ocorrência|registo/i); }, ['recurrence', 'elevators']),
+    count('Quantas vezes houve problemas nos elevadores?', text => { expect(text).toMatch(/Ficha 19|Elevadores/); expect(text).toMatch(/ocorrência|problema|registo/i); }, ['recurrence', 'elevators', 'issues']),
+    ambiguous('Isto já aconteceu antes?', text => { expect(text).toMatch(/confirmar o equipamento|reformular|Ficha 19/i); expect(text).not.toContain('Informação insuficiente'); }, ['recurrence', 'needs-context']),
+    base('Houve problema semelhante na garagem?', text => { expect(text).toMatch(/Ficha 39|Garagens/); expect(text).toMatch(/ocorrência|problema|registo/i); }, ['recurrence', 'garage', 'issues']),
     base('corte de água', text => { expect(text.toLowerCase()).toMatch(/corte|interrup|falta/); expect(text.toLowerCase()).not.toContain('corte da relva'); expect(text.toLowerCase()).not.toContain('iluminação'); expect(text.toLowerCase()).not.toContain('luminária'); }, ['related-search', 'water-not-lawn']),
     base('Autoclismo', text => { expect(text).toMatch(/Ficha 29|Instalações Sanitárias/); expect(text).toMatch(/registos relacionados|Ocorrência recente|recorrência|histórico/i); }, ['technical-relation', 'history']),
     base('A ficha 20 tem anomalias pendentes?', text => { expect(text).toMatch(/0|não existem|nao existem/i); expect(text).not.toMatch(/Pendentes:\s*Ficha 20/i); }, ['pending-anomalies', 'ficha-scope']),

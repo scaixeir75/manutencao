@@ -2135,7 +2135,7 @@ function generateDiaryAiSuggestion(){
     $('aiHelperState').textContent='Informação insuficiente.';
     return;
   }
-  if(['quantitative','related-search','pending-anomalies'].includes(analysis.intent)){
+  if(['quantitative','history-query','related-search','pending-anomalies'].includes(analysis.intent)){
     const response=analysis.text;
     setDiaryAssistantMode('general');
     if(analysis.intent==='pending-anomalies')renderPendingAiResponse($('aiGeneralResponse'),analysis);else $('aiGeneralResponse').innerHTML=formatAiResponseHtml(response);
@@ -2255,7 +2255,7 @@ async function copyAiBoxText(btn){
 }
 
 function getQuestionKeywords(question){
-  const stop=new Set(['a','o','os','as','de','da','do','das','dos','e','em','no','na','nos','nas','um','uma','este','esta','isto','houve','vezes','quantas','quantos','manutencao','manutencoes','registo','registos','historico','ficha','equipamento','semana','ano','meses','anteriores','parecidas','problemas','problema','avaria','avarias','intervencoes','total','soma','quantidade','quanto','valor','peso','custo','acumulado']);
+  const stop=new Set(['a','o','os','as','de','da','do','das','dos','e','em','no','na','nos','nas','um','uma','este','esta','isto','houve','vezes','quantas','quantos','coloquei','colocou','colocaram','colocar','colocacao','manutencao','manutencoes','registo','registos','historico','ficha','equipamento','semana','ano','meses','anteriores','parecidas','problemas','problema','avaria','avarias','intervencoes','total','soma','quantidade','quanto','valor','peso','custo','acumulado']);
   return norm(question).split(/[^a-z0-9]+/).filter(word=>word.length>2&&!stop.has(word));
 }
 
@@ -2505,8 +2505,54 @@ function getAiFilteredRecords(question){
   return {period,terms,priorityTerms,ficha,records:getAiSearchableRecords().filter(row=>(!ficha||row.fichaId===ficha)&&(!period.start||(row._date>=period.start&&row._date<=period.end))&&(!contentTerms.length||hasAllWholeWords(row.text,contentTerms))&&(!waterOperationalQuery||isWaterOperationalRecord(row.text)))};
 }
 function isAiAnomalyRecord(row){return /anomalia|urgente/.test(norm(row.status+' '+row.text)) || /\b(avaria|problema|erro|falha)\b/.test(norm(row.text));}
+function isAiRecurrenceQuestion(question){
+  const q=norm(question||'');
+  return /\b(recorrencia|recorrente|repetid[oa]s?|aconteceu antes|ja aconteceu|problema semelhante|avaria .*antes|quantas vezes .*problema|quantas vezes .*avaria)\b/.test(q);
+}
+function aiTermVariants(term){
+  const normalized=norm(term||'');
+  const variants=new Set([normalized]);
+  if(normalized)variants.add(normalized+'s');
+  if(normalized.endsWith('s'))variants.add(normalized.slice(0,-1));
+  if(normalized.endsWith('m'))variants.add(normalized.slice(0,-1)+'ns');
+  if(normalized.endsWith('ns'))variants.add(normalized.slice(0,-2)+'m');
+  return variants;
+}
+function getAiRecurrenceFicha(question){
+  const explicitFicha=extractAiFichaId(question);
+  if(explicitFicha&&CATALOG[explicitFicha])return explicitFicha;
+  const catalogMatches=findCatalogMatches(question);
+  if(catalogMatches.length===1)return String(catalogMatches[0].id);
+  const terms=getAiContentTerms(question);
+  const flexibleMatches=Object.entries(CATALOG).filter(([,name])=>wordTokens(name).some(nameTerm=>terms.some(term=>aiTermVariants(term).has(nameTerm))));
+  if(flexibleMatches.length===1)return String(flexibleMatches[0][0]);
+  const suggested=scoreFichaSuggestion(question).historyFichaId;
+  return suggested&&CATALOG[suggested]?String(suggested):'';
+}
+function isAiTechnicalIssueEntry(entry){
+  const status=norm(entry.status||entry.type||entry.severity||'');
+  const text=norm(entry.note||entry.text||'');
+  return /anomalia|urgente/.test(status)||/\b(avaria|problema|erro|falha|fuga|nao funciona|sem funcionar)\b/.test(text);
+}
+function formatAiRecurrenceAnswer(question){
+  const fichaId=getAiRecurrenceFicha(question);
+  if(!fichaId){
+    return ['Preciso de confirmar o equipamento ou a zona antes de procurar recorrências.','','Pode reformular, por exemplo:','- há recorrência nos elevadores;','- houve problema semelhante na garagem;','- esta avaria já apareceu antes na Ficha 19?','','Nenhuma ação foi feita automaticamente.','','Confirmação humana necessária.'].join('\n');
+  }
+  const entries=getFichaScopedEntries(fichaId).map(entry=>({...entry,_date:aiRecordDateValue(entry)})).sort((a,b)=>b._date-a._date);
+  const asksForIssue=/\b(problema|problemas|avaria|avarias|semelhante)\b/.test(norm(question));
+  const relevant=asksForIssue?entries.filter(isAiTechnicalIssueEntry):entries;
+  const label=asksForIssue?'ocorrência(s) problemática(s)':'registo(s) no histórico';
+  const recurrence=relevant.length>=2
+    ? 'Há mais do que uma ocorrência registada; existe indício de recorrência que deve ser confirmado pelo técnico.'
+    : relevant.length===1
+      ? 'Existe uma ocorrência registada, mas não há base suficiente para confirmar recorrência.'
+      : 'Não foram encontradas ocorrências registadas com estes critérios.';
+  return [`Ficha ${fichaId} — ${CATALOG[fichaId]||'Sem ficha'}.`, '', `Foram encontradas ${relevant.length} ${label}.`, `Recorrência: ${recurrence}`, ...(relevant.length?['', 'Ocorrências recentes:', ...relevant.slice(0,5).map(entry=>`- ${entry.date||'Sem data'} — ${buildAiSummary(getFichaRecordText(entry,fichaId))} (${isDiaryMirrorEntry(entry)?'Registos Diários':'Histórico de Fichas'})`)]:[]), '', 'Confirmação humana necessária.'].join('\n');
+}
 function formatAiHistoryAnswer(question){
   const q=norm(question),data=getAiFilteredRecords(question);let records=data.records;
+  if(isAiRecurrenceQuestion(question))return formatAiRecurrenceAnswer(question);
   if(/anomalia|avaria|problema|urgente/.test(q))records=records.filter(isAiAnomalyRecord);
   if(!records.length)return 'Informação insuficiente.';
   const ficha=extractAiFichaId(question);
@@ -2535,7 +2581,7 @@ function formatAiHistoryAnswer(question){
 
 function isAiHistoryQuestion(question){
   const q=norm(question);
-  return /\b(ultima|ultimo|quando|historico|intervencoes|intervencao|recorrencia|repetidos|mais registos|mais anomalias|anomalias houve|registos tem|registos houve|intervencoes houve|ocorrencias houve)\b/.test(q)||!!extractAiFichaId(question);
+  return isAiRecurrenceQuestion(question)||/\b(ultima|ultimo|quando|historico|intervencoes|intervencao|recorrencia|repetidos|mais registos|mais anomalias|anomalias houve|registos tem|registos houve|intervencoes houve|ocorrencias houve)\b/.test(q)||!!extractAiFichaId(question);
 }
 
 function formatAiLocalAnswer(question){
