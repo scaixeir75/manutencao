@@ -1,16 +1,17 @@
 const { chromium } = require('@playwright/test');
 const fs = require('fs');
 const path = require('path');
+const { authStatePathFor, authProfileDirFor } = require('./auth-state');
 
 const APP_URL = process.env.PMP_TEST_BASE_URL || 'https://scaixeir75.github.io/manutencao/';
-const AUTH_DIR = path.join(__dirname, '..', '.auth');
-const AUTH_FILE = path.join(AUTH_DIR, 'pmp-auth.json');
+const AUTH_FILE = authStatePathFor(APP_URL);
+const AUTH_DIR = path.dirname(AUTH_FILE);
+const AUTH_PROFILE_DIR = authProfileDirFor(APP_URL);
 
 async function main() {
   fs.mkdirSync(AUTH_DIR, { recursive: true });
 
-  const browser = await chromium.launch({ headless: false });
-  const context = await browser.newContext();
+  const context = await chromium.launchPersistentContext(AUTH_PROFILE_DIR, { headless: false });
   const page = await context.newPage();
 
   console.log('Abrir app para autenticação manual...');
@@ -32,11 +33,12 @@ async function main() {
   fs.writeFileSync(AUTH_FILE, JSON.stringify({
     createdAt: new Date().toISOString(),
     baseURL: APP_URL,
+    profileDir: AUTH_PROFILE_DIR,
     storageState: snapshot
   }, null, 2));
 
   console.log(`AUTH_STATE_SAVED=${AUTH_FILE}`);
-  await browser.close();
+  await context.close();
 }
 
 main().catch(error => {
