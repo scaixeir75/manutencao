@@ -2096,10 +2096,11 @@ function buildUnifiedAiAnalysis(inputText){
   const hasTechnicalMatch=findCatalogMatches(text).length>0||/\b(autoclismo|wc|sanita|fuga|gerador|elevador|iluminacao|caldeira|aqs|bomba|quadro eletrico|corte de agua|falta de agua|interrupcao de agua)\b/.test(normalized);
   const hasTermAndPeriod=isAiTermAndPeriodQuery(text);
   const related=findRelatedRecords(text);
+  if(isAiOperationalQuestion(text))return {intent:'operational',text:formatAiOperationalAnswer(text)};
   if(isPendingAnomaliesQuestion(text)){const ficha=extractAiFichaId(text);const pendingData=getPendingAnomalies(ficha);return {intent:'pending-anomalies',text:formatPendingAnomaliesAnswer(text),pendingData};}
   if(text.length<3||genericOnly||(!hasTermAndPeriod&&!hasTechnicalMatch&&text.length<12&&!related.matches.length))return {intent:'insufficient',text:'Informação insuficiente.'};
+  if(hasTermAndPeriod||isGeneralAiQuestion(text))return {intent:'quantitative',text:formatAiLocalAnswer(text)};
   if(isAiHistoryQuestion(text))return {intent:'history-query',text:formatAiHistoryAnswer(text)};
-  if(isGeneralAiQuestion(text)||hasTermAndPeriod)return {intent:'quantitative',text:formatAiLocalAnswer(text)};
   if(related.matches.length&&wordTokens(text).length===1)return {intent:'related-search',text:formatRelatedAnswer(text,related),related};
   const preliminary=formatFichaSuggestion(text);
   if(related.matches.length&&!preliminary.historyFichaId)return {intent:'related-search',text:formatRelatedAnswer(text,related),related};
@@ -2255,7 +2256,7 @@ async function copyAiBoxText(btn){
 }
 
 function getQuestionKeywords(question){
-  const stop=new Set(['a','o','os','as','de','da','do','das','dos','e','em','no','na','nos','nas','um','uma','este','esta','isto','houve','vezes','quantas','quantos','coloquei','colocou','colocaram','colocar','colocacao','manutencao','manutencoes','registo','registos','historico','ficha','equipamento','semana','ano','meses','anteriores','parecidas','problemas','problema','avaria','avarias','intervencoes','total','soma','quantidade','quanto','valor','peso','custo','acumulado']);
+  const stop=new Set(['a','o','os','as','de','da','do','das','dos','e','em','no','na','nos','nas','um','uma','este','esta','isto','sobre','houve','vezes','quantas','quantos','coloquei','colocou','colocaram','colocar','colocacao','colocado','colocada','colocados','colocadas','manutencao','manutencoes','registo','registos','historico','ficha','equipamento','semana','ano','meses','anteriores','parecidas','problemas','problema','avaria','avarias','intervencoes','total','soma','quantidade','quanto','valor','peso','custo','acumulado']);
   return norm(question).split(/[^a-z0-9]+/).filter(word=>word.length>2&&!stop.has(word));
 }
 
@@ -2509,6 +2510,11 @@ function isAiRecurrenceQuestion(question){
   const q=norm(question||'');
   return /\b(recorrencia|recorrente|repetid[oa]s?|aconteceu antes|ja aconteceu|problema semelhante|avaria .*antes|quantas vezes .*problema|quantas vezes .*avaria)\b/.test(q);
 }
+function isAiOperationalQuestion(question){
+  const q=norm(question||'');
+  const hasOperationalIntent=/\b(recorrencia|recorrente|anomalia|anomalias|avaria|avarias|pendente|pendentes|resolvid[oa]s?|risco|urgente|problema|problemas|o que devo fazer|proxima acao|estado|situacao)\b/.test(q);
+  return hasOperationalIntent&&!!getAiRecurrenceFicha(question);
+}
 function aiTermVariants(term){
   const normalized=norm(term||'');
   const variants=new Set([normalized]);
@@ -2533,6 +2539,48 @@ function isAiTechnicalIssueEntry(entry){
   const status=norm(entry.status||entry.type||entry.severity||'');
   const text=norm(entry.note||entry.text||'');
   return /anomalia|urgente/.test(status)||/\b(avaria|problema|erro|falha|fuga|nao funciona|sem funcionar)\b/.test(text);
+}
+function formatAiOperationalAnswer(question){
+  const fichaId=getAiRecurrenceFicha(question);
+  if(!fichaId)return 'Informação insuficiente.';
+  const q=norm(question);
+  const entries=getFichaScopedEntries(fichaId).map(entry=>({...entry,_date:aiRecordDateValue(entry)})).sort((a,b)=>b._date-a._date);
+  const issueEntries=entries.filter(isAiTechnicalIssueEntry);
+  const relevant=issueEntries.length?issueEntries:entries;
+  const pendingData=getPendingAnomalies(fichaId);
+  const pending=getDisplayPendingAnomalies(pendingData);
+  const isElevator=fichaId==='19';
+  const asksAction=/\b(o que devo fazer|proxima acao)\b/.test(q);
+  const asksState=/\b(pendente|pendentes|resolvid|estado|situacao)\b/.test(q);
+  const asksRecurrence=isAiRecurrenceQuestion(question)||/\b(recorrencia|recorrente|problema|problemas)\b/.test(q);
+  const hasRepeatedIssue=relevant.length>=2;
+  const recurrence=hasRepeatedIssue
+    ? 'Existe indício de recorrência, com várias ocorrências relacionadas que devem ser confirmadas pelo técnico.'
+    : relevant.length===1
+      ? 'Existe uma ocorrência relacionada, mas a informação é insuficiente para confirmar recorrência.'
+      : 'Não foram encontradas ocorrências técnicas suficientes para identificar um padrão.';
+  const risk=isElevator
+    ? 'Médio/alto, porque envolve equipamento crítico de circulação vertical e pode afetar a utilização por pessoas.'
+    : hasRepeatedIssue||pending.length
+      ? 'Existe indício de risco operacional; a prioridade deve ser confirmada pelo técnico responsável.'
+      : 'Informação insuficiente para classificar o risco técnico.';
+  const missing=pending.length||issueEntries.length
+    ? 'Não foi encontrada confirmação suficiente de resolução para todas as ocorrências.'
+    : 'Informação insuficiente sobre o estado atual e a resolução das ocorrências.';
+  const action=isElevator
+    ? ['Confirmar o estado atual do elevador afetado.', 'Verificar se existe relatório ou intervenção da Kone.', 'Registar a resolução apenas se houver confirmação técnica.', 'Se a avaria persistir, manter como pendente e priorizar acompanhamento.']
+    : ['Confirmar o estado atual do equipamento ou zona.', 'Verificar se existe registo técnico ou intervenção associada.', 'Registar a resolução apenas se houver confirmação técnica.'];
+  const identified=issueEntries.length
+    ? `Foram encontradas ${issueEntries.length} ocorrência(s)/anomalia(s) relacionada(s) com esta ficha.`
+    : `Foram encontrados ${entries.length} registo(s) relacionados com esta ficha.`;
+  const lines=[`Ficha ${fichaId} — ${CATALOG[fichaId]||'Sem ficha'}.`, '', 'O que foi identificado:', identified];
+  if(relevant.length)lines.push('', 'Histórico relacionado:', ...relevant.slice(0,5).map(entry=>`- ${entry.date||'Sem data'} — ${buildAiSummary(getFichaRecordText(entry,fichaId))} (${isDiaryMirrorEntry(entry)?'Registos Diários':'Histórico de Fichas'})`));
+  if(asksRecurrence||hasRepeatedIssue)lines.push('', 'Recorrência / padrão:', recurrence);
+  if(asksState||pending.length)lines.push('', 'Estado / pendência:', pending.length?`Existem ${pending.length} anomalia(s) pendente(s) sem resolução confirmada.`:'Não foi encontrada confirmação suficiente de resolução para todas as ocorrências.');
+  lines.push('', 'Risco técnico:', risk, '', 'Informação em falta:', missing, '', 'Próxima ação recomendada:');
+  lines.push(...action.map((item,index)=>asksAction?`${index+1}. ${item}`:`- ${item}`));
+  lines.push('', 'Confirmação humana necessária.');
+  return lines.join('\n');
 }
 function formatAiRecurrenceAnswer(question){
   const fichaId=getAiRecurrenceFicha(question);
