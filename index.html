@@ -2542,6 +2542,9 @@ function isAiTechnicalIssueEntry(entry,fichaId=''){
   const isExtinguisherService=String(fichaId)==='22'&&/\b(carregamento|carregamentos|recarga|recarregar|recarregado|inspecao|inspecao tecnica)\b/.test(text);
   return /anomalia|urgente/.test(status)||/\b(avaria|problema|erro|falha|fuga|nao funciona|sem funcionar)\b/.test(text)||isExtinguisherService;
 }
+function formatAiMemorySuggestion(rule,base){
+  return ['🧠 Memória técnica sugerida','', 'A IA identificou uma regra que poderá ser útil no futuro, mas nada foi guardado automaticamente.', '', 'Regra sugerida:', rule, '', 'Base:', base, '', 'Estado:', 'Sugestão não guardada. Esta sugestão não altera o comportamento futuro da IA.', '', 'Confirmação humana necessária.'].join('\n');
+}
 function formatAiOperationalAnswer(question){
   const fichaId=getAiRecurrenceFicha(question);
   if(!fichaId)return 'Informação insuficiente.';
@@ -2588,7 +2591,15 @@ function formatAiOperationalAnswer(question){
   if(isElevator||hasRepeatedIssue||pending.length)lines.push('', 'Risco técnico:', risk);
   lines.push('', 'Informação em falta:', missing, '', 'Próxima ação recomendada:');
   lines.push(...action.map((item,index)=>asksAction?`${index+1}. ${item}`:`- ${item}`));
-  lines.push('', 'Confirmação humana necessária.');
+  const memorySuggestion=isExtinguisher&&issueEntries.length
+    ? formatAiMemorySuggestion('Solicitações de carregamento de extintores podem indicar anomalia ou pendência técnica até confirmação de conclusão.', `Registo de ${issueEntries[0].date||'data não disponível'} — ${buildAiSummary(getFichaRecordText(issueEntries[0],fichaId))}.`)
+    : pending.length&&asksState
+      ? formatAiMemorySuggestion('Registos importantes ou urgentes sem resolução posterior confirmada devem continuar a ser apresentados como pendentes a confirmar.', `Foram identificadas ${pending.length} ocorrência(s) pendente(s) sem resolução confirmada na Ficha ${fichaId} — ${CATALOG[fichaId]||'Sem ficha'}.`)
+      : isElevator&&hasRepeatedIssue&&asksRecurrence
+        ? formatAiMemorySuggestion('Ocorrências repetidas no mesmo equipamento devem ser tratadas como possível recorrência até confirmação técnica de resolução.', `Foram encontrados vários registos relacionados com a Ficha 19 — Elevadores.`)
+        : '';
+  if(memorySuggestion)lines.push('', memorySuggestion);
+  else lines.push('', 'Confirmação humana necessária.');
   return lines.join('\n');
 }
 function formatAiRecurrenceAnswer(question){
