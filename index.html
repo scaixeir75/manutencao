@@ -1667,12 +1667,12 @@ function setDiaryAssistantMode(mode){
   const responseLabel=$('aiGeneralResponseLabel');
   const grid=$('aiHelperSuggestion');
   if(!response||!responseLabel||!grid)return;
-  const showGeneral=mode==='general';
+  const showGeneral=mode==='general'||mode==='initial';
   const showSuggestion=mode==='suggestion';
   response.style.display=showGeneral?'block':'none';
   responseLabel.style.display=showGeneral?'block':'none';
   grid.style.display=showSuggestion?'grid':'none';
-  setAiOutputCopyVisible('diary',showGeneral||showSuggestion);
+  setAiOutputCopyVisible('diary',mode==='general'||showSuggestion);
   if(!showGeneral)setAiLearningActionsVisible('diary',false);
 }
 
@@ -1793,7 +1793,7 @@ function resetDiaryAssistant({clearInput=false,forceInitialState=false}={}){
   $('aiHelperState').textContent=forceInitialState
     ? 'Escreve primeiro uma descrição com pelo menos 12 caracteres para contextualizar o Assistente IA.'
     : getDiaryAssistantStateText();
-  $('aiGeneralResponse').textContent='';
+  $('aiGeneralResponse').textContent='A resposta aparecerá aqui depois de perguntares à IA.';
   $('aiProbableFicha').textContent='';
   $('aiFichaReason').textContent='';
   $('aiSummary').textContent='';
@@ -2015,6 +2015,7 @@ function cleanAiInput(inputText){
 function inferContextFichaId(text){
   const normalized=norm(text||'');
   if(/\b(elevador(?:es)?|kone|cabine|botao|botoes|porta|portas|piso)\b/.test(normalized))return '19';
+  if(/\bextintor(?:es)?\b/.test(normalized))return '22';
   return '';
 }
 
@@ -2136,7 +2137,7 @@ function generateDiaryAiSuggestion(){
     $('aiHelperState').textContent='Informação insuficiente.';
     return;
   }
-  if(['quantitative','history-query','related-search','pending-anomalies'].includes(analysis.intent)){
+  if(['quantitative','history-query','related-search','pending-anomalies','operational'].includes(analysis.intent)){
     const response=analysis.text;
     setDiaryAssistantMode('general');
     if(analysis.intent==='pending-anomalies')renderPendingAiResponse($('aiGeneralResponse'),analysis);else $('aiGeneralResponse').innerHTML=formatAiResponseHtml(response);
@@ -2535,21 +2536,23 @@ function getAiRecurrenceFicha(question){
   const suggested=scoreFichaSuggestion(question).historyFichaId;
   return suggested&&CATALOG[suggested]?String(suggested):'';
 }
-function isAiTechnicalIssueEntry(entry){
+function isAiTechnicalIssueEntry(entry,fichaId=''){
   const status=norm(entry.status||entry.type||entry.severity||'');
   const text=norm(entry.note||entry.text||'');
-  return /anomalia|urgente/.test(status)||/\b(avaria|problema|erro|falha|fuga|nao funciona|sem funcionar)\b/.test(text);
+  const isExtinguisherService=String(fichaId)==='22'&&/\b(carregamento|carregamentos|recarga|recarregar|recarregado|inspecao|inspecao tecnica)\b/.test(text);
+  return /anomalia|urgente/.test(status)||/\b(avaria|problema|erro|falha|fuga|nao funciona|sem funcionar)\b/.test(text)||isExtinguisherService;
 }
 function formatAiOperationalAnswer(question){
   const fichaId=getAiRecurrenceFicha(question);
   if(!fichaId)return 'Informação insuficiente.';
   const q=norm(question);
   const entries=getFichaScopedEntries(fichaId).map(entry=>({...entry,_date:aiRecordDateValue(entry)})).sort((a,b)=>b._date-a._date);
-  const issueEntries=entries.filter(isAiTechnicalIssueEntry);
+  const issueEntries=entries.filter(entry=>isAiTechnicalIssueEntry(entry,fichaId));
   const relevant=issueEntries.length?issueEntries:entries;
   const pendingData=getPendingAnomalies(fichaId);
   const pending=getDisplayPendingAnomalies(pendingData);
   const isElevator=fichaId==='19';
+  const isExtinguisher=fichaId==='22';
   const asksAction=/\b(o que devo fazer|proxima acao)\b/.test(q);
   const asksState=/\b(pendente|pendentes|resolvid|estado|situacao)\b/.test(q);
   const asksRecurrence=isAiRecurrenceQuestion(question)||/\b(recorrencia|recorrente|problema|problemas)\b/.test(q);
@@ -2569,15 +2572,21 @@ function formatAiOperationalAnswer(question){
     : 'Informação insuficiente sobre o estado atual e a resolução das ocorrências.';
   const action=isElevator
     ? ['Confirmar o estado atual do elevador afetado.', 'Verificar se existe relatório ou intervenção da Kone.', 'Registar a resolução apenas se houver confirmação técnica.', 'Se a avaria persistir, manter como pendente e priorizar acompanhamento.']
+    : isExtinguisher
+      ? ['Confirmar se o extintor número 36 CO2 já foi carregado e se tem vinheta, etiqueta ou selo de inspeção válido.', 'Se já estiver resolvido, registar a resolução com confirmação técnica.']
     : ['Confirmar o estado atual do equipamento ou zona.', 'Verificar se existe registo técnico ou intervenção associada.', 'Registar a resolução apenas se houver confirmação técnica.'];
-  const identified=issueEntries.length
+  const identified=isExtinguisher&&issueEntries.length
+    ? 'Foi encontrado um registo relevante que pode indicar uma situação anómala ou necessidade de intervenção.'
+    : issueEntries.length
     ? `Foram encontradas ${issueEntries.length} ocorrência(s)/anomalia(s) relacionada(s) com esta ficha.`
     : `Foram encontrados ${entries.length} registo(s) relacionados com esta ficha.`;
   const lines=[`Ficha ${fichaId} — ${CATALOG[fichaId]||'Sem ficha'}.`, '', 'O que foi identificado:', identified];
   if(relevant.length)lines.push('', 'Histórico relacionado:', ...relevant.slice(0,5).map(entry=>`- ${entry.date||'Sem data'} — ${buildAiSummary(getFichaRecordText(entry,fichaId))} (${isDiaryMirrorEntry(entry)?'Registos Diários':'Histórico de Fichas'})`));
+  if(isExtinguisher&&issueEntries.length)lines.push('', 'Anomalia / situação técnica:', 'O registo indica necessidade de carregamento do extintor número 36 CO2. Embora possa não estar classificado literalmente como “Anomalia”, deve ser tratado como situação a confirmar tecnicamente.');
   if(asksRecurrence||hasRepeatedIssue)lines.push('', 'Recorrência / padrão:', recurrence);
-  if(asksState||pending.length)lines.push('', 'Estado / pendência:', pending.length?`Existem ${pending.length} anomalia(s) pendente(s) sem resolução confirmada.`:'Não foi encontrada confirmação suficiente de resolução para todas as ocorrências.');
-  lines.push('', 'Risco técnico:', risk, '', 'Informação em falta:', missing, '', 'Próxima ação recomendada:');
+  if(asksState||pending.length||isExtinguisher&&issueEntries.length)lines.push('', 'Estado / pendência:', pending.length?`Existem ${pending.length} anomalia(s) pendente(s) sem resolução confirmada.`:'Não foi encontrada confirmação clara de que a intervenção tenha sido concluída.');
+  if(isElevator||hasRepeatedIssue||pending.length)lines.push('', 'Risco técnico:', risk);
+  lines.push('', 'Informação em falta:', missing, '', 'Próxima ação recomendada:');
   lines.push(...action.map((item,index)=>asksAction?`${index+1}. ${item}`:`- ${item}`));
   lines.push('', 'Confirmação humana necessária.');
   return lines.join('\n');
