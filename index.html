@@ -2143,7 +2143,7 @@ function generateDiaryAiSuggestion(){
     if(analysis.intent==='pending-anomalies')renderPendingAiResponse($('aiGeneralResponse'),analysis);else $('aiGeneralResponse').innerHTML=formatAiResponseHtml(response);
     syncAiLearningActions('diary');
     panel.dataset.suggestedFichaId='';
-    aiSuggestionText=response;
+    aiSuggestionText=response;renderMemoryReview('diary',question,$('aiGeneralResponse').innerText||$('aiGeneralResponse').textContent||'');
     panel.classList.add('ready');
     if(copyBtn){copyBtn.style.display='inline-flex';copyBtn.textContent='Copiar sugestão';}
     if(useFichaBtn)useFichaBtn.style.display='none';
@@ -2545,6 +2545,7 @@ function isAiTechnicalIssueEntry(entry,fichaId=''){
 function formatAiMemorySuggestion(rule,base){
   return ['🧠 Memória técnica sugerida','', 'A IA identificou uma regra que poderá ser útil no futuro, mas nada foi guardado automaticamente.', '', 'Regra sugerida:', rule, '', 'Base:', base, '', 'Estado:', 'Sugestão não guardada. Esta sugestão não altera o comportamento futuro da IA.', '', 'Confirmação humana necessária.'].join('\n');
 }
+function renderMemoryReview(kind,question,text){const id=kind==='plan'?'planMemoryReview':'diaryMemoryReview';const old=$(id);if(old)old.remove();const source=String(text||'').replace(/<[^>]*>/g,' ');if(!/Memória\s+técnica\s+sugerida/i.test(source))return;const rule=((source.match(/Regra\s+sugerida:\s*([\s\S]*?)(?=\s*Base\s*:)/i)||[])[1]||'').replace(/\s+/g,' ').trim(),base=((source.match(/Base\s*:\s*([\s\S]*?)(?=\s*Estado\s*:)/i)||[])[1]||'').replace(/\s+/g,' ').trim(),ficha=(source.match(/Ficha\s+(\d+)\s+—\s+([^\.\r\n]+)/i)||[]);if(!rule||!base)return;const host=$(kind==='plan'?'planAiResponse':'aiGeneralResponse'),wrap=document.createElement('div');wrap.id=id;wrap.className='ai-memory-review';wrap.style.cssText='display:block;margin-top:8px';wrap.innerHTML=`<button type="button" class="ai-copy">Rever sugestão</button><div class="ai-helper-text" style="display:none"></div>`;const btn=wrap.querySelector('button'),panel=wrap.querySelector('div');btn.onclick=()=>{panel.style.display='block';panel.innerHTML=`<strong>Revisão da memória técnica sugerida</strong><br>Regra: ${escapeHtml(rule)}<br>Base: ${escapeHtml(base)}<br>Ficha: ${ficha[1]?`Ficha ${ficha[1]} — ${escapeHtml(ficha[2].trim())}`:'Não identificada'}<br>Estado: Sugestão não guardada<br>Confirmação humana necessária<br>Esta memória aprovada ainda não altera automaticamente o comportamento futuro da IA<br><button type="button" class="ai-copy">Cancelar</button> <button type="button" class="ai-copy">Rejeitar</button> <button type="button" class="ai-copy">Aprovar memória</button>`;const bs=panel.querySelectorAll('button');bs[0].onclick=()=>panel.style.display='none';bs[1].onclick=()=>{wrap.remove();showToast('Sugestão rejeitada nesta sessão. Nada foi guardado.');};bs[2].onclick=async()=>{if(await askConfirm('Confirmar aprovação desta memória técnica?',{title:'Aprovar memória',okText:'Confirmar',danger:false}))showToast('Fluxo de aprovação validado. A gravação da memória técnica será implementada no bloco seguinte. Nada foi guardado nesta fase.');};};host.parentElement.after(wrap);}
 function formatAiOperationalAnswer(question){
   const fichaId=getAiRecurrenceFicha(question);
   if(!fichaId)return 'Informação insuficiente.';
@@ -2844,9 +2845,10 @@ function generatePlanAiSuggestion(){
     setAiListContent('planAiRecentHistory',h.entries.length?h.entries.map(entry=>`${entry.date||'Sem data'} — ${getHistoryEntrySummary(entry)}`):[],'Informação insuficiente sobre histórico anterior.');
     setAiTextContent('planAiRecurrence',analysis.recurrence);
     $('planAiSuggestion').style.display='grid';
+    renderMemoryReview('plan',question,response.innerText||response.textContent||'');
   }else{
     response.style.display='block';
-    if(analysis.intent==='pending-anomalies')renderPendingAiResponse(response,analysis);else response.innerHTML=formatAiResponseHtml(analysis.text);
+    if(analysis.intent==='pending-anomalies')renderPendingAiResponse(response,analysis);else response.innerHTML=formatAiResponseHtml(analysis.text);renderMemoryReview('plan',question,response.innerText||response.textContent||'');
     $('planAiSuggestion').style.display='none';
     syncAiLearningActions('plan');
   }
