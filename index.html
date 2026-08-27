@@ -454,6 +454,11 @@ body:has(.ai-helper.is-open){overflow:hidden}
 .ai-copy{background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);
   font-size:11px;font-weight:800;letter-spacing:.8px;padding:7px 10px;cursor:pointer;white-space:nowrap}
 .ai-copy:hover{border-color:var(--accent);color:var(--accent)}
+.ai-ocr-preview{margin-top:10px;padding:11px;border:1px dashed rgba(240,165,0,.5);border-radius:9px;background:rgba(240,165,0,.05);color:var(--text);font-size:13px;line-height:1.45}
+.ai-ocr-preview h4{margin:0 0 5px;color:var(--accent);font-size:12px;letter-spacing:.7px}
+.ai-ocr-preview h5{margin:10px 0 4px;color:var(--muted);font-size:10px;letter-spacing:1px}
+.ai-ocr-preview ul{margin:0;padding-left:18px}
+.ai-ocr-preview .ai-ocr-warning{margin-top:10px;color:var(--warn);font-weight:700}
 
 /* Fotografias */
 .photo-add{display:flex;gap:8px;flex-wrap:wrap}
@@ -658,6 +663,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
           <div class="ai-helper-actions">
             <button type="button" class="ai-copy" id="planAiMicBtn">🎙️ Ditar</button>
             <button type="button" class="ai-copy" id="planAiGenerateBtn">Perguntar à IA</button>
+            <button type="button" class="ai-copy" id="planOcrSimulateBtn">Simular folha diária</button>
             <button type="button" class="ai-copy" id="planAiClearBtn">Limpar</button>
           </div>
         </div>
@@ -816,6 +822,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
             <button type="button" class="ai-copy" id="aiUseFichaBtn" style="display:none">Usar ficha sugerida</button>
             <button type="button" class="ai-copy" id="aiDictateBtn">🎙️ Ditar</button>
             <button type="button" class="ai-copy" id="aiGenerateBtn">Perguntar à IA</button>
+            <button type="button" class="ai-copy" id="diaryOcrSimulateBtn">Simular folha diária</button>
             <button type="button" class="ai-copy" id="aiCopyBtn" style="display:none">Copiar sugestão</button>
             <button type="button" class="ai-copy" id="aiClearBtn">Limpar</button>
           </div>
@@ -1784,8 +1791,35 @@ function updateDiarySuggestionVisibility(){
   setDiarySuggestionItemVisibility('aiRecurrence', !!$('aiRecurrence').textContent.trim());
 }
 
+function clearOcrManualPreview(kind){
+  const preview=$(kind==='plan'?'planOcrManualPreview':'diaryOcrManualPreview');
+  if(preview)preview.remove();
+}
+
+function renderOcrManualPreview(kind){
+  clearOcrManualPreview(kind);
+  const host=$(kind==='plan'?'planAiResponse':'aiGeneralResponse');
+  if(!host)return;
+  const preview=document.createElement('section');
+  preview.id=kind==='plan'?'planOcrManualPreview':'diaryOcrManualPreview';
+  preview.className='ai-ocr-preview';
+  preview.setAttribute('aria-label','Pré-visualização manual da folha diária');
+  preview.innerHTML=`<h4>Pré-visualização experimental — folha diária</h4>
+    <div><strong>Identificação:</strong> data e técnico não identificados · origem: simulação manual · imagem guardada: não · imagem descartada: sim.</div>
+    <h5>LEITURAS TÉCNICAS — NÃO CONFIRMADAS</h5>
+    <ul><li>Eletricidade, água, gás e gasóleo do grupo gerador: não lidos.</li><li>Temperaturas AQS/termoacumuladores e máquina lava-loiça: não lidas.</li><li>Central de vácuo, cloro livre, cloro total e pH: não lidos.</li></ul>
+    <h5>VERIFICAÇÕES OK/NOK</h5>
+    <ul><li>Grupo gerador — por confirmar.</li><li>Depósitos AQS — por confirmar.</li><li>Análise de água da cozinha — por confirmar.</li></ul>
+    <h5>RELATÓRIO / ANOMALIA</h5>
+    <div>Texto simulado: não extraído. Confiança: baixa. Destino sugerido: nenhum, até revisão humana.</div>
+    <div class="ai-human-confirmation">Confirmação humana necessária.</div>
+    <div class="ai-ocr-warning">Simulação sem OCR real. Nenhuma imagem foi carregada ou guardada. Nenhum dado foi gravado.</div>`;
+  host.parentElement.after(preview);
+}
+
 function resetDiaryAssistant({clearInput=false,forceInitialState=false}={}){
   const panel=$('aiHelper');if(!panel)return;
+  clearOcrManualPreview('diary');
   const copyBtn=$('aiCopyBtn');
   const useFichaBtn=$('aiUseFichaBtn');
   panel.classList.remove('ready');
@@ -1812,6 +1846,7 @@ function resetDiaryAssistant({clearInput=false,forceInitialState=false}={}){
 
 function resetPlanAssistant({clearInput=false}={}){
   const panel=$('planAiHelper');if(!panel)return;
+  clearOcrManualPreview('plan');
   panel.classList.remove('has-response');
   $('planAiState').textContent='Podes escrever ou ditar uma pergunta sobre o plano da semana.';
   $('planAiResponse').textContent='A resposta aparecerá aqui depois de perguntares à IA.';
@@ -2126,6 +2161,7 @@ function buildUnifiedAiAnalysis(inputText){
 
 function generateDiaryAiSuggestion(){
   const panel=$('aiHelper');if(!panel)return;
+  clearOcrManualPreview('diary');
   const text=$('diaryText').value.trim();
   const question=$('aiDiaryInput')&&$('aiDiaryInput').value?$('aiDiaryInput').value.trim():'';
   const copyBtn=$('aiCopyBtn');
@@ -2831,6 +2867,7 @@ function formatAiLocalAnswer(question){
 
 function generatePlanAiSuggestion(){
   const panel=$('planAiHelper');if(!panel)return;
+  clearOcrManualPreview('plan');
   const input=$('planAiInput');
   const question=input?input.value.trim():'';
   const analysis=buildUnifiedAiAnalysis(question);
@@ -3031,7 +3068,9 @@ $('planAiMicBtn').onclick=()=>startAiDictation({
   status:$('planAiState')
 });
 $('planAiGenerateBtn').onclick=generatePlanAiSuggestion;
+$('planOcrSimulateBtn').onclick=()=>renderOcrManualPreview('plan');
 $('planAiClearBtn').onclick=()=>resetPlanAssistant({clearInput:true});
+$('diaryOcrSimulateBtn').onclick=()=>renderOcrManualPreview('diary');
 document.querySelectorAll('.ai-copy-mini').forEach(btn=>btn.onclick=()=>copyAiBoxText(btn));
 $('diaryAiEditSuggestionBtn').onclick=()=>editAiLearningSuggestion('diary');
 $('planAiEditSuggestionBtn').onclick=()=>editAiLearningSuggestion('plan');
