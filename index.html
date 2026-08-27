@@ -1856,21 +1856,186 @@ async function saveOcrManualPreview(record,button,feedback,warning){
   }
 }
 
-function renderOcrOperationalPreview(container,report){
+function operationalEntryIdFor(entry){
+  const key=[entry.date,normalizeMemoryText(entry.text),entry.severity,entry.source].join('|');
+  let hash=5381;for(let i=0;i<key.length;i+=1)hash=((hash<<5)+hash)^key.charCodeAt(i);
+  return `daily_operational_${(hash>>>0).toString(36)}`;
+}
+
+function getOcrOperationalFormData(panel){
+  const text=panel.querySelector('[data-ocr-operational-text]').value.trim().replace(/\s+/g,' ');
+  const choice=panel.querySelector('[data-ocr-operational-severity]').value;
+  const severity=choice==='anomaly'?'urgente':choice==='important'?'aviso':choice;
+  const date=panel.querySelector('[data-ocr-operational-date]').value;
+  const fichaId=panel.querySelector('[data-ocr-operational-ficha]').value;
+  const labels={info:'Tarefa simples',aviso:'Visita',important:'Importante',anomaly:'Anomalia'};
+  const severityLabels={info:'info',aviso:'aviso',important:'aviso — acompanhamento operacional',anomaly:'urgente — situação anómala'};
+  return {text,severity,date,fichaId,fichaNome:fichaId?CATALOG[fichaId]:null,operationalIntent:choice,destination:labels[choice]||'Registo Diário',severityLabel:severityLabels[choice]||severity};
+}
+
+function buildOcrOperationalEntry(data){
+  const entry={text:data.text,severity:data.severity,date:data.date,timestamp:new Date().toISOString(),source:'daily_sheet_operational_report',sourceContext:'daily_sheet_manual_preview',operationalIntent:data.operationalIntent,createdByHuman:true};
+  if(data.fichaId){entry.fichaId=data.fichaId;entry.fichaNome=data.fichaNome;}
+  entry.id=operationalEntryIdFor(entry);
+  return entry;
+}
+
+function isSameOcrOperationalEntry(candidate,entry){
+  return !!candidate&&candidate.source==='daily_sheet_operational_report'&&candidate.date===entry.date&&candidate.text===entry.text&&candidate.severity===entry.severity;
+}
+
+function getOcrOperationalSignals(text){
+  const normalized=norm(text||'');
+  return {
+    normalized,
+    external:/\b(presenca|visita|empresa externa|tecnico externo|fornecedor|prestador)\b/.test(normalized),
+    pending:/\b(pendente|por reparar|sem resolucao|sem resolvida|sem resolver|necessita acompanhamento|a necessitar acompanhamento|aguarda reparacao)\b/.test(normalized),
+    problem:/\b(problema|avaria(?:do|da)?|falha|fuga|equipamento parado|nao funciona|sem funcionar|situacao anomala)\b/.test(normalized),
+    resolved:/\b(reparad[oa]|resolvid[oa]|concluid[oa]|intervencao concluida)\b/.test(normalized),
+    technical:/\b(bomba|caldeira|elevador|extintor|gerador|quadro|disjuntor|portao|porta corta-fogo|central)\b/.test(normalized),
+    routine:/\b(cadeira|rotina|limpeza|arrumacao|ajuste simples|tarefa simples)\b/.test(normalized)
+  };
+}
+
+function getOcrOperationalBaseClassification(text){
+  const signals=getOcrOperationalSignals(text);
+  if(!signals.normalized)return null;
+  if(signals.external)return {choice:'aviso',label:'Visita',severity:'aviso',reason:'presença ou intervenção externa identificada'};
+  if(signals.problem&&signals.pending)return {choice:'anomaly',label:'Anomalia',severity:'urgente',reason:'problema técnico pendente ou sem resolução confirmada'};
+  if(signals.resolved&&signals.technical)return {choice:'important',label:'Importante',severity:'aviso',reason:'intervenção técnica relevante já resolvida'};
+  if(signals.routine||signals.resolved)return {choice:'info',label:'Tarefa simples',severity:'info',reason:'tarefa rotineira ou intervenção pouco crítica'};
+  return null;
+}
+
+function getOcrOperationalHistoryMatches(text){
+  const normalized=norm(text||'');
+  const ignored=new Set(['ficou','por','para','com','sem','que','uma','um','foi','esta','este','tecnico','tecnica','reparado','reparada','avariado','avariada','pendente','situacao','confirmada','confirmado']);
+  const terms=[...new Set(normalized.split(/[^a-z0-9]+/).filter(term=>term.length>3&&!ignored.has(term)))];
+  if(!terms.length||typeof getAiSearchableRecords!=='function')return [];
+  const matches=getAiSearchableRecords().map(row=>{
+    const rowText=norm(`${row.text||''} ${row.status||''}`);
+    const matchedTerms=terms.filter(term=>rowText.includes(term));
+    return {...row,matchedTerms};
+  }).filter(row=>row.matchedTerms.length>0).sort((a,b)=>b.matchedTerms.length-a.matchedTerms.length||b._date-a._date);
+  const unique=new Map();
+  matches.forEach(row=>unique.set(`${row.date}|${row.text}`,row));
+  return [...unique.values()].slice(0,3);
+}
+
+function getOcrHistoricalCategory(row){
+  const signals=getOcrOperationalSignals(`${row.text||''} ${row.status||''}`);
+  if(signals.external)return 'aviso';
+  if(signals.problem&&signals.pending)return 'anomaly';
+  if(signals.resolved&&signals.technical)return 'important';
+  if(signals.routine||signals.resolved)return 'info';
+  return '';
+}
+
+function suggestOcrOperationalClassification(text){
+  const base=getOcrOperationalBaseClassification(text);
+  if(!base)return null;
+  const matches=getOcrOperationalHistoryMatches(text);
+  const supporting=matches.filter(row=>getOcrHistoricalCategory(row)===base.choice);
+  const examples=(supporting.length?supporting:matches).map(row=>`${row.date||'Sem data'} — ${String(row.text||'').replace(/\s+/g,' ').slice(0,120)} (${row.source})`);
+  const confidence=supporting.length>=2?'high':supporting.length===1?'medium':'low';
+  const reason=supporting.length
+    ? `${base.reason}; compatível com ${supporting.length} registo(s) semelhante(s) no histórico carregado`
+    : `${base.reason}; histórico semelhante insuficiente para confirmar a categoria`;
+  return {...base,confidence,reason,examples};
+}
+
+function updateOcrOperationalClassification(panel){
+  const suggestion=suggestOcrOperationalClassification(panel.querySelector('[data-ocr-operational-text]').value);
+  const output=panel.querySelector('[data-ocr-operational-classification]');
+  if(!output)return;
+  output.textContent=suggestion
+    ? `Sugestão baseada no histórico (confiança ${suggestion.confidence}): ${suggestion.label} (${suggestion.severity}) — ${suggestion.reason}.${suggestion.examples.length?` Exemplos: ${suggestion.examples.join(' | ')}.`:''} Confirma a categoria antes de criar.`
+    : 'Classificação por confirmar: o texto não permite sugerir categoria com segurança. Confirma com o técnico antes de criar.';
+}
+
+function renderOcrOperationalCreatePreview(panel,data){
+  const old=panel.querySelector('[data-ocr-create-preview]');if(old)old.remove();
+  const entry=buildOcrOperationalEntry(data);
+  const suggestion=suggestOcrOperationalClassification(entry.text);
+  const preview=document.createElement('div');
+  preview.className='ai-ocr-operational-preview';
+  preview.dataset.ocrCreatePreview='true';
+  preview.innerHTML=`<h5>PRÉ-VISUALIZAÇÃO DA CRIAÇÃO</h5>
+    <div><strong>Texto final:</strong> ${escapeHtml(entry.text)}</div>
+    <div><strong>Destino:</strong> Registo Diário — ${escapeHtml(data.destination)}.</div>
+    <div><strong>Severidade:</strong> ${escapeHtml(data.severityLabel)} · <strong>Data:</strong> ${escapeHtml(entry.date)}.</div>
+    <div><strong>Ficha:</strong> ${data.fichaId?`Ficha ${escapeHtml(data.fichaId)} — ${escapeHtml(data.fichaNome)}`:'Não associada'}.</div>
+    <div><strong>Sugestão do histórico:</strong> ${suggestion?`${escapeHtml(suggestion.label)} (${escapeHtml(suggestion.severity)}) · confiança ${escapeHtml(suggestion.confidence)}`:'Por confirmar'}.</div>
+    ${suggestion&&suggestion.examples.length?`<div><strong>Exemplos do histórico:</strong><ul>${suggestion.examples.map(example=>`<li>${escapeHtml(example)}</li>`).join('')}</ul></div>`:''}
+    <div>Será criado um Registo Diário. Se existir ficha associada, poderá ser espelhado no Histórico da Ficha pelo fluxo já existente.</div>
+    <button type="button" class="ai-copy" data-ocr-action="create-operational-record">Criar Registo Diário</button>`;
+  preview.querySelector('[data-ocr-action="create-operational-record"]').onclick=()=>saveOcrOperationalRecord(panel,entry);
+  panel.appendChild(preview);
+}
+
+async function saveOcrOperationalRecord(panel,entry){
+  const feedback=panel.querySelector('[data-ocr-operational-feedback]');
+  const confirmed=await askConfirm('Vais criar um Registo Diário com o texto confirmado e a severidade selecionada. Se estiver associado a uma ficha, o registo poderá ser espelhado no Histórico da Ficha. Confirmas a criação?',{title:'Criar Registo Diário',okText:'Confirmar criação',danger:false});
+  if(!confirmed)return;
+  const button=panel.querySelector('[data-ocr-action="create-operational-record"]');
+  if(button)button.disabled=true;
+  try{
+    if(!window.fb||!window.firebaseReady)throw new Error('Firebase indisponível.');
+    const{db,ref,get,set}=window.fb;
+    const root=ref(db,'registos_diarios');
+    const existing=(await get(root)).val()||{};
+    if(Object.values(existing).some(candidate=>isSameOcrOperationalEntry(candidate,entry))){
+      feedback.textContent='Esta ação operacional já tinha sido criada. Nada foi duplicado.';
+      return;
+    }
+    const target=ref(db,`registos_diarios/${entry.id}`);
+    if((await get(target)).exists())throw new Error('Identificador operacional já utilizado. Nada foi alterado.');
+    await set(target,entry);
+    feedback.textContent='Registo Diário criado após confirmação humana.';
+  }catch(error){
+    console.error(error);
+    feedback.textContent='Não foi possível criar o Registo Diário. Nada foi confirmado.';
+  }finally{
+    if(button)button.disabled=false;
+  }
+}
+
+function renderOcrOperationalPreview(container,report,record){
   const old=container.querySelector('[data-ocr-operational-preview]');
   if(old)old.remove();
   const text=String(report.normalizedText||report.rawText||'').trim();
-  const confirmed=!!text;
   const panel=document.createElement('div');
   panel.className='ai-ocr-operational-preview';
   panel.dataset.ocrOperationalPreview='true';
-  panel.innerHTML=`<h5>PRÉ-VISUALIZAÇÃO OPERACIONAL</h5>
-    <div><strong>Texto do relatório/anomalia:</strong> ${confirmed?escapeHtml(text):'Não lido / por confirmar.'}</div>
-    <div><strong>Confiança:</strong> ${report.confidence||'low'}.</div>
-    <div>Esta é uma simulação local; não cria ações reais.</div>
-    <div><strong>Destinos possíveis após confirmação futura:</strong></div>
-    <ul><li>Registo Diário</li><li>Subtarefa</li><li>Importante</li><li>Visita</li><li>Anomalia pendente</li></ul>
-    <div class="ai-ocr-warning">${confirmed?'Confirmação humana necessária antes de qualquer criação.':'Não existe texto operacional confirmado para criar ação.'}</div>`;
+  const fichas=Object.entries(CATALOG).map(([id,name])=>`<option value="${escapeHtml(id)}">Ficha ${escapeHtml(id)} — ${escapeHtml(name)}</option>`).join('');
+  panel.innerHTML=`<h5>PREPARAR AÇÃO OPERACIONAL</h5>
+    <div><strong>Texto do relatório/anomalia:</strong> ${text?escapeHtml(text):'Não lido / por confirmar.'}</div>
+    <div><strong>Confiança original:</strong> ${report.confidence||'low'}.</div>
+    <label class="ai-helper-label">TEXTO OPERACIONAL CONFIRMADO PELO TÉCNICO</label>
+    <textarea class="ai-helper-input" data-ocr-operational-text rows="3" placeholder="Escreva ou confirme o texto operacional lido">${escapeHtml(text)}</textarea>
+    <label class="ai-helper-label">DESTINO E SEVERIDADE</label>
+    <select class="ai-helper-input" data-ocr-operational-severity><option value="info">Tarefa simples</option><option value="aviso">Visita</option><option value="important">Importante (acompanhamento)</option><option value="anomaly">Anomalia (severidade urgente)</option></select>
+    <label class="ai-helper-label">DATA E FICHA (OPCIONAL)</label>
+    <input class="ai-helper-input" data-ocr-operational-date type="date" value="${record.date}">
+    <select class="ai-helper-input" data-ocr-operational-ficha><option value="">— Nenhuma ficha associada —</option>${fichas}</select>
+    <div class="ai-ocr-warning">Subtarefas ainda não são suportadas nesta versão.</div>
+    <div class="ai-helper-text" data-ocr-operational-classification aria-live="polite"></div>
+    <button type="button" class="ai-copy" data-ocr-action="preview-operational-record">Pré-visualizar criação</button>
+    <div class="ai-helper-text" data-ocr-operational-feedback aria-live="polite"></div>`;
+  const clearPreview=()=>{const preview=panel.querySelector('[data-ocr-create-preview]');if(preview)preview.remove();panel.querySelector('[data-ocr-operational-feedback]').textContent='';};
+  panel.querySelector('[data-ocr-operational-text]').addEventListener('input',()=>{clearPreview();updateOcrOperationalClassification(panel);});
+  panel.querySelectorAll('[data-ocr-operational-severity],[data-ocr-operational-date],[data-ocr-operational-ficha]').forEach(input=>input.addEventListener('input',clearPreview));
+  panel.querySelector('[data-ocr-operational-severity]').addEventListener('change',clearPreview);
+  panel.querySelector('[data-ocr-operational-ficha]').addEventListener('change',clearPreview);
+  panel.querySelector('[data-ocr-action="preview-operational-record"]').onclick=()=>{
+    const data=getOcrOperationalFormData(panel);
+    const feedback=panel.querySelector('[data-ocr-operational-feedback]');
+    if(!data.text){feedback.textContent='Texto operacional não confirmado. Confirme o texto antes de criar ação.';return;}
+    if(!data.date){feedback.textContent='Indique a data antes de criar ação.';return;}
+    if(data.operationalIntent==='anomaly'&&!/\b(problema|avaria|falha|fuga|equipamento parado|nao funciona|sem funcionar|situacao anomala)\b/.test(norm(data.text))){feedback.textContent='Anomalia exige indicação de problema técnico, avaria, falha, fuga, equipamento parado ou situação anómala.';return;}
+    feedback.textContent='';renderOcrOperationalCreatePreview(panel,data);
+  };
+  updateOcrOperationalClassification(panel);
   container.appendChild(panel);
 }
 
@@ -1901,7 +2066,7 @@ function renderOcrManualPreview(kind){
   const feedback=preview.querySelector('[data-ocr-feedback]');
   const warning=preview.querySelector('.ai-ocr-warning');
   button.onclick=()=>saveOcrManualPreview(record,button,feedback,warning);
-  operationalButton.onclick=()=>renderOcrOperationalPreview(preview,record.operationalReport);
+  operationalButton.onclick=()=>renderOcrOperationalPreview(preview,record.operationalReport,record);
   host.parentElement.after(preview);
 }
 
