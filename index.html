@@ -1796,10 +1796,69 @@ function clearOcrManualPreview(kind){
   if(preview)preview.remove();
 }
 
+function buildOcrManualPreviewRecord(){
+  const date=new Date().toISOString().slice(0,10);
+  const unread=(label,unit=null)=>({label,value:null,unit,rawText:null,confidence:'low',requiresHumanReview:true});
+  return {
+    id:`daily_sheet_${date.replaceAll('-','_')}_manual_preview`,
+    schemaVersion:1,
+    source:'manual_preview',
+    extractionMode:'manual_simulation',
+    date,
+    sheetDateConfirmed:false,
+    technicianName:null,
+    imageStored:false,
+    imageDiscarded:true,
+    validatedByHuman:true,
+    requiresHumanReview:true,
+    createdAt:new Date().toISOString(),
+    readings:{
+      generatorFuelLevel:unread('Grupo Gerador — Gasóleo'),
+      electricityMeter:unread('Electricidade — Contagem','kWh'),
+      waterMeter:unread('Água — Contagem','m3'),
+      gasMeter:unread('Gás — Contagem','m3'),
+      aqsTemperatures:[],
+      dishwasherTemperature:unread('Máquina Lava-Loiça — Temperatura','°C'),
+      medicalVacuum:unread('Gases Medicinais — Central Vácuo'),
+      waterAnalysis:{freeChlorine:unread('Cloro Livre'),totalChlorine:unread('Cloro Total'),ph:unread('pH','pH')}
+    },
+    checks:[
+      {area:'Grupo Gerador',status:'unclear',rawMark:null,confidence:'low',requiresHumanReview:true},
+      {area:'Depósitos AQS',status:'unclear',rawMark:null,confidence:'low',requiresHumanReview:true},
+      {area:'Análise Água Cozinha',status:'unclear',rawMark:null,confidence:'low',requiresHumanReview:true}
+    ],
+    operationalReport:{rawText:null,normalizedText:null,confidence:'low',requiresHumanReview:true,suggestedDestinations:['none'],suggestedCategory:null,suggestedVisibleAction:null,humanConfirmationRequired:true}
+  };
+}
+
+async function saveOcrManualPreview(record,button,feedback,warning){
+  const confirmed=await askConfirm('Vais guardar apenas esta pré-visualização manual no histórico técnico. A fotografia não será carregada nem guardada e os valores permanecem por confirmar.',{title:'Guardar histórico técnico',okText:'Confirmar gravação',danger:false});
+  if(!confirmed)return;
+  button.disabled=true;
+  try{
+    if(!window.fb||!window.firebaseReady)throw new Error('Firebase indisponível.');
+    const{db,ref,get,set}=window.fb;
+    const target=ref(db,`historico_tecnico_diario/${record.id}`);
+    if((await get(target)).exists()){
+      feedback.textContent='Este histórico técnico diário já tinha sido guardado. Nada foi duplicado.';
+    }else{
+      await set(target,record);
+      feedback.textContent='Histórico técnico diário guardado após confirmação humana.';
+    }
+    warning.textContent='Simulação sem OCR real. Nenhuma imagem foi carregada ou guardada. Nenhum dado foi gravado fora do histórico técnico diário.';
+  }catch(error){
+    console.error(error);
+    feedback.textContent='Não foi possível guardar o histórico técnico diário. Nada foi confirmado.';
+  }finally{
+    button.disabled=false;
+  }
+}
+
 function renderOcrManualPreview(kind){
   clearOcrManualPreview(kind);
   const host=$(kind==='plan'?'planAiResponse':'aiGeneralResponse');
   if(!host)return;
+  const record=buildOcrManualPreviewRecord();
   const preview=document.createElement('section');
   preview.id=kind==='plan'?'planOcrManualPreview':'diaryOcrManualPreview';
   preview.className='ai-ocr-preview';
@@ -1813,7 +1872,13 @@ function renderOcrManualPreview(kind){
     <h5>RELATÓRIO / ANOMALIA</h5>
     <div>Texto simulado: não extraído. Confiança: baixa. Destino sugerido: nenhum, até revisão humana.</div>
     <div class="ai-human-confirmation">Confirmação humana necessária.</div>
+    <button type="button" class="ai-copy" data-ocr-action="save-manual-preview">Guardar no histórico técnico</button>
+    <div class="ai-helper-text" data-ocr-feedback aria-live="polite"></div>
     <div class="ai-ocr-warning">Simulação sem OCR real. Nenhuma imagem foi carregada ou guardada. Nenhum dado foi gravado.</div>`;
+  const button=preview.querySelector('[data-ocr-action="save-manual-preview"]');
+  const feedback=preview.querySelector('[data-ocr-feedback]');
+  const warning=preview.querySelector('.ai-ocr-warning');
+  button.onclick=()=>saveOcrManualPreview(record,button,feedback,warning);
   host.parentElement.after(preview);
 }
 
