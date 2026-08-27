@@ -459,6 +459,8 @@ body:has(.ai-helper.is-open){overflow:hidden}
 .ai-ocr-preview h5{margin:10px 0 4px;color:var(--muted);font-size:10px;letter-spacing:1px}
 .ai-ocr-preview ul{margin:0;padding-left:18px}
 .ai-ocr-preview .ai-ocr-warning{margin-top:10px;color:var(--warn);font-weight:700}
+.ai-ocr-operational-preview{margin-top:9px;padding:9px;border-left:3px solid var(--warn);background:rgba(240,165,0,.07)}
+.ai-ocr-operational-preview ul{margin-top:4px}
 
 /* Fotografias */
 .photo-add{display:flex;gap:8px;flex-wrap:wrap}
@@ -1854,6 +1856,24 @@ async function saveOcrManualPreview(record,button,feedback,warning){
   }
 }
 
+function renderOcrOperationalPreview(container,report){
+  const old=container.querySelector('[data-ocr-operational-preview]');
+  if(old)old.remove();
+  const text=String(report.normalizedText||report.rawText||'').trim();
+  const confirmed=!!text;
+  const panel=document.createElement('div');
+  panel.className='ai-ocr-operational-preview';
+  panel.dataset.ocrOperationalPreview='true';
+  panel.innerHTML=`<h5>PRÉ-VISUALIZAÇÃO OPERACIONAL</h5>
+    <div><strong>Texto do relatório/anomalia:</strong> ${confirmed?escapeHtml(text):'Não lido / por confirmar.'}</div>
+    <div><strong>Confiança:</strong> ${report.confidence||'low'}.</div>
+    <div>Esta é uma simulação local; não cria ações reais.</div>
+    <div><strong>Destinos possíveis após confirmação futura:</strong></div>
+    <ul><li>Registo Diário</li><li>Subtarefa</li><li>Importante</li><li>Visita</li><li>Anomalia pendente</li></ul>
+    <div class="ai-ocr-warning">${confirmed?'Confirmação humana necessária antes de qualquer criação.':'Não existe texto operacional confirmado para criar ação.'}</div>`;
+  container.appendChild(panel);
+}
+
 function renderOcrManualPreview(kind){
   clearOcrManualPreview(kind);
   const host=$(kind==='plan'?'planAiResponse':'aiGeneralResponse');
@@ -1872,13 +1892,16 @@ function renderOcrManualPreview(kind){
     <h5>RELATÓRIO / ANOMALIA</h5>
     <div>Texto simulado: não extraído. Confiança: baixa. Destino sugerido: nenhum, até revisão humana.</div>
     <div class="ai-human-confirmation">Confirmação humana necessária.</div>
+    <button type="button" class="ai-copy" data-ocr-action="prepare-operational">Preparar ação operacional</button>
     <button type="button" class="ai-copy" data-ocr-action="save-manual-preview">Guardar no histórico técnico</button>
     <div class="ai-helper-text" data-ocr-feedback aria-live="polite"></div>
     <div class="ai-ocr-warning">Simulação sem OCR real. Nenhuma imagem foi carregada ou guardada. Nenhum dado foi gravado.</div>`;
   const button=preview.querySelector('[data-ocr-action="save-manual-preview"]');
+  const operationalButton=preview.querySelector('[data-ocr-action="prepare-operational"]');
   const feedback=preview.querySelector('[data-ocr-feedback]');
   const warning=preview.querySelector('.ai-ocr-warning');
   button.onclick=()=>saveOcrManualPreview(record,button,feedback,warning);
+  operationalButton.onclick=()=>renderOcrOperationalPreview(preview,record.operationalReport);
   host.parentElement.after(preview);
 }
 
