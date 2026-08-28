@@ -1870,7 +1870,8 @@ function getOcrOperationalFormData(panel){
   const fichaId=panel.querySelector('[data-ocr-operational-ficha]').value;
   const labels={info:'Tarefa simples',aviso:'Visita',important:'Importante',anomaly:'Anomalia'};
   const severityLabels={info:'info',aviso:'aviso',important:'aviso — acompanhamento operacional',anomaly:'urgente — situação anómala'};
-  return {text,severity,date,fichaId,fichaNome:fichaId?CATALOG[fichaId]:null,operationalIntent:choice,destination:labels[choice]||'Registo Diário',severityLabel:severityLabels[choice]||severity};
+  const operationalIntents={info:'task',aviso:'visit',important:'important',anomaly:'anomaly'};
+  return {text,severity,date,fichaId,fichaNome:fichaId?CATALOG[fichaId]:null,operationalIntent:operationalIntents[choice]||'task',destination:labels[choice]||'Registo Diário',severityLabel:severityLabels[choice]||severity};
 }
 
 function buildOcrOperationalEntry(data){
