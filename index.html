@@ -192,6 +192,8 @@ h1 .hl{color:var(--accent)}
   max-width:380px;width:100%;padding:22px;box-shadow:0 12px 50px rgba(0,0,0,.6)}
 .confirm-box .ct{font-size:16px;font-weight:800;margin-bottom:8px}
 .confirm-box .cm{color:var(--muted);font-size:14px;line-height:1.45;margin-bottom:20px}
+.confirm-date-field{display:grid;gap:7px;margin:-8px 0 20px;color:var(--muted);font-size:12px;font-weight:700}
+.confirm-date-field input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font:inherit;padding:10px 12px}
 .confirm-box .cbtns{display:flex;gap:10px}
 .confirm-box .cbtns button{flex:1;border:none;border-radius:8px;padding:12px;cursor:pointer;
   font-size:14px;font-weight:700;font-family:inherit}
@@ -1102,6 +1104,23 @@ function askConfirm(message,{title='Confirmar',okText='Apagar',danger=true}={}){
     ok.onclick=()=>done(true);cancel.onclick=()=>done(false);
     ov.onclick=e=>{if(e.target===ov)done(false);};
     const onKey=e=>{if(e.key==='Escape')done(false);if(e.key==='Enter')done(true);};
+    document.addEventListener('keydown',onKey);
+  });
+}
+
+function askAnomalyCorrectionConfirm(message,{today,minDate}={}){
+  return new Promise(resolve=>{
+    const ov=$('confirmOverlay'),ok=$('confirmOk'),cancel=$('confirmCancel'),msg=$('confirmMsg');
+    $('confirmTitle').textContent='Corrigir anomalia';msg.textContent=message;
+    const field=document.createElement('label');field.className='confirm-date-field';field.textContent='Data da correção';
+    const input=document.createElement('input');input.type='date';input.value=today;input.min=minDate;input.max=today;field.appendChild(input);msg.after(field);
+    ok.textContent='Confirmar';ok.className='ok warn';ov.classList.add('open');input.focus();
+    const cleanup=()=>{field.remove();ov.classList.remove('open');ok.onclick=null;cancel.onclick=null;ov.onclick=null;document.removeEventListener('keydown',onKey);};
+    const done=value=>{cleanup();resolve(value);};
+    const confirm=()=>{if(!input.value)return input.focus();done({confirmed:true,date:input.value});};
+    ok.onclick=confirm;cancel.onclick=()=>done({confirmed:false,date:''});
+    ov.onclick=e=>{if(e.target===ov)done({confirmed:false,date:''});};
+    const onKey=e=>{if(e.key==='Escape')done({confirmed:false,date:''});if(e.key==='Enter')confirm();};
     document.addEventListener('keydown',onKey);
   });
 }
@@ -2265,11 +2284,13 @@ async function markAnomalyAsResolved(fichaId,anomaly){
   if(!anomaly||!window.fb)return;
   const existing=logsFor(fichaId).find(entry=>String(entry.resolvesAnomalyId||'')===String(anomaly.id||''));
   if(existing){showToast('Esta anomalia já tem uma correção registada.','err');return;}
-  const ok=await askConfirm('Queres marcar esta anomalia como corrigida?',{title:'Corrigir anomalia',okText:'Confirmar',danger:false});
-  if(!ok)return;
-  const today=new Date().toISOString().slice(0,10);
-  const chosen=window.prompt('Data efetiva da correção (AAAA-MM-DD):',today);
-  if(!chosen||!/^\d{4}-\d{2}-\d{2}$/.test(chosen))return;
+  const now=new Date(),today=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const anomalyDate=/^\d{4}-\d{2}-\d{2}$/.test(String(anomaly.date||''))?anomaly.date:'';
+  const correction=anomalyDate&&anomalyDate<today
+    ? await askAnomalyCorrectionConfirm('Queres marcar esta anomalia como corrigida?',{today,minDate:anomalyDate})
+    : {confirmed:await askConfirm('Queres marcar esta anomalia como corrigida?',{title:'Corrigir anomalia',okText:'Confirmar',danger:false}),date:today};
+  if(!correction.confirmed)return;
+  const chosen=correction.date;
   const entry={date:chosen,week:isoWeek(new Date(chosen+'T12:00:00')),status:'Concluído',tech:'Correção de anomalia',note:`Anomalia marcada como corrigida: ${buildAiSummary(anomaly.description)}`,origin:'Correção de anomalia',resolvesAnomalyId:anomaly.id,confirmation:'Confirmação humana'};
   try{await addLog(fichaId,entry);render();if(modalFicha)renderLogList();showToast('Anomalia marcada como corrigida.');}catch(err){console.error(err);showToast('Erro ao registar a correção.','err');}
 }
