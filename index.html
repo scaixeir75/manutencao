@@ -2133,7 +2133,7 @@ function resetPlanAssistant({clearInput=false}={}){
 }
 
 function scoreFichaSuggestion(contextText){
-  const keywords=getQuestionKeywords(contextText);
+  const keywords=getAiSpecificContentTerms(contextText);
   const normalizedText=norm(contextText||'');
   const sanitaryContext=/\b(wc|sanita|sanitario|sanitarios|instalacoes sanitarias|autoclismo|descarga|sem descarga|fuga de agua|fuga agua)\b/.test(normalizedText);
   const elevatorContext=/\b(elevador(?:es)?|kone|cabine|botao|botoes|porta|portas|piso)\b/.test(normalizedText);
@@ -2209,13 +2209,15 @@ function isGeneralAiQuestion(question){
 }
 
 function isAiTermAndPeriodQuery(question){
-  const terms=getAiContentTerms(question);
+  const terms=getAiSpecificContentTerms(question);
   return !!getAiRequestedYear(question)&&terms.length>0;
 }
 
 function findRelatedRecords(inputText){
   const generic=new Set(['problema','problemas','verificar','verificacao','manutencao','situacao','anomalia','avaria','avarias','resolver','precisa','identificar']);
-  const terms=[...new Set(getAiContentTerms(inputText).filter(term=>!generic.has(term)))];
+  const terms=[...new Set(getAiSpecificContentTerms(inputText).filter(term=>!generic.has(term)))];
+  const dryerQuery=/\bsecador\b|\bsecar\b.{0,12}\broupa\b|\bcorreia\b.{0,12}\btambor\b|\btambor\b.{0,12}\bsecador\b/.test(norm(inputText));
+  const semanticTerms=dryerQuery?['secador','secar','roupa','tambor','correia']:[];
   const matches=[];
   if(!terms.length)return {terms,matches};
   const query=norm(inputText);
@@ -2229,9 +2231,10 @@ function findRelatedRecords(inputText){
     if(waterOperationalQuery&&!waterOperationalPatterns.some(pattern=>pattern.test(normalized)))return;
     const exact=directPatterns.some(pattern=>pattern.test(normalized));
     const present=terms.filter(term=>hasWholeWord(text,term));
+    const semanticHit=semanticTerms.some(term=>hasWholeWord(text,term));
     const positions=terms.map(term=>wordTokens(text).indexOf(term)).filter(position=>position>=0);
     const close=terms.length>1&&present.length===terms.length&&positions.length===terms.length&&Math.max(...positions)-Math.min(...positions)<=50;
-    const score=exact?4:close?2:terms.length===1&&present.length?2:0;
+    const score=exact?4:close?2:semanticHit?3:terms.length===1&&present.length?2:0;
     if(score)matches.push({record,fichaId:String(fichaId||record.fichaId||''),score,text});
   };
   diaryCache.forEach(record=>add(record,record.fichaId,'diary'));
@@ -2307,7 +2310,11 @@ function renderPendingAiResponse(response,analysis){
 
 function formatRelatedAnswer(question,related){
   const rows=related.matches.filter(x=>x.score>=2).slice(0,3);const areaTerms=/caldeira|bomba|hidropressora|retorno|aqs|abastecimento|agua/;const areas=[...new Set(rows.map(x=>CATALOG[x.fichaId]).filter(x=>x&&areaTerms.test(norm(x))))];
-  return [`Foram encontrados registos relacionados com “${question}”.`,'','Ocorrência recente:',...rows.map(x=>`- ${x.record.date||x.record.timestamp||'Sem data'} — ${buildAiSummary(x.text)}`),...(areas.length?['','Possíveis áreas relacionadas:',...areas.map(x=>`- ${x}`)]:[]),'','Confirmação humana necessária.'].join('\n');
+  const lines=[`Foram encontrados registos relacionados com “${question}”.`,'','Ocorrência recente:',...rows.map(x=>`- ${x.record.date||x.record.timestamp||'Sem data'} — ${buildAiSummary(x.text)}`)];
+  if(!rows.some(x=>x.fichaId))lines.push('','Ficha/equipamento exato não confirmado.');
+  if(rows.some(x=>/\breparad[oa]\b/.test(norm(x.text))))lines.push('','O texto indica uma possível intervenção/reparação já registada; não há pendência confirmada.');
+  if(areas.length)lines.push('','Possíveis áreas relacionadas:',...areas.map(x=>`- ${x}`));
+  lines.push('','Confirmação humana necessária.');return lines.join('\n');
 }
 
 function formatPendingAnomaliesAnswer(question){
@@ -2581,9 +2588,14 @@ function getAiContentTerms(question){
   return getQuestionKeywords(question).filter(term=>!isAiPeriodToken(term)&&!structuralTerms.has(term));
 }
 
+function getAiSpecificContentTerms(question){
+  const genericEquipmentTerms=new Set(['maquina','equipamento','sistema','aparelho']);
+  return getAiContentTerms(question).filter(term=>!genericEquipmentTerms.has(term));
+}
+
 function findCatalogMatches(question){
   const normalizedQuestion=norm(question);
-  const words=getAiContentTerms(question);
+  const words=getAiSpecificContentTerms(question);
   const numberTokens=new Set(normalizedQuestion.split(/[^0-9]+/).filter(Boolean));
   return Object.entries(CATALOG).filter(([id,name])=>{
     const nameTerms=wordTokens(name);
@@ -2841,7 +2853,7 @@ function getAiRecurrenceFicha(question){
   if(explicitFicha&&CATALOG[explicitFicha])return explicitFicha;
   const catalogMatches=findCatalogMatches(question);
   if(catalogMatches.length===1)return String(catalogMatches[0].id);
-  const terms=getAiContentTerms(question);
+  const terms=getAiSpecificContentTerms(question);
   const flexibleMatches=Object.entries(CATALOG).filter(([,name])=>wordTokens(name).some(nameTerm=>terms.some(term=>aiTermVariants(term).has(nameTerm))));
   if(flexibleMatches.length===1)return String(flexibleMatches[0][0]);
   const suggested=scoreFichaSuggestion(question).historyFichaId;
