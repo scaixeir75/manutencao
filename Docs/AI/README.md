@@ -49,5 +49,5 @@ Docs/AI/
 
 Está documentada a **Missão 001 — Assistência ao Registo Técnico**, composta por cinco agentes e três ferramentas de consulta.
 
-O estado implementado mais recente da aplicação, incluindo o Assistente IA transversal, o launcher/spotlight e as consultas locais curtas e compostas, está em `AI_CURRENT_STATE.md` (referência estável v0.4).
+O estado implementado mais recente da aplicação, incluindo o Assistente IA transversal, o launcher/spotlight, as consultas locais curtas e compostas e a normalização técnica genérica, está em `AI_CURRENT_STATE.md` (referência estável publicada v0.8).
 

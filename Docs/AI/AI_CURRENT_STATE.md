@@ -1,7 +1,8 @@
-# Estado Operacional Atual — IA PMP v0.4
+# Estado Operacional Atual — IA PMP v0.8
 
-**Atualizado:** 23/08/2026  
-**Referência estável:** `v0.4`  
+**Atualizado:** 29/08/2026
+**Referência estável publicada:** `v0.8`
+**Commit de referência:** `806ca4c fix: reforcar normalizacao tecnica generica da ia`
 **Implementação principal:** `index.html`
 
 ## Leitura obrigatória para continuidade
@@ -31,6 +32,14 @@ Abrir ou fechar o painel não altera Firebase, registos, plano ou campos de form
 ## Consultas locais implementadas
 
 As respostas são locais e determinísticas. Consultam apenas caches já carregadas de Registos Diários, histórico das fichas, catálogo e plano semanal. Não existe modelo externo, API externa, nova persistência ou memória artificial.
+
+### Normalização técnica e pesquisa histórica
+
+Antes da pesquisa, a IA normaliza acentos, maiúsculas/minúsculas, hífens, espaços, termos unidos e plural simples. A resolução de pequenas variações é limitada a um candidato técnico único presente no vocabulário disponível, para evitar falsos positivos.
+
+Esta camada trata padrões reutilizáveis, não frases isoladas. Por exemplo, variantes como `d-trex`, `d trex`, `dtrex` e `detrex` podem convergir para o mesmo termo técnico quando existir um único candidato seguro. Termos ambíguos isolados, como `pêra`/`pera`, mantêm a resposta `Informação insuficiente.`; expressões com contexto técnico, como `pêra de chamada`, podem ser associadas à Ficha 14.
+
+O filtro do Histórico de Fichas usa os mesmos termos fortes normalizados e pesquisa o conteúdo próprio de cada registo, sem considerar o nome da ficha como se estivesse presente em todas as ocorrências. Assim, uma sugestão de ficha não faz aparecer intervenções não relacionadas.
 
 ### Perguntas quantitativas e compostas
 
@@ -76,11 +85,19 @@ As origens com zero resultados são ocultadas. São mostrados até oito registos
 
 ## Validação de referência
 
-- `npm.cmd run test:ai:backtest` passou após as alterações de respostas curtas e compostas.
+- `npm.cmd run test:ai:backtest` passou para a linha v0.8.
 - `git diff --check` passou antes do commit estável.
 - Validação visual anterior confirmou launcher, spotlight, fecho por botão/clique fora/Esc e viewport móvel 390px.
+- Validação em dados reais confirmou equivalência técnica Detrex, contexto de chamada de enfermeiro, pesquisa histórica de máquina de secar roupa, totais de sal, distinção `sal`/`sala`, anomalias pendentes de elevadores, extintores e resposta cautelosa para `máquinas`.
+- O erro de atualização do Service Worker observado em `http://127.0.0.1:8095` pertence ao servidor local de validação e não à interpretação da IA.
 
-## Commits que definem a linha v0.4
+## Commits que definem a linha v0.8
+
+- `806ca4c` — normalização técnica genérica, pesquisa forte de histórico e proteção contra falsos positivos.
+- `c72a971` — matriz genérica de regressão da IA.
+- `3a24755` — normalização genérica inicial da pesquisa da IA.
+- `eab00a6` — pesquisa histórica de máquina de secar/secador.
+- `3031382` — data real na correção de anomalias.
 
 - `33115ca` — respostas curtas e perguntas compostas da IA.
 - `9d1d86e` — Assistente IA destacado no topo.

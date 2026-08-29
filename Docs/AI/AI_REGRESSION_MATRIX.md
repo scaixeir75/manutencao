@@ -67,11 +67,22 @@ Validar que termos parecidos ou contextos diferentes não são confundidos:
 - `sala ≠ sal`
 - `água ≠ corte da relva`
 
-### 7. Ambiguidade
+### 7. Normalização técnica controlada
+
+Validar variantes de escrita contra o vocabulário técnico disponível, sem criar equivalências universais nem escolher candidatos concorrentes:
+
+- acentos, maiúsculas/minúsculas, hífens e espaços: `d-trex`, `d trex`, `DTREX`;
+- termos unidos e pequenas variações: `dtrex`, `detrex`;
+- singular/plural simples: `pêra de chamada`, `peras de chamada`;
+- contexto técnico configurado: `máquina de secar roupa` e `secador`.
+
+Uma variante só deve ser resolvida quando houver um candidato técnico forte e único. Termos isolados que possam referir entidades diferentes devem continuar ambíguos: `pêra`, `pera`, `pêras` e `peras` não devem escolher uma ficha sem contexto.
+
+### 8. Ambiguidade
 
 Quando houver várias interpretações plausíveis, a IA deve pedir clarificação ou sugerir reformulações. Não deve escolher silenciosamente uma interpretação que possa produzir uma resposta enganadora.
 
-### 8. Validação por horizonte temporal
+### 9. Validação por horizonte temporal
 
 Validar que a IA consulta o conjunto de dados adequado ao horizonte temporal:
 
@@ -102,6 +113,8 @@ Devem ser mantidas regressões para, pelo menos:
 - identificação da origem dos dados;
 - distinção `sal`/`sala`;
 - distinção entre água e corte da relva;
+- normalização de variantes técnicas e contenção de aproximações;
+- filtragem do Histórico de Fichas pelo texto real do registo, sem propagar o nome da ficha para resultados não relacionados;
 - passado, presente e futuro;
 - pedidos ambíguos;
 - ausência de dados e prevenção de invenções.
@@ -116,9 +129,9 @@ Devem ser mantidas regressões para, pelo menos:
 - não inventar dados;
 - não usar linguagem interna como `cache`, `diaryCache` ou `LOGS`.
 
-## Estado v0.4
+## Estado v0.8
 
-v0.4 já inclui:
+v0.8 inclui, além da linha v0.4:
 
 - Assistente IA recolhível;
 - launcher ✨;
@@ -129,5 +142,10 @@ v0.4 já inclui:
 - total aproximado de sal;
 - classificação real Importante/Tarefa;
 - guard genérico de interpretação;
-- documentação v0.4;
-- tag v0.4.
+- normalização técnica genérica de acentos, capitalização, hífens, espaços, termos unidos e plural simples;
+- aproximação limitada a candidato técnico único;
+- separação entre texto do registo histórico e nome da ficha na pesquisa;
+- pesquisa histórica relevante para máquina de secar/secador;
+- correção de anomalias com data real;
+- matriz genérica de regressão;
+- tag publicada `v0.8` no commit `806ca4c`.
