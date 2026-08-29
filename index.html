@@ -1140,6 +1140,70 @@ function showToast(msg,type='ok'){
 const pad=w=>String(w).padStart(2,'0');
 const norm=s=>s.toLowerCase().normalize('NFD').replace(/\p{M}+/gu,'').trim();
 const wordTokens=s=>norm(s||'').split(/[^a-z0-9]+/).filter(Boolean);
+// Camada central de interpretação: evita que cada fluxo da IA trate acentos,
+// hífens, plurais ou designações técnicas de forma diferente.
+const AI_GENERIC_TERMS=new Set(['maquina','equipamento','sistema','aparelho']);
+const AI_SEARCH_STOP_TERMS=new Set(['a','o','os','as','de','da','do','das','dos','e','em','no','na','nos','nas','um','uma','este','esta','isto','sobre','que','qual','quais','houve','ha','vezes','quantos','quantas','numero','total','soma','quantidade','quanto','valor','peso','custo','acumulado','historico','registo','registos','ficha','fichas','ano','mes','meses','semana','problema','problemas','anomalia','anomalias','avaria','avarias','situacao','situacoes','manutencao','manutencoes','intervencao','intervencoes','pendente','pendentes','resolver','corrigir','verificar','coloquei','colocou','colocaram','colocar','colocacao','colocado','colocada','colocados','colocadas','anteriores','parecidas']);
+const AI_TECHNICAL_ALIAS_GROUPS=[{
+  aliases:['secador','maquina de secar roupa','maquina secar roupa','tambor','correia'],
+  triggers:['secador','maquina de secar roupa','maquina secar roupa'],
+  requiredContext:['tambor','correia']
+}];
+function normalizeAiTerm(text){
+  return norm(String(text||'')).replace(/[‐‑‒–—_-]+/g,' ').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+}
+function getAiTermVariants(term){
+  const normalized=normalizeAiTerm(term);if(!normalized)return [];
+  const variants=new Set([normalized,normalized.replace(/\s+/g,'')]);
+  const pluralVariants=value=>{
+    if(value.endsWith('es')&&value.length>4)variants.add(value.slice(0,-2));
+    else if(value.endsWith('s')&&value.length>3)variants.add(value.slice(0,-1));
+    else if(value.length>2)variants.add(value+'s');
+  };
+  pluralVariants(normalized);
+  if(!normalized.includes(' '))return [...variants];
+  const tokens=normalized.split(' ');const last=tokens.at(-1);const stem=last.endsWith('es')&&last.length>4?last.slice(0,-2):last.endsWith('s')&&last.length>3?last.slice(0,-1):last;
+  variants.add([...tokens.slice(0,-1),stem].join(' '));
+  variants.add([...tokens.slice(0,-1),stem+'s'].join(' '));
+  return [...variants];
+}
+function getAiSemanticAliases(term){
+  const variants=new Set(getAiTermVariants(term));
+  const aliases=new Set();
+  AI_TECHNICAL_ALIAS_GROUPS.forEach(group=>{
+    const related=group.triggers.some(item=>getAiTermVariants(item).some(variant=>variants.has(variant)));
+    if(related)group.aliases.forEach(item=>getAiTermVariants(item).forEach(variant=>aliases.add(variant)));
+  });
+  return [...aliases];
+}
+function isGenericAiTerm(term){const normalized=normalizeAiTerm(term);return AI_GENERIC_TERMS.has(normalized)||[...AI_GENERIC_TERMS].some(item=>getAiTermVariants(item).includes(normalized));}
+function buildAiSearchProfile(question){
+  const normalized=normalizeAiTerm(question);
+  const rawTerms=normalized.split(' ').filter(Boolean);
+  const joinedTechnicalTerms=rawTerms.flatMap((term,index)=>term.length<=2&&!AI_SEARCH_STOP_TERMS.has(term)&&rawTerms[index+1]&&rawTerms[index+1].length>=3?[term+rawTerms[index+1]]:[]);
+  const specificTerms=[...new Set([...rawTerms.filter(term=>term.length>2&&!/^\d{4}$/.test(term)&&!AI_SEARCH_STOP_TERMS.has(term)&&!isGenericAiTerm(term)),...joinedTechnicalTerms])];
+  const expandedTerms=new Set(specificTerms.flatMap(term=>[...getAiTermVariants(term),...getAiSemanticAliases(term)]));
+  const semanticTerms=new Set();
+  AI_TECHNICAL_ALIAS_GROUPS.forEach(group=>{
+    const groupVariants=group.aliases.flatMap(getAiTermVariants);
+    const hasTrigger=group.triggers.some(item=>getAiTermVariants(item).some(variant=>normalized.includes(variant)));
+    const hasRequiredContext=group.requiredContext.every(item=>rawTerms.some(term=>getAiTermVariants(item).includes(term)));
+    if(hasTrigger||hasRequiredContext)groupVariants.forEach(variant=>semanticTerms.add(variant));
+  });
+  return {normalized,rawTerms,specificTerms,expandedTerms:[...expandedTerms],semanticTerms:[...semanticTerms]};
+}
+function aiTextHasTermVariant(text,term){
+  const normalizedText=normalizeAiTerm(text);const textTokens=wordTokens(normalizedText);
+  return getAiTermVariants(term).some(variant=>variant.includes(' ')
+    ? normalizedText.includes(variant)
+    : textTokens.includes(variant)||textTokens.some((token,index)=>token+String(textTokens[index+1]||'')===variant));
+}
+function matchesAiSearchProfile(text,profile){
+  if(!profile||!profile.specificTerms.length)return false;
+  const direct=profile.specificTerms.filter(term=>aiTextHasTermVariant(text,term));
+  if(direct.length===profile.specificTerms.length)return true;
+  return profile.semanticTerms.some(term=>aiTextHasTermVariant(text,term));
+}
 function hasWholeWord(text,term){
   const t=norm(term);
   if(!t)return false;
@@ -2133,8 +2197,9 @@ function resetPlanAssistant({clearInput=false}={}){
 }
 
 function scoreFichaSuggestion(contextText){
-  const keywords=getAiSpecificContentTerms(contextText);
-  const normalizedText=norm(contextText||'');
+  const profile=buildAiSearchProfile(contextText);
+  const keywords=profile.specificTerms;
+  const normalizedText=profile.normalized;
   const sanitaryContext=/\b(wc|sanita|sanitario|sanitarios|instalacoes sanitarias|autoclismo|descarga|sem descarga|fuga de agua|fuga agua)\b/.test(normalizedText);
   const elevatorContext=/\b(elevador(?:es)?|kone|cabine|botao|botoes|porta|portas|piso)\b/.test(normalizedText);
   const fichaBoosts={
@@ -2156,8 +2221,8 @@ function scoreFichaSuggestion(contextText){
     if(sanitaryContext&&id==='20'){score-=4;reasons.push('contexto sanitário não corresponde a cozinha');}
     if(elevatorContext&&id==='19'){score+=5;reasons.push('contexto de elevadores/Kone');}
     if(elevatorContext&&id==='20'){score-=5;reasons.push('contexto de elevadores não corresponde a cozinha');}
-    const diaryHits=diaryCache.filter(record=>String(record.fichaId||'')===String(id)&&matchesQuestionText(getDiaryRecordText(record),keywords)).length;
-    const logHits=(LOGS[id]||[]).filter(record=>matchesQuestionText(getFichaRecordText(record,id),keywords)).length;
+    const diaryHits=diaryCache.filter(record=>String(record.fichaId||'')===String(id)&&matchesAiSearchProfile(getDiaryRecordText(record),profile)).length;
+    const logHits=(LOGS[id]||[]).filter(record=>matchesAiSearchProfile(getFichaRecordText(record,id),profile)).length;
     if(diaryHits){score+=Math.min(diaryHits,2);reasons.push(`${diaryHits} registo(s) diário(s) relacionado(s)`);}
     if(logHits){score+=Math.min(logHits,2);reasons.push(`${logHits} ocorrência(s) no histórico`);}
     return {id,name,score,reasons:[...new Set(reasons)],diaryHits,logHits};
@@ -2215,9 +2280,10 @@ function isAiTermAndPeriodQuery(question){
 
 function findRelatedRecords(inputText){
   const generic=new Set(['problema','problemas','verificar','verificacao','manutencao','situacao','anomalia','avaria','avarias','resolver','precisa','identificar']);
-  const terms=[...new Set(getAiSpecificContentTerms(inputText).filter(term=>!generic.has(term)))];
-  const dryerQuery=/\bsecador\b|\bsecar\b.{0,12}\broupa\b|\bcorreia\b.{0,12}\btambor\b|\btambor\b.{0,12}\bsecador\b/.test(norm(inputText));
-  const semanticTerms=dryerQuery?['secador','secar','roupa','tambor','correia']:[];
+  const profile=buildAiSearchProfile(inputText);
+  const terms=[...new Set(profile.specificTerms.filter(term=>!generic.has(term)))];
+  const searchProfile={...profile,specificTerms:terms};
+  const semanticTerms=profile.semanticTerms;
   const matches=[];
   if(!terms.length)return {terms,matches};
   const query=norm(inputText);
@@ -2230,11 +2296,11 @@ function findRelatedRecords(inputText){
     const text=source==='diary'?getDiaryRecordText(record):getFichaRecordText(record,fichaId);const normalized=norm(text);
     if(waterOperationalQuery&&!waterOperationalPatterns.some(pattern=>pattern.test(normalized)))return;
     const exact=directPatterns.some(pattern=>pattern.test(normalized));
-    const present=terms.filter(term=>hasWholeWord(text,term));
-    const semanticHit=semanticTerms.some(term=>hasWholeWord(text,term));
+    const present=terms.filter(term=>aiTextHasTermVariant(text,term));
+    const semanticHit=semanticTerms.some(term=>aiTextHasTermVariant(text,term));
     const positions=terms.map(term=>wordTokens(text).indexOf(term)).filter(position=>position>=0);
     const close=terms.length>1&&present.length===terms.length&&positions.length===terms.length&&Math.max(...positions)-Math.min(...positions)<=50;
-    const score=exact?4:close?2:semanticHit?3:terms.length===1&&present.length?2:0;
+    const score=exact?4:close?2:semanticHit?3:matchesAiSearchProfile(text,searchProfile)?2:0;
     if(score)matches.push({record,fichaId:String(fichaId||record.fichaId||''),score,text});
   };
   diaryCache.forEach(record=>add(record,record.fichaId,'diary'));
@@ -2576,7 +2642,7 @@ async function copyAiBoxText(btn){
 
 function getQuestionKeywords(question){
   const stop=new Set(['a','o','os','as','de','da','do','das','dos','e','em','no','na','nos','nas','um','uma','este','esta','isto','sobre','houve','vezes','quantas','quantos','coloquei','colocou','colocaram','colocar','colocacao','colocado','colocada','colocados','colocadas','manutencao','manutencoes','registo','registos','historico','ficha','equipamento','semana','ano','meses','anteriores','parecidas','problemas','problema','avaria','avarias','intervencoes','total','soma','quantidade','quanto','valor','peso','custo','acumulado']);
-  return norm(question).split(/[^a-z0-9]+/).filter(word=>word.length>2&&!stop.has(word));
+  return normalizeAiTerm(question).split(/[^a-z0-9]+/).filter(word=>word.length>2&&!stop.has(word));
 }
 
 function isAiPeriodToken(term){
@@ -2585,23 +2651,23 @@ function isAiPeriodToken(term){
 
 function getAiContentTerms(question){
   const structuralTerms=new Set(['tarefa','tarefas','visita','visitas','importante','importantes','classificacao','classificacoes','classificado','classificados','diario','diarios','diaria','diarias','esta','estao','ficou','ficaram']);
-  return getQuestionKeywords(question).filter(term=>!isAiPeriodToken(term)&&!structuralTerms.has(term));
+  return buildAiSearchProfile(question).specificTerms.filter(term=>!isAiPeriodToken(term)&&!structuralTerms.has(term));
 }
 
 function getAiSpecificContentTerms(question){
-  const genericEquipmentTerms=new Set(['maquina','equipamento','sistema','aparelho']);
-  return getAiContentTerms(question).filter(term=>!genericEquipmentTerms.has(term));
+  return getAiContentTerms(question).filter(term=>!isGenericAiTerm(term));
 }
 
 function findCatalogMatches(question){
-  const normalizedQuestion=norm(question);
-  const words=getAiSpecificContentTerms(question);
+  const profile=buildAiSearchProfile(question);
+  const normalizedQuestion=profile.normalized;
+  const words=profile.specificTerms;
   const numberTokens=new Set(normalizedQuestion.split(/[^0-9]+/).filter(Boolean));
   return Object.entries(CATALOG).filter(([id,name])=>{
     const nameTerms=wordTokens(name);
     return numberTokens.has(String(id))||
       hasAllWholeWords(normalizedQuestion,nameTerms)||
-      words.some(word=>hasWholeWord(name,word));
+      words.some(word=>aiTextHasTermVariant(name,word));
   }).map(([id,name])=>({id,name}));
 }
 
@@ -2744,7 +2810,8 @@ function matchesQuestionText(text,keywords){
 }
 
 function collectAiLocalFacts(question){
-  const keywords=getAiContentTerms(question);
+  const profile=buildAiSearchProfile(question);
+  const keywords=profile.specificTerms;
   const catalogMatches=findCatalogMatches(question);
   const matchedFichaIds=new Set(catalogMatches.map(match=>String(match.id)));
   const wantsThisYear=norm(question).includes('este ano');
@@ -2755,7 +2822,7 @@ function collectAiLocalFacts(question){
 
   const relatedDiary=diaryCache.filter(record=>{
     const sameFicha=record.fichaId&&matchedFichaIds.has(String(record.fichaId));
-    const textMatch=keywords.length&&matchesQuestionText(getDiaryRecordText(record),keywords);
+    const textMatch=matchesAiSearchProfile(getDiaryRecordText(record),profile);
     const sameYear=!yearFilter||recordYear(diaryDateOf(record)||record.timestamp)===yearFilter;
     return sameYear&&(sameFicha||textMatch);
   });
@@ -2764,14 +2831,14 @@ function collectAiLocalFacts(question){
   Object.entries(LOGS).forEach(([fichaId,entries])=>{
     const sameFicha=matchedFichaIds.has(String(fichaId));
     (entries||[]).forEach(record=>{
-      const textMatch=keywords.length&&matchesQuestionText(getFichaRecordText(record,fichaId),keywords);
+      const textMatch=matchesAiSearchProfile(getFichaRecordText(record,fichaId),profile);
       const sameYear=!yearFilter||recordYear(record.date||record.created)===yearFilter;
       if(sameYear&&(sameFicha||textMatch))relatedFicha.push({fichaId,record});
     });
   });
 
   const weeklyMatches=catalogMatches.filter(match=>weeklyFichaIds.has(String(match.id)));
-  return {keywords,catalogMatches,relatedDiary,relatedFicha,weeklyMatches,wantsThisYear,currentYear,requestedYear,yearFilter};
+  return {keywords,profile,catalogMatches,relatedDiary,relatedFicha,weeklyMatches,wantsThisYear,currentYear,requestedYear,yearFilter};
 }
 
 function aiRecordDateValue(record){const value=record.date||record.created||record.timestamp||'';const date=typeof value==='number'?new Date(value):new Date(String(value).length===10?value+'T12:00:00':value);return Number.isNaN(date.getTime())?new Date(0):date;}
@@ -2824,10 +2891,13 @@ function isWaterOperationalRecord(text){
   return /corte.{0,30}agua|interrupcao.{0,30}agua|falta.{0,30}agua|suspensao.{0,30}agua|sem.{0,5}agua|agua.{0,30}(cortada|interrupcao|falta|suspensao|corte)/.test(normalized);
 }
 function getAiFilteredRecords(question){
-  const q=norm(question),explicitFicha=extractAiFichaId(question),isLastFicha=!!explicitFicha&&/\b(quando|ultima|ultimo)\b/.test(q),isFichaCount=!!explicitFicha&&/\b(quantas|quantos|numero|total)\b/.test(q)&&/\b(registos|intervencoes|ocorrencias)\b/.test(q),terms=isLastFicha||isFichaCount||/mais recorrencia|repetidos|mais registos|mais anomalias/.test(q)?[]:getAiHistoryTerms(question),priorityTerms=terms.length?getAiPriorityHistoryTerms(question):[],suggestedFicha=!explicitFicha&&priorityTerms.length?scoreFichaSuggestion(question).historyFichaId:'',ficha=explicitFicha||suggestedFicha,period=getAiPeriod(question);
+  const q=norm(question),profile=buildAiSearchProfile(question),explicitFicha=extractAiFichaId(question),isLastFicha=!!explicitFicha&&/\b(quando|ultima|ultimo)\b/.test(q),isFichaCount=!!explicitFicha&&/\b(quantas|quantos|numero|total)\b/.test(q)&&/\b(registos|intervencoes|ocorrencias)\b/.test(q),terms=isLastFicha||isFichaCount||/mais recorrencia|repetidos|mais registos|mais anomalias/.test(q)?[]:getAiHistoryTerms(question),priorityTerms=terms.length?getAiPriorityHistoryTerms(question):[],suggestedFicha=!explicitFicha&&priorityTerms.length?scoreFichaSuggestion(question).historyFichaId:'',ficha=explicitFicha||suggestedFicha,period=getAiPeriod(question);
   const waterOperationalQuery=isWaterOperationalHistoryQuery(question);
   const contentTerms=priorityTerms.length?priorityTerms:terms;
-  return {period,terms,priorityTerms,ficha,records:getAiSearchableRecords().filter(row=>(!ficha||row.fichaId===ficha)&&(!period.start||(row._date>=period.start&&row._date<=period.end))&&(!contentTerms.length||hasAllWholeWords(row.text,contentTerms))&&(!waterOperationalQuery||isWaterOperationalRecord(row.text)))};
+  return {period,terms,priorityTerms,ficha,records:getAiSearchableRecords().filter(row=>{
+    const matchesContent=priorityTerms.length?hasAllWholeWords(row.text,contentTerms):!contentTerms.length||matchesAiSearchProfile(row.text,profile);
+    return (!ficha||row.fichaId===ficha)&&(!period.start||(row._date>=period.start&&row._date<=period.end))&&matchesContent&&(!waterOperationalQuery||isWaterOperationalRecord(row.text));
+  })};
 }
 function isAiAnomalyRecord(row){return /anomalia|urgente/.test(norm(row.status+' '+row.text)) || /\b(avaria|problema|erro|falha)\b/.test(norm(row.text));}
 function isAiRecurrenceQuestion(question){
