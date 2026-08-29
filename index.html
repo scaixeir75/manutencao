@@ -1040,6 +1040,10 @@ function initAuthGate(){
         fichasListenerStarted=true;
         window.initFichasListener();
       }
+      if(!technicalMemoryListenerStarted&&typeof window.initTechnicalMemoryListener==='function'){
+        technicalMemoryListenerStarted=true;
+        window.initTechnicalMemoryListener();
+      }
     }else{
       // sem sessão → mostra o login, esconde a app
       document.getElementById('loginScreen').classList.remove('hidden');
@@ -1299,6 +1303,8 @@ const fmtTs=ts=>ts?new Date(ts).toLocaleString('pt-PT',{day:'2-digit',month:'2-d
 /* ═══ REGISTOS DE FICHAS (Firebase, sincronização em tempo real) ═══ */
 let LOGS={}; // { fichaId: [ {id,date,week,status,tech,note,created}, ... ] }
 let fichasListenerStarted=false;
+let technicalMemoryCache=[];
+let technicalMemoryListenerStarted=false;
 let modalFicha=null;
 let diaryFichaSyncBusy=false;
 let diaryFichaSyncPending=false;
@@ -1403,6 +1409,25 @@ function initFichasListener(){
   });
 }
 window.initFichasListener=initFichasListener;
+
+function initTechnicalMemoryListener(){
+  if(!window.fb||!window.firebaseReady){setTimeout(initTechnicalMemoryListener,300);return;}
+  const{db,ref,onValue}=window.fb;
+  onValue(ref(db,'memoria_tecnica'),snap=>{
+    const raw=snap.val();
+    if(!raw||typeof raw!=='object'){technicalMemoryCache=[];return;}
+    try{
+      technicalMemoryCache=Object.entries(raw).map(([firebaseKey,memory])=>normalizeTechnicalMemory(memory,firebaseKey)).filter(Boolean);
+    }catch(error){
+      console.error(error);
+      technicalMemoryCache=[];
+    }
+  },error=>{
+    console.error(error);
+    technicalMemoryCache=[];
+  });
+}
+window.initTechnicalMemoryListener=initTechnicalMemoryListener;
 
 async function addLog(ficha,entry){
   const{db,ref,push,set}=window.fb;
@@ -2543,7 +2568,7 @@ function buildAiSecurityResponse(text){
   return securityViolationCount===2?AI_SECURITY_SECOND:AI_SECURITY_FIRST;
 }
 
-function buildUnifiedAiAnalysis(inputText){
+function buildUnifiedAiAnalysisBase(inputText){
   const text=cleanAiInput(inputText);
   const normalized=norm(text);
   const securityResponse=buildAiSecurityResponse(text);
@@ -2580,6 +2605,11 @@ function buildUnifiedAiAnalysis(inputText){
       `Informação em falta: ${missing.length?missing.join('; '):'Nenhuma identificada'}`,
       ...getAiSupervisedLearningLines(text,{related,suggestion,missing}),
       'Confirmação humana necessária.'].join('\n')};
+}
+
+function buildUnifiedAiAnalysis(inputText){
+  const analysis=buildUnifiedAiAnalysisBase(inputText);
+  return applyTechnicalMemoryContext(analysis,cleanAiInput(inputText));
 }
 
 function generateDiaryAiSuggestion(){
@@ -3017,9 +3047,74 @@ function formatAiMemorySuggestion(rule,base){
   return ['🧠 Memória técnica sugerida','', 'A IA identificou uma regra que poderá ser útil no futuro, mas nada foi guardado automaticamente.', '', 'Regra sugerida:', rule, '', 'Base:', base, '', 'Estado:', 'Sugestão não guardada. Esta sugestão não altera o comportamento futuro da IA.', '', 'Confirmação humana necessária.'].join('\n');
 }
 function normalizeMemoryText(value){return String(value||'').trim().toLowerCase().replace(/\s+/g,' ');}
+const AI_MEMORY_GENERIC_TERMS=new Set(['sistema','equipamento','maquina','aparelho','zona','area','servico','chamada','motor','bomba','central','quadro','contador','registo','anomalia','manutencao']);
+function isGenericTechnicalMemoryTerm(term){
+  const normalized=normalizeAiTerm(term);
+  return !normalized||AI_MEMORY_GENERIC_TERMS.has(normalized)||isGenericAiTerm(normalized)||AI_SEARCH_STOP_TERMS.has(normalized);
+}
+function resolveTechnicalMemoryId(memory,firebaseKey){
+  const candidate=memory&&typeof memory==='object'?(memory.memoryId||memory.id||firebaseKey):'';
+  return typeof candidate==='string'||typeof candidate==='number'?String(candidate).trim():'';
+}
+function isApprovedTechnicalMemory(memory,firebaseKey){
+  if(!memory||typeof memory!=='object'||Array.isArray(memory))return false;
+  if(memory.status!=='approved'||memory.approvedByHuman!==true)return false;
+  if(memory.active===false||memory.isRevoked===true||memory.revokedAt||memory.revokedByHuman===true)return false;
+  if(typeof memory.ruleText!=='string'||!memory.ruleText.trim())return false;
+  return !!resolveTechnicalMemoryId(memory,firebaseKey);
+}
+function normalizeTechnicalMemory(memory,firebaseKey){
+  if(!isApprovedTechnicalMemory(memory,firebaseKey))return null;
+  const ruleText=memory.ruleText.trim();
+  const basisText=typeof memory.basisText==='string'&&memory.basisText.trim()?memory.basisText.trim():'';
+  const fichaId=memory.fichaId===undefined||memory.fichaId===null?'':String(memory.fichaId).trim();
+  const fichaNome=typeof memory.fichaNome==='string'&&memory.fichaNome.trim()?memory.fichaNome.trim():'';
+  const searchableText=[ruleText,basisText,fichaNome].filter(Boolean).join(' ');
+  const profile=buildAiSearchProfile(searchableText);
+  const terms=[...new Set(profile.specificTerms.filter(term=>!isGenericTechnicalMemoryTerm(term)))];
+  const aliases=[...new Set(terms.flatMap(getAiSemanticAliases).filter(term=>!isGenericTechnicalMemoryTerm(term)))];
+  const strongTerms=[...new Set(profile.strongTerms.filter(term=>!isGenericTechnicalMemoryTerm(term)))];
+  return {resolvedMemoryId:resolveTechnicalMemoryId(memory,firebaseKey),ruleText,basisText,fichaId,fichaNome,terms,aliases,searchText:normalizeAiTerm(searchableText),compactText:compactAiTerm(searchableText),strongTerms};
+}
+function getAiAnalysisFichaIds(question,analysisContext={}){
+  const ids=new Set();
+  const add=id=>{if(id!==undefined&&id!==null&&String(id).trim())ids.add(String(id));};
+  add(analysisContext.suggestion&&analysisContext.suggestion.historyFichaId);
+  (analysisContext.facts&&analysisContext.facts.catalogMatches||[]).forEach(match=>add(match.id));
+  (analysisContext.facts&&analysisContext.facts.relatedFicha||[]).forEach(item=>add(item.fichaId));
+  (analysisContext.related&&analysisContext.related.matches||[]).forEach(item=>add(item.fichaId));
+  (analysisContext.pendingData&&analysisContext.pendingData.pending||[]).forEach(item=>add(item.fichaId));
+  add(getAiRecurrenceFicha(question));
+  return ids;
+}
+function findRelevantTechnicalMemories(question,analysisContext={}){
+  const questionProfile=buildAiSearchProfile(question);
+  if(!questionProfile.specificTerms.length)return [];
+  const fichaIds=getAiAnalysisFichaIds(question,analysisContext);
+  return technicalMemoryCache.filter(memory=>{
+    if(!memory||!memory.terms.length)return false;
+    const textMatch=matchesAiSearchProfile(memory.searchText,questionProfile);
+    const fichaMatch=!!memory.fichaId&&fichaIds.has(memory.fichaId);
+    return textMatch&&(fichaMatch||memory.strongTerms.some(term=>questionProfile.strongTerms.includes(term))||memory.aliases.some(term=>questionProfile.semanticTerms.includes(term)));
+  }).slice(0,3);
+}
+function insertTechnicalMemoryContext(text,memories){
+  if(!memories.length||!text)return text;
+  const block=['🧠 Memória técnica aprovada considerada:',...memories.map(memory=>`- ${memory.ruleText}`)].join('\n');
+  const labels=['\n\nInferência:','\n\nRecomendação:','\n\nInformação em falta:','\n\nEstado / pendência:','\n\nRisco técnico:','\n\nPróxima ação recomendada:','\n\n🧠 Memória técnica sugerida','\n\nConfirmação humana necessária.'];
+  const positions=labels.map(label=>text.indexOf(label)).filter(position=>position>=0);
+  const position=positions.length?Math.min(...positions):-1;
+  return position>=0?text.slice(0,position)+'\n\n'+block+text.slice(position):text+'\n\n'+block;
+}
+function applyTechnicalMemoryContext(analysis,question){
+  if(!analysis||analysis.intent==='security-block'||!analysis.text)return analysis;
+  const memories=findRelevantTechnicalMemories(question,analysis);
+  if(!memories.length)return analysis;
+  return {...analysis,technicalMemories:memories,text:insertTechnicalMemoryContext(analysis.text,memories)};
+}
 function memoryIdFor(fichaId,fichaNome,ruleText){const key=`${fichaId||fichaNome||'sem-ficha'}|${normalizeMemoryText(ruleText)}`;let hash=5381;for(let i=0;i<key.length;i+=1)hash=((hash<<5)+hash)^key.charCodeAt(i);return `memory_${String(fichaId||'sem_ficha').replace(/[^a-z0-9_-]/gi,'_')}_${(hash>>>0).toString(36)}`;}
 async function saveApprovedTechnicalMemory({ruleText,basisText,fichaId,fichaNome,sourceQuestion}){if(!window.fb||!window.firebaseReady)throw new Error('Firebase indisponível.');const{db,ref,get,set}=window.fb;const id=memoryIdFor(fichaId,fichaNome,ruleText),target=ref(db,`memoria_tecnica/${id}`),existing=(await get(target)).val();if(existing){const sameRule=normalizeMemoryText(existing.ruleText)===normalizeMemoryText(ruleText),sameFicha=String(existing.fichaId||'')===String(fichaId||'')||(!fichaId&&normalizeMemoryText(existing.fichaNome)===normalizeMemoryText(fichaNome));if(existing.status==='approved'&&existing.approvedByHuman===true&&sameRule&&sameFicha)return {duplicate:true,id};throw new Error('Já existe uma memória com este identificador. Nada foi alterado.');}const now=new Date().toISOString(),dateMatch=String(basisText).match(/\b\d{4}-\d{2}-\d{2}\b/);const memory={id,status:'approved',approvedByHuman:true,ruleText,basisText,createdAt:now,approvedAt:now,version:1,source:'ai_suggestion',fichaId:fichaId||null,fichaNome:fichaNome||null,sourceQuestion:sourceQuestion||'',sourceRecords:basisText?[{date:dateMatch?dateMatch[0]:null,text:basisText,severity:null,origin:null,recordId:null}]:[]};await set(target,memory);return {duplicate:false,id,memory};}
-function renderMemoryReview(kind,question,text){const id=kind==='plan'?'planMemoryReview':'diaryMemoryReview';const old=$(id);if(old)old.remove();const source=String(text||'').replace(/<[^>]*>/g,' ');if(!/Memória\s+técnica\s+sugerida/i.test(source))return;const rule=((source.match(/Regra\s+sugerida:\s*([\s\S]*?)(?=\s*Base\s*:)/i)||[])[1]||'').replace(/\s+/g,' ').trim(),base=((source.match(/Base\s*:\s*([\s\S]*?)(?=\s*Estado\s*:)/i)||[])[1]||'').replace(/\s+/g,' ').trim(),ficha=(source.match(/Ficha\s+(\d+)\s+—\s+([^\.\r\n]+)/i)||[]);if(!rule||!base)return;const fichaId=ficha[1]||null,fichaNome=ficha[2]?ficha[2].trim():null,host=$(kind==='plan'?'planAiResponse':'aiGeneralResponse'),wrap=document.createElement('div');wrap.id=id;wrap.className='ai-memory-review';wrap.style.cssText='display:block;margin-top:8px';wrap.innerHTML=`<button type="button" class="ai-copy" data-ai-action="review-memory">Rever sugestão</button><div class="ai-helper-text" style="display:none"></div>`;const btn=wrap.querySelector('[data-ai-action="review-memory"]'),panel=wrap.querySelector('div');btn.onclick=()=>{panel.style.display='block';panel.innerHTML=`<strong>Revisão da memória técnica sugerida</strong><br>Regra: ${escapeHtml(rule)}<br>Base: ${escapeHtml(base)}<br>Ficha: ${fichaId?`Ficha ${fichaId} — ${escapeHtml(fichaNome)}`:'Não identificada'}<br>Estado: Sugestão não guardada<br>Confirmação humana necessária<br>Esta memória aprovada ainda não altera automaticamente o comportamento futuro da IA<br><div data-ai-action="memory-feedback" style="margin-top:6px"></div><button type="button" class="ai-copy" data-ai-action="cancel-memory-review">Cancelar</button> <button type="button" class="ai-copy" data-ai-action="reject-memory-review">Rejeitar</button> <button type="button" class="ai-copy" data-ai-action="approve-memory-review">Aprovar memória</button>`;const feedback=panel.querySelector('[data-ai-action="memory-feedback"]'),approve=panel.querySelector('[data-ai-action="approve-memory-review"]');panel.querySelector('[data-ai-action="cancel-memory-review"]').onclick=()=>panel.style.display='none';panel.querySelector('[data-ai-action="reject-memory-review"]').onclick=()=>{wrap.remove();showToast('Sugestão rejeitada nesta sessão. Nada foi guardado.');};approve.onclick=async()=>{if(!await askConfirm('Confirmar aprovação desta memória técnica? Esta ação vai gravar uma memória aprovada no Firebase.',{title:'Aprovar memória',okText:'Confirmar',danger:false}))return;approve.disabled=true;try{const result=await saveApprovedTechnicalMemory({ruleText:rule,basisText:base,fichaId,fichaNome,sourceQuestion:question});feedback.textContent=result.duplicate?'Esta memória técnica já tinha sido aprovada. Nada foi duplicado.':'Memória técnica aprovada manualmente. Esta aprovação foi feita por ação humana. A IA ainda não usa esta memória para alterar respostas futuras.';}catch(error){console.error(error);feedback.textContent='Não foi possível guardar a memória técnica. Nada foi confirmado.';}finally{approve.disabled=false;}};};host.parentElement.after(wrap);}
+function renderMemoryReview(kind,question,text){const id=kind==='plan'?'planMemoryReview':'diaryMemoryReview';const old=$(id);if(old)old.remove();const source=String(text||'').replace(/<[^>]*>/g,' ');if(!/Memória\s+técnica\s+sugerida/i.test(source))return;const rule=((source.match(/Regra\s+sugerida:\s*([\s\S]*?)(?=\s*Base\s*:)/i)||[])[1]||'').replace(/\s+/g,' ').trim(),base=((source.match(/Base\s*:\s*([\s\S]*?)(?=\s*Estado\s*:)/i)||[])[1]||'').replace(/\s+/g,' ').trim(),ficha=(source.match(/Ficha\s+(\d+)\s+—\s+([^\.\r\n]+)/i)||[]);if(!rule||!base)return;const fichaId=ficha[1]||null,fichaNome=ficha[2]?ficha[2].trim():null,host=$(kind==='plan'?'planAiResponse':'aiGeneralResponse'),wrap=document.createElement('div');wrap.id=id;wrap.className='ai-memory-review';wrap.style.cssText='display:block;margin-top:8px';wrap.innerHTML=`<button type="button" class="ai-copy" data-ai-action="review-memory">Rever sugestão</button><div class="ai-helper-text" style="display:none"></div>`;const btn=wrap.querySelector('[data-ai-action="review-memory"]'),panel=wrap.querySelector('div');btn.onclick=()=>{panel.style.display='block';panel.innerHTML=`<strong>Revisão da memória técnica sugerida</strong><br>Regra: ${escapeHtml(rule)}<br>Base: ${escapeHtml(base)}<br>Ficha: ${fichaId?`Ficha ${fichaId} — ${escapeHtml(fichaNome)}`:'Não identificada'}<br>Estado: Sugestão não guardada<br>Confirmação humana necessária<br>Uma memória aprovada pode ser considerada em respostas futuras quando for tecnicamente relevante.<br><div data-ai-action="memory-feedback" style="margin-top:6px"></div><button type="button" class="ai-copy" data-ai-action="cancel-memory-review">Cancelar</button> <button type="button" class="ai-copy" data-ai-action="reject-memory-review">Rejeitar</button> <button type="button" class="ai-copy" data-ai-action="approve-memory-review">Aprovar memória</button>`;const feedback=panel.querySelector('[data-ai-action="memory-feedback"]'),approve=panel.querySelector('[data-ai-action="approve-memory-review"]');panel.querySelector('[data-ai-action="cancel-memory-review"]').onclick=()=>panel.style.display='none';panel.querySelector('[data-ai-action="reject-memory-review"]').onclick=()=>{wrap.remove();showToast('Sugestão rejeitada nesta sessão. Nada foi guardado.');};approve.onclick=async()=>{if(!await askConfirm('Confirmar aprovação desta memória técnica? Esta ação vai gravar uma memória aprovada no Firebase.',{title:'Aprovar memória',okText:'Confirmar',danger:false}))return;approve.disabled=true;try{const result=await saveApprovedTechnicalMemory({ruleText:rule,basisText:base,fichaId,fichaNome,sourceQuestion:question});feedback.textContent=result.duplicate?'Esta memória técnica já tinha sido aprovada. Nada foi duplicado.':'Memória técnica aprovada manualmente. Poderá ser considerada em respostas futuras quando for tecnicamente relevante.';}catch(error){console.error(error);feedback.textContent='Não foi possível guardar a memória técnica. Nada foi confirmado.';}finally{approve.disabled=false;}};};host.parentElement.after(wrap);}
 function formatAiOperationalAnswer(question){
   const fichaId=getAiRecurrenceFicha(question);
   if(!fichaId)return 'Informação insuficiente.';
@@ -3679,7 +3774,7 @@ function formatAiResponseHtml(text){
   return String(text||'').split('\n').map(line=>{
     const trimmed=line.trim();
     if(!trimmed)return '<span class="ai-rich-line">&nbsp;</span>';
-    if(/^[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][A-Za-zÁÀÂÃÉÊÍÓÔÕÚÇáàâãéêíóôõúç ]+:$/.test(trimmed))return `<span class="ai-rich-line"><span class="ai-section-title">${escapeHtml(trimmed)}</span></span>`;
+    if(/^[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ][A-Za-zÁÀÂÃÉÊÍÓÔÕÚÇáàâãéêíóôõúç ]+:$/.test(trimmed)||/^🧠\s*Memória técnica aprovada considerada:$/.test(trimmed))return `<span class="ai-rich-line"><span class="ai-section-title">${escapeHtml(trimmed)}</span></span>`;
     if(/^-\s+/.test(trimmed))return `<span class="ai-rich-line">• ${formatAiInlineHtml(trimmed.replace(/^-\s+/,''))}</span>`;
     return `<span class="ai-rich-line">${formatAiInlineHtml(trimmed)}</span>`;
   }).join('');
