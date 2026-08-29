@@ -10,6 +10,10 @@ Resolver padrões, não exemplos.
 
 Uma correção deve melhorar o mecanismo de interpretação e recuperação de dados para toda a família de pedidos relacionada, sem criar respostas especiais para uma frase específica.
 
+## Como usar esta matriz
+
+Para cada alteração à interpretação da IA, identificar primeiro o padrão afetado — termo, período, quantidade, classificação, origem ou horizonte temporal. Depois, selecionar ou adicionar pelo menos um caso positivo, um negativo e um ambíguo que representem esse padrão. Os exemplos deste documento são representativos e não constituem uma lista fechada de frases a testar.
+
 ## Padrões de validação
 
 ### 1. Pesquisa curta por termo + período
@@ -67,7 +71,7 @@ Validar que termos parecidos ou contextos diferentes não são confundidos:
 
 Quando houver várias interpretações plausíveis, a IA deve pedir clarificação ou sugerir reformulações. Não deve escolher silenciosamente uma interpretação que possa produzir uma resposta enganadora.
 
-### 8. Horizonte temporal
+### 8. Validação por horizonte temporal
 
 Validar que a IA consulta o conjunto de dados adequado ao horizonte temporal:
 
@@ -108,6 +112,7 @@ Devem ser mantidas regressões para, pelo menos:
 - identificar causa estrutural;
 - corrigir mecanismo geral;
 - criar regressões positivas, negativas e ambíguas;
+- não aumentar falsos positivos;
 - não inventar dados;
 - não usar linguagem interna como `cache`, `diaryCache` ou `LOGS`.
 
@@ -124,5 +129,5 @@ v0.4 já inclui:
 - total aproximado de sal;
 - classificação real Importante/Tarefa;
 - guard genérico de interpretação;
+- documentação v0.4;
 - tag v0.4.
-
