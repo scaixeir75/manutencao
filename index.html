@@ -2636,7 +2636,7 @@ function generateDiaryAiSuggestion(){
     if(analysis.intent==='pending-anomalies')renderPendingAiResponse($('aiGeneralResponse'),analysis);else $('aiGeneralResponse').innerHTML=formatAiResponseHtml(response);
     syncAiLearningActions('diary');
     panel.dataset.suggestedFichaId='';
-    aiSuggestionText=response;renderMemoryReview('diary',question,$('aiGeneralResponse').innerText||$('aiGeneralResponse').textContent||'');renderUsedTechnicalMemory('diary',analysis.technicalMemories);
+    aiSuggestionText=response;renderMemoryReview('diary',question,$('aiGeneralResponse').innerText||$('aiGeneralResponse').textContent||'');renderUsedTechnicalMemory('diary',analysis.technicalMemories,question,analysis);
     panel.classList.add('ready');
     if(copyBtn){copyBtn.style.display='inline-flex';copyBtn.textContent='Copiar sugestão';}
     if(useFichaBtn)useFichaBtn.style.display='none';
@@ -3187,7 +3187,18 @@ function hasApprovedEquivalentTechnicalMemory(rule,context={}){
 }
 function memoryIdFor(fichaId,fichaNome,ruleText){const key=`${fichaId||fichaNome||'sem-ficha'}|${normalizeMemoryText(ruleText)}`;let hash=5381;for(let i=0;i<key.length;i+=1)hash=((hash<<5)+hash)^key.charCodeAt(i);return `memory_${String(fichaId||'sem_ficha').replace(/[^a-z0-9_-]/gi,'_')}_${(hash>>>0).toString(36)}`;}
 async function saveApprovedTechnicalMemory({ruleText,basisText,fichaId,fichaNome,sourceQuestion}){if(!window.fb||!window.firebaseReady)throw new Error('Firebase indisponível.');const{db,ref,get,set}=window.fb;const id=memoryIdFor(fichaId,fichaNome,ruleText),target=ref(db,`memoria_tecnica/${id}`),existing=(await get(target)).val();if(existing){const sameRule=normalizeMemoryText(existing.ruleText)===normalizeMemoryText(ruleText),sameFicha=String(existing.fichaId||'')===String(fichaId||'')||(!fichaId&&normalizeMemoryText(existing.fichaNome)===normalizeMemoryText(fichaNome));if(existing.status==='approved'&&existing.approvedByHuman===true&&sameRule&&sameFicha)return {duplicate:true,id};throw new Error('Já existe uma memória com este identificador. Nada foi alterado.');}const now=new Date().toISOString(),dateMatch=String(basisText).match(/\b\d{4}-\d{2}-\d{2}\b/);const memory={id,status:'approved',approvedByHuman:true,ruleText,basisText,createdAt:now,approvedAt:now,version:1,source:'ai_suggestion',fichaId:fichaId||null,fichaNome:fichaNome||null,sourceQuestion:sourceQuestion||'',sourceRecords:basisText?[{date:dateMatch?dateMatch[0]:null,text:basisText,severity:null,origin:null,recordId:null}]:[]};await set(target,memory);return {duplicate:false,id,memory};}
-function renderUsedTechnicalMemory(kind,memories=[]){
+function getUsedTechnicalMemoryRole(memory,question,analysisContext={}){
+  const fichaIds=getAiAnalysisFichaIds(question,analysisContext);
+  if(memory.fichaId&&fichaIds.has(String(memory.fichaId)))return 'Mesma ficha/equipamento';
+  const questionProfile=buildAiSearchProfile(question);
+  const questionTerms=getTechnicalMemorySpecificTerms(question);
+  const memoryTerms=(memory.terms||getTechnicalMemorySpecificTerms(memory.searchText)).filter(term=>!isGenericTechnicalMemoryTerm(term));
+  const hasSpecificTerms=hasTechnicalTermOverlap(questionTerms,memoryTerms).length>0;
+  const hasAlias=hasTechnicalTermOverlap(questionProfile.expandedTerms||[],memory.aliases||[]).length>0;
+  if(hasSpecificTerms||hasAlias||matchesAiSearchProfile(memory.searchText,questionProfile))return 'Regra técnica específica';
+  return 'Contexto complementar';
+}
+function renderUsedTechnicalMemory(kind,memories=[],question='',analysisContext={}){
   const id=kind==='plan'?'planUsedTechnicalMemory':'diaryUsedTechnicalMemory';
   const old=$(id);if(old)old.remove();
   if(!Array.isArray(memories)||!memories.length)return;
@@ -3196,8 +3207,9 @@ function renderUsedTechnicalMemory(kind,memories=[]){
   wrap.innerHTML='<button type="button" class="ai-copy" data-ai-action="toggle-used-memory" aria-expanded="false">🧠 Resposta apoiada em memória técnica aprovada</button><div class="ai-helper-text" style="display:none"></div>';
   const button=wrap.querySelector('[data-ai-action="toggle-used-memory"]'),detail=wrap.querySelector('div');
   const rows=memories.map(memory=>{
+    const role=getUsedTechnicalMemoryRole(memory,question,analysisContext);
     const ficha=memory.fichaId?`<br>Ficha: ${escapeHtml(String(memory.fichaId))}${memory.fichaNome?` — ${escapeHtml(memory.fichaNome)}`:''}`:'';
-    return `• ${escapeHtml(memory.ruleText||'')}${ficha}`;
+    return `<strong>${escapeHtml(role)}</strong><br>• ${escapeHtml(memory.ruleText||'')}${ficha}`;
   }).join('<br>');
   detail.innerHTML=`<strong>Memória técnica utilizada</strong><br>${rows}`;
   button.onclick=()=>{const open=detail.style.display!=='block';detail.style.display=open?'block':'none';button.setAttribute('aria-expanded',String(open));};
@@ -3512,7 +3524,7 @@ function generatePlanAiSuggestion(){
     renderMemoryReview('plan',question,response.innerText||response.textContent||'');
   }else{
     response.style.display='block';
-    if(analysis.intent==='pending-anomalies')renderPendingAiResponse(response,analysis);else response.innerHTML=formatAiResponseHtml(analysis.text);renderMemoryReview('plan',question,response.innerText||response.textContent||'');renderUsedTechnicalMemory('plan',analysis.technicalMemories);
+    if(analysis.intent==='pending-anomalies')renderPendingAiResponse(response,analysis);else response.innerHTML=formatAiResponseHtml(analysis.text);renderMemoryReview('plan',question,response.innerText||response.textContent||'');renderUsedTechnicalMemory('plan',analysis.technicalMemories,question,analysis);
     $('planAiSuggestion').style.display='none';
     syncAiLearningActions('plan');
   }
