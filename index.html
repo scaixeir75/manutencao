@@ -3113,14 +3113,29 @@ function isApprovedTechnicalMemoryRelevant(memory,question,analysisContext={}){
   if(exactContextMatch&&sharedSpecific.length===1&&questionTerms.length===1&&!isCatalogTechnicalEntityTerm(questionTerms[0]))return true;
   return exactContextMatch&&sharedSpecific.length>=1&&questionTerms.length>=2&&sameFicha;
 }
-function selectContextualTechnicalMemories(memories){
-  return memories.reduce((selected,memory)=>{
+function rankRelevantTechnicalMemories(memories,question,analysisContext={}){
+  const questionProfile=buildAiSearchProfile(question);
+  const questionTerms=getTechnicalMemorySpecificTerms(question);
+  const fichaIds=getAiAnalysisFichaIds(question,analysisContext);
+  return memories.map((memory,index)=>{
+    const memoryTerms=(memory.terms||getTechnicalMemorySpecificTerms(memory.searchText)).filter(term=>!isGenericTechnicalMemoryTerm(term));
+    const sharedSpecific=hasTechnicalTermOverlap(questionTerms,memoryTerms);
+    const sharedAliases=hasTechnicalTermOverlap(questionProfile.expandedTerms||[],memory.aliases||[]);
+    const sameFicha=!!memory.fichaId&&fichaIds.has(String(memory.fichaId));
+    const exactContextMatch=matchesAiSearchProfile(memory.searchText,questionProfile);
+    const score=(sameFicha?1000:0)+(sharedSpecific.length*100)+(sharedAliases.length*20)+(exactContextMatch?10:0);
+    return {memory,index,score};
+  }).sort((left,right)=>right.score-left.score||left.index-right.index).map(item=>item.memory);
+}
+function selectContextualTechnicalMemories(memories,question,analysisContext={}){
+  const unique=memories.reduce((selected,memory)=>{
     if(selected.some(existing=>areTechnicalMemoryRulesEquivalent(existing,memory)))return selected;
     selected.push(memory);return selected;
-  },[]).slice(0,3);
+  },[]);
+  return rankRelevantTechnicalMemories(unique,question,analysisContext).slice(0,3);
 }
 function findRelevantTechnicalMemories(question,analysisContext={}){
-  return selectContextualTechnicalMemories(technicalMemoryCache.filter(memory=>isApprovedTechnicalMemoryRelevant(memory,question,analysisContext)));
+  return selectContextualTechnicalMemories(technicalMemoryCache.filter(memory=>isApprovedTechnicalMemoryRelevant(memory,question,analysisContext)),question,analysisContext);
 }
 function insertTechnicalMemoryContext(text,memories){
   if(!memories.length||!text)return text;
