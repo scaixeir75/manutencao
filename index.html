@@ -2257,6 +2257,7 @@ function resetDiaryAssistant({clearInput=false,forceInitialState=false}={}){
   const panel=$('aiHelper');if(!panel)return;
   clearOcrManualPreview('diary');
   renderUsedTechnicalMemory('diary',[]);
+  renderAiResponseQuality('diary');
   const copyBtn=$('aiCopyBtn');
   const useFichaBtn=$('aiUseFichaBtn');
   panel.classList.remove('ready');
@@ -2285,6 +2286,7 @@ function resetPlanAssistant({clearInput=false}={}){
   const panel=$('planAiHelper');if(!panel)return;
   clearOcrManualPreview('plan');
   renderUsedTechnicalMemory('plan',[]);
+  renderAiResponseQuality('plan');
   panel.classList.remove('has-response');
   $('planAiState').textContent='Podes escrever ou ditar uma pergunta sobre o plano da semana.';
   $('planAiResponse').textContent='A resposta aparecerá aqui depois de perguntares à IA.';
@@ -2610,15 +2612,41 @@ function buildUnifiedAiAnalysisBase(inputText){
       'Confirmação humana necessária.'].join('\n')};
 }
 
+function getAiResponseQuality(analysis,question){
+  const text=String(analysis&&analysis.text||'');
+  const explicitInsufficiency=!analysis||analysis.intent==='insufficient'||/^Informa[cç][aã]o insuficiente\.?$/i.test(text.trim());
+  if(explicitInsufficiency)return 'Informação insuficiente';
+  const fichaIds=getAiAnalysisFichaIds(question,analysis);
+  const historyEntries=[
+    ...(analysis&&analysis.history&&analysis.history.entries||[]),
+    ...(analysis&&analysis.related&&analysis.related.matches||[]),
+    ...(analysis&&analysis.facts&&analysis.facts.history||[]),
+    ...(analysis&&analysis.facts&&analysis.facts.relatedRecords||[])
+  ];
+  const hasUnconfirmedPending=!!(analysis&&analysis.pendingData&&analysis.pendingData.pending&&analysis.pendingData.pending.length);
+  const hasRealBasis=historyEntries.length>0
+    ||hasUnconfirmedPending
+    ||/\b(?:foi encontrado um registo relevante|foram encontrados?\s+\d+\s+registo|foram encontradas?\s+\d+\s+ocorr|existem\s+\d+\s+anomalia|total:\s*\d+\s+registo)/i.test(text);
+  const hasTechnicalMemory=!!(analysis&&Array.isArray(analysis.technicalMemories)&&analysis.technicalMemories.length);
+  const hasContext=fichaIds.size>0||['quantitative','history-query','related-search','pending-anomalies','operational'].includes(analysis&&analysis.intent);
+  const hasMissingInfo=!!(analysis&&Array.isArray(analysis.missing)&&analysis.missing.length)
+    ||/\b(?:informa[cç][aã]o em falta|n[aã]o foi encontrada confirma[cç][aã]o|informa[cç][aã]o insuficiente sobre|risco t[eé]cnico\.?)\b/i.test(text)
+    ||/^Ficha prov[aá]vel:/mi.test(text);
+  if(hasMissingInfo||hasUnconfirmedPending)return 'Parcial';
+  if(hasContext&&(hasRealBasis||hasTechnicalMemory))return 'Suficiente';
+  return 'Parcial';
+}
 function buildUnifiedAiAnalysis(inputText){
-  const analysis=buildUnifiedAiAnalysisBase(inputText);
-  return applyTechnicalMemoryContext(analysis,cleanAiInput(inputText));
+  const question=cleanAiInput(inputText);
+  const analysis=applyTechnicalMemoryContext(buildUnifiedAiAnalysisBase(inputText),question);
+  return {...analysis,responseQuality:getAiResponseQuality(analysis,question)};
 }
 
 function generateDiaryAiSuggestion(){
   const panel=$('aiHelper');if(!panel)return;
   clearOcrManualPreview('diary');
   renderUsedTechnicalMemory('diary',[]);
+  renderAiResponseQuality('diary');
   const text=$('diaryText').value.trim();
   const question=$('aiDiaryInput')&&$('aiDiaryInput').value?$('aiDiaryInput').value.trim():'';
   const copyBtn=$('aiCopyBtn');
@@ -2628,6 +2656,7 @@ function generateDiaryAiSuggestion(){
   if(!contextText||analysis.intent==='insufficient'){
     resetDiaryAssistant();
     $('aiHelperState').textContent='Informação insuficiente.';
+    renderAiResponseQuality('diary',analysis.responseQuality,$('aiHelperState'));
     return;
   }
   if(['quantitative','history-query','related-search','pending-anomalies','operational'].includes(analysis.intent)){
@@ -2636,7 +2665,7 @@ function generateDiaryAiSuggestion(){
     if(analysis.intent==='pending-anomalies')renderPendingAiResponse($('aiGeneralResponse'),analysis);else $('aiGeneralResponse').innerHTML=formatAiResponseHtml(response);
     syncAiLearningActions('diary');
     panel.dataset.suggestedFichaId='';
-    aiSuggestionText=response;renderMemoryReview('diary',question,$('aiGeneralResponse').innerText||$('aiGeneralResponse').textContent||'');renderUsedTechnicalMemory('diary',analysis.technicalMemories,question,analysis);
+    aiSuggestionText=response;renderMemoryReview('diary',question,$('aiGeneralResponse').innerText||$('aiGeneralResponse').textContent||'');renderUsedTechnicalMemory('diary',analysis.technicalMemories,question,analysis);renderAiResponseQuality('diary',analysis.responseQuality);
     panel.classList.add('ready');
     if(copyBtn){copyBtn.style.display='inline-flex';copyBtn.textContent='Copiar sugestão';}
     if(useFichaBtn)useFichaBtn.style.display='none';
@@ -2657,7 +2686,7 @@ function generateDiaryAiSuggestion(){
     ? historySnapshot.entries.map(entry=>`${entry.date||'Sem data'} — ${getHistoryEntrySummary(entry)}`)
     : [],'Informação insuficiente sobre histórico anterior.');
   setAiTextContent('aiRecurrence',analysis.recurrence);
-  updateDiarySuggestionVisibility();
+  updateDiarySuggestionVisibility();renderAiResponseQuality('diary',analysis.responseQuality,$('aiHelperSuggestion'));
   panel.dataset.suggestedFichaId=fichaSuggestion.suggestedFichaId||'';
   aiSuggestionText=[
     'Assistente IA — Sugestão para Registo Técnico',
@@ -3215,6 +3244,15 @@ function renderUsedTechnicalMemory(kind,memories=[],question='',analysisContext=
   button.onclick=()=>{const open=detail.style.display!=='block';detail.style.display=open?'block':'none';button.setAttribute('aria-expanded',String(open));};
   host.parentElement.after(wrap);
 }
+function renderAiResponseQuality(kind,quality,host){
+  const id=kind==='plan'?'planAiResponseQuality':'diaryAiResponseQuality';
+  const old=$(id);if(old)old.remove();
+  if(!quality)return;
+  const target=host||$(kind==='plan'?'planAiResponse':'aiGeneralResponse');if(!target)return;
+  const indicator=document.createElement('div');indicator.id=id;indicator.className='ai-helper-text';indicator.setAttribute('role','status');indicator.style.cssText='margin-top:8px;font-weight:600';
+  indicator.textContent=`Qualidade da informação: ${quality}`;
+  target.after(indicator);
+}
 function renderMemoryReview(kind,question,text){const id=kind==='plan'?'planMemoryReview':'diaryMemoryReview';const old=$(id);if(old)old.remove();const source=String(text||'').replace(/<[^>]*>/g,' ');if(!/Memória\s+técnica\s+sugerida/i.test(source))return;const rule=((source.match(/Regra\s+sugerida:\s*([\s\S]*?)(?=\s*Base\s*:)/i)||[])[1]||'').replace(/\s+/g,' ').trim(),base=((source.match(/Base\s*:\s*([\s\S]*?)(?=\s*Estado\s*:)/i)||[])[1]||'').replace(/\s+/g,' ').trim(),ficha=(source.match(/Ficha\s+(\d+)\s+—\s+([^\.\r\n]+)/i)||[]);if(!rule||!base)return;const fichaId=ficha[1]||null,fichaNome=ficha[2]?ficha[2].trim():null,host=$(kind==='plan'?'planAiResponse':'aiGeneralResponse'),wrap=document.createElement('div');wrap.id=id;wrap.className='ai-memory-review';wrap.style.cssText='display:block;margin-top:8px';wrap.innerHTML=`<button type="button" class="ai-copy" data-ai-action="review-memory">Rever sugestão</button><div class="ai-helper-text" style="display:none"></div>`;const btn=wrap.querySelector('[data-ai-action="review-memory"]'),panel=wrap.querySelector('div');btn.onclick=()=>{panel.style.display='block';panel.innerHTML=`<strong>Revisão da memória técnica sugerida</strong><br>Regra: ${escapeHtml(rule)}<br>Base: ${escapeHtml(base)}<br>Ficha: ${fichaId?`Ficha ${fichaId} — ${escapeHtml(fichaNome)}`:'Não identificada'}<br>Estado: Sugestão não guardada<br>Confirmação humana necessária<br>Uma memória aprovada pode ser considerada em respostas futuras quando for tecnicamente relevante.<br><div data-ai-action="memory-feedback" style="margin-top:6px"></div><button type="button" class="ai-copy" data-ai-action="cancel-memory-review">Cancelar</button> <button type="button" class="ai-copy" data-ai-action="reject-memory-review">Rejeitar</button> <button type="button" class="ai-copy" data-ai-action="approve-memory-review">Aprovar memória</button>`;const feedback=panel.querySelector('[data-ai-action="memory-feedback"]'),approve=panel.querySelector('[data-ai-action="approve-memory-review"]');panel.querySelector('[data-ai-action="cancel-memory-review"]').onclick=()=>panel.style.display='none';panel.querySelector('[data-ai-action="reject-memory-review"]').onclick=()=>{wrap.remove();showToast('Sugestão rejeitada nesta sessão. Nada foi guardado.');};approve.onclick=async()=>{if(!await askConfirm('Confirmar aprovação desta memória técnica? Esta ação vai gravar uma memória aprovada no Firebase.',{title:'Aprovar memória',okText:'Confirmar',danger:false}))return;approve.disabled=true;try{const result=await saveApprovedTechnicalMemory({ruleText:rule,basisText:base,fichaId,fichaNome,sourceQuestion:question});feedback.textContent=result.duplicate?'Esta memória técnica já tinha sido aprovada. Nada foi duplicado.':'Memória técnica aprovada manualmente. Poderá ser considerada em respostas futuras quando for tecnicamente relevante.';}catch(error){console.error(error);feedback.textContent='Não foi possível guardar a memória técnica. Nada foi confirmado.';}finally{approve.disabled=false;}};};host.parentElement.after(wrap);}
 function formatAiOperationalAnswer(question){
   const fichaId=getAiRecurrenceFicha(question);
@@ -3504,6 +3542,7 @@ function generatePlanAiSuggestion(){
   const panel=$('planAiHelper');if(!panel)return;
   clearOcrManualPreview('plan');
   renderUsedTechnicalMemory('plan',[]);
+  renderAiResponseQuality('plan');
   const input=$('planAiInput');
   const question=input?input.value.trim():'';
   const analysis=buildUnifiedAiAnalysis(question);
@@ -3521,10 +3560,10 @@ function generatePlanAiSuggestion(){
     setAiListContent('planAiRecentHistory',h.entries.length?h.entries.map(entry=>`${entry.date||'Sem data'} — ${getHistoryEntrySummary(entry)}`):[],'Informação insuficiente sobre histórico anterior.');
     setAiTextContent('planAiRecurrence',analysis.recurrence);
     $('planAiSuggestion').style.display='grid';
-    renderMemoryReview('plan',question,response.innerText||response.textContent||'');
+    renderMemoryReview('plan',question,response.innerText||response.textContent||'');renderAiResponseQuality('plan',analysis.responseQuality,$('planAiSuggestion'));
   }else{
     response.style.display='block';
-    if(analysis.intent==='pending-anomalies')renderPendingAiResponse(response,analysis);else response.innerHTML=formatAiResponseHtml(analysis.text);renderMemoryReview('plan',question,response.innerText||response.textContent||'');renderUsedTechnicalMemory('plan',analysis.technicalMemories,question,analysis);
+    if(analysis.intent==='pending-anomalies')renderPendingAiResponse(response,analysis);else response.innerHTML=formatAiResponseHtml(analysis.text);renderMemoryReview('plan',question,response.innerText||response.textContent||'');renderUsedTechnicalMemory('plan',analysis.technicalMemories,question,analysis);renderAiResponseQuality('plan',analysis.responseQuality);
     $('planAiSuggestion').style.display='none';
     syncAiLearningActions('plan');
   }
