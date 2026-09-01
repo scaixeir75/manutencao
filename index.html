@@ -2509,7 +2509,7 @@ function formatRelatedAnswer(question,related){
 function formatPendingAnomaliesAnswer(question){
   const ficha=extractAiFichaId(question);const data=getPendingAnomalies(ficha);
   const pending=getDisplayPendingAnomalies(data);
-  const lines=[`Foram encontradas ${pending.length} anomalia(s) pendente(s).`,`${data.possible.length} com correção posterior possível mas não confirmada; ${data.resolved.length} resolvida(s).`];
+  const lines=[`Foram encontradas ${pending.length} anomalia(s) pendente(s).`,data.possible.length?`${data.possible.length} com correção posterior possível mas não confirmada; ${data.resolved.length} resolvida(s).`:`${data.resolved.length} resolvida(s).`];
   if(pending.length)lines.push('','Pendentes:',...pending.map(x=>`- Ficha ${x.fichaId} — ${x.name} — ${x.date||'Sem data'} — ${x.description}`));
   const memorySuggestion=pending.length?formatAiMemorySuggestion('Registos importantes ou urgentes sem resolução posterior confirmada devem continuar a ser apresentados como pendentes a confirmar.',`Foram identificadas ${pending.length} ocorrência(s) pendente(s) sem resolução confirmada na Ficha ${ficha||'não identificada'} — ${ficha&&CATALOG[ficha]?CATALOG[ficha]:'Sem ficha'}.`,{question,fichaId:ficha}):'';
   if(memorySuggestion)lines.push('',memorySuggestion);else lines.push('','Confirmação humana necessária.');return lines.join('\n');
