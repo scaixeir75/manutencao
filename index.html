@@ -2984,6 +2984,47 @@ function getFichaRecordSearchText(record){
   return [record.note,record.status,record.tech].filter(Boolean).join(' ');
 }
 
+function getAiOriginalDiaryId(row){
+  const record=row&&row.record||row||{};
+  const diaryId=record.diaryId||row&&row.diaryId;
+  if(diaryId)return String(diaryId);
+  const id=String(record.id||row&&row.id||'');
+  const mirror=id.match(/^diary_(.+)$/);
+  if(mirror)return mirror[1];
+  return row&&row.source==='Registos Diários'&&id?id:'';
+}
+
+function getAiDiaryFingerprint(row){
+  const record=row&&row.record||row||{};
+  const fichaId=String(row&&row.fichaId||record.fichaId||'');
+  const date=String(row&&row.date||record.date||record.timestamp||'');
+  const text=norm(record.text||record.note||row&&row.text||'');
+  return `${fichaId}|${date}|${text}`;
+}
+
+function isAiDiaryOriginalRow(row){
+  return !!(row&&row.source==='Registos Diários'&&!String(row.record&&row.record.id||row.id||'').startsWith('diary_'));
+}
+
+function dedupeAiMirroredDiaryRecords(rows=[]){
+  const results=[];
+  const seen=new Map();
+  rows.forEach(row=>{
+    const diaryId=getAiOriginalDiaryId(row);
+    if(!diaryId){results.push(row);return;}
+    const key=`diary:${diaryId}`;
+    const fingerprint=getAiDiaryFingerprint(row);
+    const existing=seen.get(key);
+    if(!existing){seen.set(key,{fingerprint,index:results.length,row});results.push(row);return;}
+    if(existing.fingerprint!==fingerprint){results.push(row);return;}
+    if(isAiDiaryOriginalRow(row)&&!isAiDiaryOriginalRow(existing.row)){
+      results[existing.index]=row;
+      seen.set(key,{fingerprint,index:existing.index,row});
+    }
+  });
+  return results;
+}
+
 function matchesQuestionText(text,keywords){
   return keywords.length>0&&hasAllWholeWords(text,keywords);
 }
@@ -2999,22 +3040,28 @@ function collectAiLocalFacts(question){
   const yearFilter=requestedYear|| (wantsThisYear?currentYear:null);
   const weeklyFichaIds=new Set((SCHEDULE[String(week)]||[]).map(id=>String(id)));
 
-  const relatedDiary=diaryCache.filter(record=>{
+  const relatedRows=[];
+  diaryCache.forEach(record=>{
     const sameFicha=record.fichaId&&matchedFichaIds.has(String(record.fichaId));
-    const textMatch=matchesAiSearchProfile(getDiaryRecordText(record),profile);
-    const sameYear=!yearFilter||recordYear(diaryDateOf(record)||record.timestamp)===yearFilter;
-    return sameYear&&(sameFicha||textMatch);
+    const text=getDiaryRecordText(record);
+    const textMatch=matchesAiSearchProfile(text,profile);
+    const date=diaryDateOf(record)||record.timestamp||'';
+    const sameYear=!yearFilter||recordYear(date)===yearFilter;
+    if(sameYear&&(sameFicha||textMatch))relatedRows.push({source:'Registos Diários',fichaId:String(record.fichaId||''),date,text,record});
   });
-
-  const relatedFicha=[];
   Object.entries(LOGS).forEach(([fichaId,entries])=>{
     const sameFicha=matchedFichaIds.has(String(fichaId));
     (entries||[]).forEach(record=>{
-      const textMatch=matchesAiSearchProfile(getFichaRecordSearchText(record),profile);
-      const sameYear=!yearFilter||recordYear(record.date||record.created)===yearFilter;
-      if(sameYear&&(sameFicha||textMatch))relatedFicha.push({fichaId,record});
+      const text=getFichaRecordSearchText(record);
+      const date=record.date||record.created||'';
+      const textMatch=matchesAiSearchProfile(text,profile);
+      const sameYear=!yearFilter||recordYear(date)===yearFilter;
+      if(sameYear&&(sameFicha||textMatch))relatedRows.push({source:'Histórico de Fichas',fichaId:String(fichaId),date,text,record});
     });
   });
+  const uniqueRelatedRows=dedupeAiMirroredDiaryRecords(relatedRows);
+  const relatedDiary=uniqueRelatedRows.filter(row=>row.source==='Registos Diários').map(row=>row.record);
+  const relatedFicha=uniqueRelatedRows.filter(row=>row.source==='Histórico de Fichas').map(row=>({fichaId:row.fichaId,record:row.record}));
 
   const weeklyMatches=catalogMatches.filter(match=>weeklyFichaIds.has(String(match.id)));
   return {keywords,profile,catalogMatches,relatedDiary,relatedFicha,weeklyMatches,wantsThisYear,currentYear,requestedYear,yearFilter};
@@ -3029,7 +3076,7 @@ function getAiSearchableRecords(){
     inferFichaIdsFromRecord(record).forEach(fichaId=>rows.push({source:'Registos Diários',fichaId:String(fichaId),name:CATALOG[fichaId]||'',date:diaryDateOf(record)||record.timestamp||'',status:record.severity||'',text:getDiaryRecordText(record),record}));
   });
   Object.entries(LOGS).forEach(([fichaId,entries])=>(entries||[]).forEach(record=>rows.push({source:'Histórico de Fichas',fichaId:String(fichaId),name:CATALOG[fichaId]||'',date:record.date||record.created||'',status:record.status||record.type||'',text:getFichaRecordSearchText(record),record})));
-  return rows.map(row=>({...row,_date:aiRecordDateValue(row)})).sort((a,b)=>b._date-a._date);
+  return dedupeAiMirroredDiaryRecords(rows).map(row=>({...row,_date:aiRecordDateValue(row)})).sort((a,b)=>b._date-a._date);
 }
 function getAiPeriod(question){
   const q=norm(question),now=new Date(),start=new Date(now),end=new Date(now);start.setHours(0,0,0,0);end.setHours(23,59,59,999);
