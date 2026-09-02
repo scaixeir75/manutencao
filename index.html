@@ -1858,9 +1858,17 @@ function getAiRelevantExcerpt(text,profile){
   return `${start?'… ':''}${excerpt}${end<tokens.length?' …':''}`;
 }
 
-function buildAiRelevantSummary(text,questionOrProfile){
+function getAiRelevantRecordContext(text,questionOrProfile){
   const profile=typeof questionOrProfile==='string'?buildAiSearchProfile(questionOrProfile):questionOrProfile;
-  return getAiRelevantExcerpt(text,profile);
+  const originalText=normalizeSpaces(String(text||'').trim());
+  const terms=[...new Set([...(profile&&profile.specificTerms||[]),...(profile&&profile.semanticTerms||[])])];
+  const matchedTerms=terms.filter(term=>aiTextHasTermVariant(originalText,term));
+  const contextText=matchedTerms.length?getAiRelevantExcerpt(originalText,profile):originalText;
+  return {originalText,contextText,matchedTerms};
+}
+
+function buildAiRelevantSummary(text,questionOrProfile){
+  return getAiRelevantRecordContext(text,questionOrProfile).contextText;
 }
 
 function getFichaHistorySnapshot(fichaId,profile=null){
@@ -2447,7 +2455,10 @@ function findRelatedRecords(inputText){
     const positions=terms.map(term=>wordTokens(text).indexOf(term)).filter(position=>position>=0);
     const close=terms.length>1&&present.length===terms.length&&positions.length===terms.length&&Math.max(...positions)-Math.min(...positions)<=50;
     const score=exact?4:close?2:semanticHit?3:matchesAiSearchProfile(text,searchProfile)?2:0;
-    if(score)matches.push({record,fichaId:String(fichaId||record.fichaId||''),score,text});
+    if(score){
+      const context=getAiRelevantRecordContext(text,profile);
+      matches.push({record,fichaId:String(fichaId||record.fichaId||''),score,text,contextText:context.contextText,contextTerms:context.matchedTerms});
+    }
   };
   diaryCache.forEach(record=>add(record,record.fichaId,'diary'));
   Object.entries(LOGS).forEach(([id,entries])=>(entries||[]).forEach(record=>add(record,id,'ficha')));
@@ -2531,7 +2542,7 @@ function formatRelatedAnswer(question,related){
   const rows=related.matches.filter(x=>x.score>=2).slice(0,3);const areaTerms=/caldeira|bomba|hidropressora|retorno|aqs|abastecimento|agua/;const areas=[...new Set(rows.map(x=>CATALOG[x.fichaId]).filter(x=>x&&areaTerms.test(norm(x))))];
   const lines=[`Foram encontrados registos relacionados com “${question}”.`,'','Ocorrência recente:',...rows.map(x=>`- ${x.record.date||x.record.timestamp||'Sem data'} — ${buildAiRelevantSummary(x.text,question)}`)];
   if(!rows.some(x=>x.fichaId))lines.push('','Ficha/equipamento exato não confirmado.');
-  if(rows.some(x=>/\breparad[oa]\b/.test(norm(x.text))))lines.push('','O texto indica uma possível intervenção/reparação já registada; não há pendência confirmada.');
+  if(rows.some(x=>/\breparad[oa]\b/.test(norm(x.contextText||x.text))))lines.push('','O texto indica uma possível intervenção/reparação já registada; não há pendência confirmada.');
   if(areas.length)lines.push('','Possíveis áreas relacionadas:',...areas.map(x=>`- ${x}`));
   lines.push('','Confirmação humana necessária.');return lines.join('\n');
 }
@@ -3150,10 +3161,11 @@ function getAiFilteredRecords(question){
   const q=norm(question),profile=buildAiSearchProfile(question),explicitFicha=extractAiFichaId(question),isLastFicha=!!explicitFicha&&/\b(quando|ultima|ultimo)\b/.test(q),isFichaCount=!!explicitFicha&&/\b(quantas|quantos|numero|total)\b/.test(q)&&/\b(registos|intervencoes|ocorrencias)\b/.test(q),terms=isLastFicha||isFichaCount||/mais recorrencia|repetidos|mais registos|mais anomalias/.test(q)?[]:getAiHistoryTerms(question),priorityTerms=terms.length?getAiPriorityHistoryTerms(question):[],suggestedFicha=!explicitFicha&&priorityTerms.length?scoreFichaSuggestion(question).historyFichaId:'',ficha=explicitFicha||suggestedFicha,period=getAiPeriod(question);
   const waterOperationalQuery=isWaterOperationalHistoryQuery(question);
   const contentTerms=priorityTerms.length?priorityTerms:terms;
-  return {period,terms,priorityTerms,ficha,records:getAiSearchableRecords().filter(row=>{
+  const records=getAiSearchableRecords().filter(row=>{
     const matchesContent=priorityTerms.length?hasAllWholeWords(row.text,contentTerms):!contentTerms.length||matchesAiSearchProfile(row.text,profile);
     return (!ficha||row.fichaId===ficha)&&(!period.start||(row._date>=period.start&&row._date<=period.end))&&matchesContent&&(!waterOperationalQuery||isWaterOperationalRecord(row.text));
-  })};
+  }).map(row=>({...row,contextText:getAiRelevantRecordContext(row.text,profile).contextText}));
+  return {period,terms,priorityTerms,ficha,records};
 }
 function isAiAnomalyRecord(row){return /anomalia|urgente/.test(norm(row.status+' '+row.text)) || /\b(avaria|problema|erro|falha)\b/.test(norm(row.text));}
 function isAiRecurrenceQuestion(question){
@@ -3467,11 +3479,11 @@ function formatAiHistoryAnswer(question){
     records.filter(row=>!onlyAnom||isAiAnomalyRecord(row)).forEach(row=>{const key=row.fichaId||'sem ficha',cur=grouped.get(key)||{fichaId:key,name:row.name||CATALOG[key]||'',rows:[]};cur.rows.push(row);grouped.set(key,cur);});
     const top=[...grouped.values()].sort((a,b)=>b.rows.length-a.rows.length).slice(0,5);
     if(!top.length)return 'Informação insuficiente.';
-    return [`Foram encontradas fichas com mais ${onlyAnom?'anomalias':'registos'} em ${data.period.label}.`,'','Resumo:',...top.map(x=>`- Ficha ${x.fichaId} — ${x.name}: ${x.rows.length} registo(s). Último: ${x.rows[0].date||'Sem data'} — ${buildAiRelevantSummary(x.rows[0].text,question)}`),'','Confirmação humana necessária.'].join('\n');
+    return [`Foram encontradas fichas com mais ${onlyAnom?'anomalias':'registos'} em ${data.period.label}.`,'','Resumo:',...top.map(x=>`- Ficha ${x.fichaId} — ${x.name}: ${x.rows.length} registo(s). Último: ${x.rows[0].date||'Sem data'} — ${buildAiSummary(x.rows[0].contextText||x.rows[0].text)}`),'','Confirmação humana necessária.'].join('\n');
   }
   if(wantsLast){
     const latest=records.filter(row=>row._date.getTime()===records[0]._date.getTime());
-    return [`Última intervenção encontrada${ficha?' na Ficha '+ficha:''}:`,'',...latest.slice(0,3).map(row=>`- ${row.date||'Sem data'} — Ficha ${row.fichaId||'sem ficha'} — ${row.name||'Sem ficha'} — ${buildAiRelevantSummary(row.text,question)} (${row.source})`),'','Confirmação humana necessária.'].join('\n');
+    return [`Última intervenção encontrada${ficha?' na Ficha '+ficha:''}:`,'',...latest.slice(0,3).map(row=>`- ${row.date||'Sem data'} — Ficha ${row.fichaId||'sem ficha'} — ${row.name||'Sem ficha'} — ${buildAiSummary(row.contextText||row.text)} (${row.source})`),'','Confirmação humana necessária.'].join('\n');
   }
   if(wantsCount){
     if(!ficha){
@@ -3481,7 +3493,7 @@ function formatAiHistoryAnswer(question){
     }
     return [`${ficha?`Ficha ${ficha} — ${CATALOG[ficha]||'Sem ficha'} tem`:'Foram encontrados'} ${records.length} registo(s) relacionados em ${data.period.label}.`,'','Detalhe:',`- ${records.filter(x=>x.source==='Registos Diários').length} em Registos Diários`,`- ${records.filter(x=>x.source==='Histórico de Fichas').length} no Histórico de Fichas`,'','Confirmação humana necessária.'].join('\n');
   }
-  return [`Foram encontrados ${records.length} registo(s) relacionados${ficha?' com a Ficha '+ficha:''}.`,'','Ocorrências recentes:',...records.slice(0,5).map(row=>`- ${row.date||'Sem data'} — Ficha ${row.fichaId||'sem ficha'} — ${buildAiRelevantSummary(row.text,question)} (${row.source})`),'','Confirmação humana necessária.'].join('\n');
+  return [`Foram encontrados ${records.length} registo(s) relacionados${ficha?' com a Ficha '+ficha:''}.`,'','Ocorrências recentes:',...records.slice(0,5).map(row=>`- ${row.date||'Sem data'} — Ficha ${row.fichaId||'sem ficha'} — ${buildAiSummary(row.contextText||row.text)} (${row.source})`),'','Confirmação humana necessária.'].join('\n');
 }
 
 function isAiHistoryQuestion(question){
