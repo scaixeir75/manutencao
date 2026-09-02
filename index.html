@@ -1833,6 +1833,36 @@ function buildAiSummary(text){
   return clean.slice(0,137).trim()+'...';
 }
 
+function getAiRelevantExcerpt(text,profile){
+  const clean=normalizeSpaces(String(text||'').trim());
+  if(!clean||clean.length<=140||!profile||!profile.specificTerms||!profile.specificTerms.length)return buildAiSummary(clean);
+  const terms=[...new Set([...(profile.specificTerms||[]),...(profile.semanticTerms||[])])];
+  const tokens=[...clean.matchAll(/[\p{L}\p{N}]+/gu)];
+  let match=null;
+  terms.some(term=>getAiTermVariants(term).some(variant=>{
+    const target=compactAiTerm(variant);
+    if(!target)return false;
+    for(let start=0;start<tokens.length;start++){
+      let candidate='';
+      for(let end=start;end<Math.min(tokens.length,start+5);end++){
+        candidate+=compactAiTerm(tokens[end][0]);
+        if(candidate===target){match={start,length:end-start+1};return true;}
+        if(candidate.length>=target.length)break;
+      }
+    }
+    return false;
+  }));
+  if(!match)return buildAiSummary(clean);
+  const start=Math.max(0,match.start-5),end=Math.min(tokens.length,match.start+match.length+10);
+  const excerpt=clean.slice(tokens[start].index,end<tokens.length?tokens[end].index:clean.length).trim();
+  return `${start?'… ':''}${excerpt}${end<tokens.length?' …':''}`;
+}
+
+function buildAiRelevantSummary(text,questionOrProfile){
+  const profile=typeof questionOrProfile==='string'?buildAiSearchProfile(questionOrProfile):questionOrProfile;
+  return getAiRelevantExcerpt(text,profile);
+}
+
 function getFichaHistorySnapshot(fichaId,profile=null){
   if(!fichaId)return {entries:[], total:0};
   const entries=logsFor(String(fichaId));
@@ -2499,7 +2529,7 @@ function clearAiPendingDisplay(kind){
 
 function formatRelatedAnswer(question,related){
   const rows=related.matches.filter(x=>x.score>=2).slice(0,3);const areaTerms=/caldeira|bomba|hidropressora|retorno|aqs|abastecimento|agua/;const areas=[...new Set(rows.map(x=>CATALOG[x.fichaId]).filter(x=>x&&areaTerms.test(norm(x))))];
-  const lines=[`Foram encontrados registos relacionados com “${question}”.`,'','Ocorrência recente:',...rows.map(x=>`- ${x.record.date||x.record.timestamp||'Sem data'} — ${buildAiSummary(x.text)}`)];
+  const lines=[`Foram encontrados registos relacionados com “${question}”.`,'','Ocorrência recente:',...rows.map(x=>`- ${x.record.date||x.record.timestamp||'Sem data'} — ${buildAiRelevantSummary(x.text,question)}`)];
   if(!rows.some(x=>x.fichaId))lines.push('','Ficha/equipamento exato não confirmado.');
   if(rows.some(x=>/\breparad[oa]\b/.test(norm(x.text))))lines.push('','O texto indica uma possível intervenção/reparação já registada; não há pendência confirmada.');
   if(areas.length)lines.push('','Possíveis áreas relacionadas:',...areas.map(x=>`- ${x}`));
@@ -3389,7 +3419,7 @@ function formatAiOperationalAnswer(question){
     ? `Foram encontradas ${issueEntries.length} ocorrência(s)/anomalia(s) relacionada(s) com esta ficha.`
     : `Foram encontrados ${entries.length} registo(s) relacionados com esta ficha.`;
   const lines=[`Ficha ${fichaId} — ${CATALOG[fichaId]||'Sem ficha'}.`, '', 'O que foi identificado:', identified];
-  if(relevant.length)lines.push('', 'Histórico relacionado:', ...relevant.slice(0,5).map(entry=>`- ${entry.date||'Sem data'} — ${buildAiSummary(getFichaRecordText(entry,fichaId))} (${isDiaryMirrorEntry(entry)?'Registos Diários':'Histórico de Fichas'})`));
+  if(relevant.length)lines.push('', 'Histórico relacionado:', ...relevant.slice(0,5).map(entry=>`- ${entry.date||'Sem data'} — ${buildAiRelevantSummary(getFichaRecordText(entry,fichaId),profile)} (${isDiaryMirrorEntry(entry)?'Registos Diários':'Histórico de Fichas'})`));
   if(isExtinguisher&&issueEntries.length)lines.push('', 'Anomalia / situação técnica:', 'O registo indica necessidade de carregamento do extintor número 36 CO2. Embora possa não estar classificado literalmente como “Anomalia”, deve ser tratado como situação a confirmar tecnicamente.');
   if(asksRecurrence||hasRepeatedIssue)lines.push('', 'Recorrência / padrão:', recurrence);
   if(asksState||pending.length||isExtinguisher&&issueEntries.length)lines.push('', 'Estado / pendência:', pending.length?`Existem ${pending.length} anomalia(s) pendente(s) sem resolução confirmada.`:'Não foi encontrada confirmação clara de que a intervenção tenha sido concluída.');
@@ -3423,7 +3453,7 @@ function formatAiRecurrenceAnswer(question){
     : relevant.length===1
       ? 'Existe uma ocorrência registada, mas não há base suficiente para confirmar recorrência.'
       : 'Não foram encontradas ocorrências registadas com estes critérios.';
-  return [`Ficha ${fichaId} — ${CATALOG[fichaId]||'Sem ficha'}.`, '', `Foram encontradas ${relevant.length} ${label}.`, `Recorrência: ${recurrence}`, ...(relevant.length?['', 'Ocorrências recentes:', ...relevant.slice(0,5).map(entry=>`- ${entry.date||'Sem data'} — ${buildAiSummary(getFichaRecordText(entry,fichaId))} (${isDiaryMirrorEntry(entry)?'Registos Diários':'Histórico de Fichas'})`)]:[]), '', 'Confirmação humana necessária.'].join('\n');
+  return [`Ficha ${fichaId} — ${CATALOG[fichaId]||'Sem ficha'}.`, '', `Foram encontradas ${relevant.length} ${label}.`, `Recorrência: ${recurrence}`, ...(relevant.length?['', 'Ocorrências recentes:', ...relevant.slice(0,5).map(entry=>`- ${entry.date||'Sem data'} — ${buildAiRelevantSummary(getFichaRecordText(entry,fichaId),question)} (${isDiaryMirrorEntry(entry)?'Registos Diários':'Histórico de Fichas'})`)]:[]), '', 'Confirmação humana necessária.'].join('\n');
 }
 function formatAiHistoryAnswer(question){
   const q=norm(question),data=getAiFilteredRecords(question);let records=data.records;
@@ -3437,11 +3467,11 @@ function formatAiHistoryAnswer(question){
     records.filter(row=>!onlyAnom||isAiAnomalyRecord(row)).forEach(row=>{const key=row.fichaId||'sem ficha',cur=grouped.get(key)||{fichaId:key,name:row.name||CATALOG[key]||'',rows:[]};cur.rows.push(row);grouped.set(key,cur);});
     const top=[...grouped.values()].sort((a,b)=>b.rows.length-a.rows.length).slice(0,5);
     if(!top.length)return 'Informação insuficiente.';
-    return [`Foram encontradas fichas com mais ${onlyAnom?'anomalias':'registos'} em ${data.period.label}.`,'','Resumo:',...top.map(x=>`- Ficha ${x.fichaId} — ${x.name}: ${x.rows.length} registo(s). Último: ${x.rows[0].date||'Sem data'} — ${buildAiSummary(x.rows[0].text)}`),'','Confirmação humana necessária.'].join('\n');
+    return [`Foram encontradas fichas com mais ${onlyAnom?'anomalias':'registos'} em ${data.period.label}.`,'','Resumo:',...top.map(x=>`- Ficha ${x.fichaId} — ${x.name}: ${x.rows.length} registo(s). Último: ${x.rows[0].date||'Sem data'} — ${buildAiRelevantSummary(x.rows[0].text,question)}`),'','Confirmação humana necessária.'].join('\n');
   }
   if(wantsLast){
     const latest=records.filter(row=>row._date.getTime()===records[0]._date.getTime());
-    return [`Última intervenção encontrada${ficha?' na Ficha '+ficha:''}:`,'',...latest.slice(0,3).map(row=>`- ${row.date||'Sem data'} — Ficha ${row.fichaId||'sem ficha'} — ${row.name||'Sem ficha'} — ${buildAiSummary(row.text)} (${row.source})`),'','Confirmação humana necessária.'].join('\n');
+    return [`Última intervenção encontrada${ficha?' na Ficha '+ficha:''}:`,'',...latest.slice(0,3).map(row=>`- ${row.date||'Sem data'} — Ficha ${row.fichaId||'sem ficha'} — ${row.name||'Sem ficha'} — ${buildAiRelevantSummary(row.text,question)} (${row.source})`),'','Confirmação humana necessária.'].join('\n');
   }
   if(wantsCount){
     if(!ficha){
@@ -3451,7 +3481,7 @@ function formatAiHistoryAnswer(question){
     }
     return [`${ficha?`Ficha ${ficha} — ${CATALOG[ficha]||'Sem ficha'} tem`:'Foram encontrados'} ${records.length} registo(s) relacionados em ${data.period.label}.`,'','Detalhe:',`- ${records.filter(x=>x.source==='Registos Diários').length} em Registos Diários`,`- ${records.filter(x=>x.source==='Histórico de Fichas').length} no Histórico de Fichas`,'','Confirmação humana necessária.'].join('\n');
   }
-  return [`Foram encontrados ${records.length} registo(s) relacionados${ficha?' com a Ficha '+ficha:''}.`,'','Ocorrências recentes:',...records.slice(0,5).map(row=>`- ${row.date||'Sem data'} — Ficha ${row.fichaId||'sem ficha'} — ${buildAiSummary(row.text)} (${row.source})`),'','Confirmação humana necessária.'].join('\n');
+  return [`Foram encontrados ${records.length} registo(s) relacionados${ficha?' com a Ficha '+ficha:''}.`,'','Ocorrências recentes:',...records.slice(0,5).map(row=>`- ${row.date||'Sem data'} — Ficha ${row.fichaId||'sem ficha'} — ${buildAiRelevantSummary(row.text,question)} (${row.source})`),'','Confirmação humana necessária.'].join('\n');
 }
 
 function isAiHistoryQuestion(question){
@@ -3569,7 +3599,7 @@ function formatAiLocalAnswer(question){
       ...origins,
       '',
       'Detalhe:',
-      ...details.slice(0,8).map(item=>`- ${item.date||'Sem data'} — ${item.source} — ${buildAiSummary(item.text)}`),
+      ...details.slice(0,8).map(item=>`- ${item.date||'Sem data'} — ${item.source} — ${buildAiRelevantSummary(item.text,facts.profile)}`),
       ...(details.length>8?[``, `São mostrados os 8 registos mais recentes de ${details.length}.`]:[])
     ].join('\n');
   }
