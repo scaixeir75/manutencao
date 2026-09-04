@@ -207,6 +207,19 @@ h1 .hl{color:var(--accent)}
 .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px 14px 0 0;
   width:100%;max-width:600px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,.5)}
 @media(min-width:560px){.modal{border-radius:14px}}
+.photo-ai-section{margin:14px 0;padding:12px;border:1px solid var(--border);border-radius:10px;background:rgba(88,166,255,.04)}
+.photo-ai-section[hidden]{display:none}
+.photo-ai-section [hidden]{display:none!important}
+.photo-ai-actions,.photo-ai-options{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+.photo-ai-preview{margin-top:10px;display:grid;grid-template-columns:104px 1fr;gap:10px;align-items:start}
+.photo-ai-preview img{width:104px;height:104px;object-fit:cover;border-radius:8px;border:1px solid var(--border);background:var(--surface2)}
+.photo-ai-fields{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-top:10px}
+.photo-ai-field{display:grid;grid-template-columns:minmax(92px,.7fr) 126px minmax(0,1.8fr);gap:7px;align-items:center}
+.photo-ai-field input,.photo-ai-field textarea,.photo-ai-field select{min-width:0;width:100%;box-sizing:border-box;background:var(--card);border:1px solid var(--border);border-radius:7px;color:var(--text);padding:8px;font:inherit;font-size:12px}
+.photo-ai-field textarea{min-height:52px;resize:vertical}
+.photo-ai-field label{font-size:11px;font-weight:700;color:var(--muted)}
+.photo-ai-note{margin:9px 0 0;color:var(--muted);font-size:12px;line-height:1.4}
+@media(max-width:390px){.photo-ai-preview{grid-template-columns:78px 1fr}.photo-ai-preview img{width:78px;height:78px}.photo-ai-field{grid-template-columns:1fr}.photo-ai-field select{max-width:none}}
 .mhead{display:flex;align-items:center;gap:12px;padding:16px;border-bottom:1px solid var(--border)}
 .mhead .badge{flex-basis:42px;height:42px;font-size:15px}
 .mhead .nome{font-weight:700;font-size:15px}
@@ -986,6 +999,41 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
         <div class="frow"><textarea id="fObs" placeholder="Observações: trabalho efectuado, peças, leituras…" maxlength="2000"></textarea></div>
         <button class="savebtn" type="submit">GUARDAR REGISTO</button>
       </form>
+      <section class="photo-ai-section" id="photoAiSection">
+        <button type="button" class="ghostbtn" id="photoAiOpenBtn">📷 Ler folha executada</button>
+        <div id="photoAiPanel" hidden>
+          <p class="photo-ai-note">A fotografia é analisada temporariamente e não fica guardada.</p>
+          <div class="photo-ai-actions">
+            <button type="button" class="photo-addbtn cam" id="photoAiCameraBtn">📸 Tirar foto</button>
+            <button type="button" class="photo-addbtn" id="photoAiGalleryBtn">🖼️ Da galeria</button>
+            <button type="button" class="ghostbtn" id="photoAiCancelBtn">Cancelar</button>
+            <input type="file" id="photoAiCameraInput" accept="image/*" capture="environment" hidden>
+            <input type="file" id="photoAiGalleryInput" accept="image/*" hidden>
+          </div>
+          <div class="photo-ai-preview" id="photoAiPreview" hidden>
+            <img id="photoAiImage" alt="Pré-visualização temporária da folha executada">
+            <div>
+              <strong style="font-size:13px">Pré-visualização preparada para análise</strong>
+              <div class="photo-ai-note">Leitura automática indisponível nesta versão. Confirma ou preenche manualmente os campos antes de criar qualquer registo.</div>
+            </div>
+          </div>
+          <div class="photo-ai-fields" id="photoAiFields" hidden>
+            <div class="photo-ai-field"><label for="photoAiDate">Data</label><select id="photoAiDateConfidence"><option>Não confirmado</option><option>Reconhecido</option><option>Duvidoso</option></select><input id="photoAiDate" type="date"></div>
+            <div class="photo-ai-field"><label for="photoAiFicha">Ficha/equipamento</label><select id="photoAiFichaConfidence"><option>Reconhecido</option><option>Duvidoso</option><option>Não confirmado</option></select><select id="photoAiFicha"></select></div>
+            <div class="photo-ai-field"><label for="photoAiWork">Trabalho realizado</label><select id="photoAiWorkConfidence"><option>Não confirmado</option><option>Reconhecido</option><option>Duvidoso</option></select><textarea id="photoAiWork" placeholder="Confirmar manualmente"></textarea></div>
+            <div class="photo-ai-field"><label for="photoAiStatus">Estado</label><select id="photoAiStatusConfidence"><option>Não confirmado</option><option>Reconhecido</option><option>Duvidoso</option></select><select id="photoAiStatus"><option value="">Não confirmado</option><option>Concluído</option><option>Pendente</option></select></div>
+            <div class="photo-ai-field"><label for="photoAiNotes">Observações</label><select id="photoAiNotesConfidence"><option>Não confirmado</option><option>Reconhecido</option><option>Duvidoso</option></select><textarea id="photoAiNotes" placeholder="Opcional"></textarea></div>
+            <div class="photo-ai-field"><label for="photoAiAnomaly">Anomalia</label><select id="photoAiAnomalyConfidence"><option>Não confirmado</option><option>Reconhecido</option><option>Duvidoso</option></select><textarea id="photoAiAnomaly" placeholder="Opcional; exige confirmação separada"></textarea></div>
+          </div>
+          <div class="photo-ai-options" id="photoAiOptions" hidden>
+            <label><input type="radio" name="photoAiDestination" value="history" checked> Criar Histórico da Ficha</label>
+            <label><input type="radio" name="photoAiDestination" value="diary"> Criar Registo Diário (espelho automático)</label>
+            <label><input type="checkbox" id="photoAiCreateAnomaly"> Registar anomalia separadamente</label>
+          </div>
+          <div class="photo-ai-actions" id="photoAiConfirmActions" hidden><button type="button" class="savebtn" id="photoAiConfirmBtn">Confirmar registo</button></div>
+          <div class="photo-ai-note" id="photoAiFeedback" aria-live="polite"></div>
+        </div>
+      </section>
       <div class="mlabel">HISTÓRICO</div>
       <div id="logList"></div>
     </div>
@@ -1572,12 +1620,101 @@ function doSearch(){
   });
 }
 
+let photoAiSession=null;
+
+function clearPhotoAiSession({closePanel=true}={}){
+  if(photoAiSession&&photoAiSession.objectUrl)URL.revokeObjectURL(photoAiSession.objectUrl);
+  photoAiSession=null;
+  ['photoAiCameraInput','photoAiGalleryInput'].forEach(id=>{$(id).value='';});
+  $('photoAiImage').removeAttribute('src');$('photoAiPreview').hidden=true;
+  $('photoAiFields').hidden=true;$('photoAiOptions').hidden=true;$('photoAiConfirmActions').hidden=true;
+  $('photoAiFeedback').textContent='';
+  if(closePanel)$('photoAiPanel').hidden=true;
+}
+
+function preparePhotoAiPanel(){
+  clearPhotoAiSession({closePanel:false});
+  const ficha=$('photoAiFicha');
+  ficha.innerHTML=Object.entries(CATALOG).map(([id,name])=>`<option value="${escapeHtml(id)}">Ficha ${escapeHtml(id)} — ${escapeHtml(name)}</option>`).join('');
+  ficha.value=String(modalFicha||'');
+  $('photoAiDate').value=$('fData').value||'';
+  $('photoAiStatus').value='';
+  $('photoAiWork').value='';$('photoAiNotes').value='';$('photoAiAnomaly').value='';
+  $('photoAiDateConfidence').value='Não confirmado';
+  $('photoAiFichaConfidence').value='Reconhecido';
+  ['photoAiWorkConfidence','photoAiStatusConfidence','photoAiNotesConfidence','photoAiAnomalyConfidence'].forEach(id=>$(id).value='Não confirmado');
+  document.querySelector('input[name="photoAiDestination"][value="history"]').checked=true;
+  $('photoAiCreateAnomaly').checked=false;
+}
+
+function openPhotoAiPanel(){
+  preparePhotoAiPanel();
+  $('photoAiPanel').hidden=false;
+  $('photoAiCameraBtn').focus();
+}
+
+function setPhotoAiTemporaryFile(file){
+  if(!file||!file.type.startsWith('image/')){showToast('Seleciona uma imagem válida.','err');return;}
+  clearPhotoAiSession({closePanel:false});
+  const objectUrl=URL.createObjectURL(file);
+  photoAiSession={file,objectUrl,fichaId:String(modalFicha||''),week};
+  $('photoAiImage').src=objectUrl;$('photoAiPreview').hidden=false;
+  $('photoAiFields').hidden=false;$('photoAiOptions').hidden=false;$('photoAiConfirmActions').hidden=false;
+  $('photoAiFeedback').textContent='Imagem temporária pronta. A leitura automática ainda não está disponível; confirma os campos manualmente.';
+}
+
+function photoAiValues(){
+  const fichaId=$('photoAiFicha').value;
+  const work=$('photoAiWork').value.trim();
+  const notes=$('photoAiNotes').value.trim();
+  const anomaly=$('photoAiAnomaly').value.trim();
+  return {fichaId,date:$('photoAiDate').value,status:$('photoAiStatus').value,work,notes,anomaly,destination:document.querySelector('input[name="photoAiDestination"]:checked').value,createAnomaly:$('photoAiCreateAnomaly').checked};
+}
+
+function photoAiRecordText(values){return [values.work,values.notes].filter(Boolean).join('\n');}
+
+function hasPhotoAiDuplicateHistory(fichaId,date,status,note){
+  return logsFor(fichaId).some(entry=>entry.date===date&&entry.status===status&&String(entry.note||'').trim()===note);
+}
+
+async function confirmPhotoAiRecord(){
+  if(!photoAiSession){$('photoAiFeedback').textContent='Seleciona primeiro uma fotografia temporária.';return;}
+  const values=photoAiValues(),note=photoAiRecordText(values);
+  if(!values.date||!values.fichaId||!values.work||!values.status){$('photoAiFeedback').textContent='Confirma data, ficha, trabalho realizado e estado antes de criar o registo.';return;}
+  if(values.createAnomaly&&!values.anomaly){$('photoAiFeedback').textContent='Descreve a anomalia ou desmarca essa ação separada.';return;}
+  const destinationText=values.destination==='history'?'um registo no Histórico da Ficha':'um Registo Diário que será espelhado automaticamente no Histórico da Ficha';
+  const anomalyText=values.createAnomaly?' Será criado também um registo separado de anomalia.':'';
+  const confirmed=await askConfirm(`Vais criar ${destinationText}.${anomalyText} A fotografia será descartada e não ficará guardada. Confirmas?`,{title:'Confirmar registo da folha',okText:'Confirmar registo',danger:false});
+  if(!confirmed)return;
+  const button=$('photoAiConfirmBtn');button.disabled=true;
+  try{
+    if(!window.fb||!window.firebaseReady)throw new Error('Firebase indisponível.');
+    if(values.destination==='history'){
+      if(hasPhotoAiDuplicateHistory(values.fichaId,values.date,values.status,note))throw new Error('Já existe um registo igual no Histórico da Ficha. Nada foi duplicado.');
+      await addLog(values.fichaId,{date:values.date,week:isoWeek(new Date(values.date+'T12:00:00')),status:values.status,tech:'Folha executada — confirmação humana',note,created:Date.now()});
+    }else{
+      const duplicate=diaryCache.some(entry=>String(entry.fichaId||'')===String(values.fichaId)&&diaryDateOf(entry)===values.date&&String(entry.text||'').trim()===note);
+      if(duplicate)throw new Error('Já existe um Registo Diário igual. Nada foi duplicado.');
+      const severity=values.status==='Pendente'?'aviso':'info';
+      const{db,ref,push,set}=window.fb;
+      await set(push(ref(db,'registos_diarios')),{text:note,severity,date:values.date,timestamp:new Date().toISOString(),fichaId:values.fichaId,fichaNome:CATALOG[values.fichaId]});
+    }
+    if(values.createAnomaly){
+      if(hasPhotoAiDuplicateHistory(values.fichaId,values.date,'Anomalia',values.anomaly))throw new Error('Já existe uma anomalia igual no Histórico da Ficha. Nada foi duplicado.');
+      await addLog(values.fichaId,{date:values.date,week:isoWeek(new Date(values.date+'T12:00:00')),status:'Anomalia',tech:'Folha executada — confirmação humana',note:values.anomaly,created:Date.now()});
+    }
+    clearPhotoAiSession();renderLogList();showToast('Registo confirmado. A fotografia temporária foi descartada.');
+  }catch(error){console.error(error);$('photoAiFeedback').textContent=error.message||'Não foi possível criar o registo. A fotografia continua apenas nesta sessão.';}
+  finally{button.disabled=false;}
+}
+
 function openModal(f){
   modalFicha=f;$('mBadge').textContent=f;$('mFicha').textContent='FICHA Nº '+f;$('mNome').textContent=CATALOG[f];
+  clearPhotoAiSession();
   $('fData').value=new Date().toISOString().slice(0,10);$('fEstado').value='Concluído';$('fTecnico').value='';$('fObs').value='';
   renderLogList();$('overlay').classList.add('open');$('fObs').focus({preventScroll:true});
 }
-function closeModal(){$('overlay').classList.remove('open');modalFicha=null;if($('searchView').style.display!=='none'&&$('q').value)doSearch();else render();}
+function closeModal(){clearPhotoAiSession();$('overlay').classList.remove('open');modalFicha=null;if($('searchView').style.display!=='none'&&$('q').value)doSearch();else render();}
 function renderLogList(){
   const list=$('logList');list.innerHTML='';
   const entries=logsFor(modalFicha);
@@ -1617,6 +1754,13 @@ $('logForm').addEventListener('submit',async e=>{
 $('mClose').onclick=closeModal;
 $('mGoReport').onclick=()=>{closeModal();showReport(modalFicha);};
 $('overlay').addEventListener('click',e=>{if(e.target===$('overlay'))closeModal();});
+$('photoAiOpenBtn').onclick=openPhotoAiPanel;
+$('photoAiCancelBtn').onclick=()=>clearPhotoAiSession();
+$('photoAiCameraBtn').onclick=()=>$('photoAiCameraInput').click();
+$('photoAiGalleryBtn').onclick=()=>$('photoAiGalleryInput').click();
+$('photoAiCameraInput').onchange=e=>{setPhotoAiTemporaryFile(e.target.files&&e.target.files[0]);e.target.value='';};
+$('photoAiGalleryInput').onchange=e=>{setPhotoAiTemporaryFile(e.target.files&&e.target.files[0]);e.target.value='';};
+$('photoAiConfirmBtn').onclick=confirmPhotoAiRecord;
 
 let reportFilter=new Set();
 let reportDateFrom='',reportDateTo='';
