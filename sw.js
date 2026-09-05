@@ -1,8 +1,8 @@
 // Service worker v3 — estratégia "network-first":
 // tenta SEMPRE buscar a versão nova da internet; só usa a cache se estiver offline.
 // Assim a app atualiza-se sozinha sempre que houver ligação.
-const CACHE = 'manutencao-v11';
-const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+const CACHE = 'manutencao-v12';
+const FILES = ['./', './index.html', './photo-ai-contract.js', './photo-ai-config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
   // ativa imediatamente a nova versão, sem esperar
@@ -23,6 +23,8 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   // só tratamos pedidos GET do mesmo site
   if (e.request.method !== 'GET') return;
+  const url = new URL(e.request.url);
+  if (url.origin !== self.location.origin || url.pathname.includes('/v1/photo-ai/')) return;
 
   e.respondWith(
     fetch(e.request)

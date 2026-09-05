@@ -1,0 +1,7 @@
+**
+!photo-ai-contract.js
+!server/
+!server/photo-ai/
+!server/photo-ai/package.json
+!server/photo-ai/package-lock.json
+!server/photo-ai/*.js

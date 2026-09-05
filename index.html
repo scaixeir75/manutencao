@@ -1002,7 +1002,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
       <section class="photo-ai-section" id="photoAiSection">
         <button type="button" class="ghostbtn" id="photoAiOpenBtn">📷 Ler folha executada</button>
         <div id="photoAiPanel" hidden>
-          <p class="photo-ai-note">A fotografia é analisada temporariamente e não fica guardada.</p>
+          <p class="photo-ai-note">A fotografia nunca é guardada pelo PMP. É descartada após a análise ou ao cancelar. O processamento externo depende da política de retenção verificada para a conta.</p>
           <div class="photo-ai-actions">
             <button type="button" class="photo-addbtn cam" id="photoAiCameraBtn">📸 Tirar foto</button>
             <button type="button" class="photo-addbtn" id="photoAiGalleryBtn">🖼️ Da galeria</button>
@@ -1014,7 +1014,8 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
             <img id="photoAiImage" alt="Pré-visualização temporária da folha executada">
             <div>
               <strong style="font-size:13px">Pré-visualização preparada para análise</strong>
-              <div class="photo-ai-note">Leitura automática indisponível nesta versão. Confirma ou preenche manualmente os campos antes de criar qualquer registo.</div>
+              <div class="photo-ai-note">Confirma os dados extraídos antes de criar qualquer registo. A ficha selecionada vem do plano e não comprova o conteúdo da fotografia.</div>
+              <button type="button" class="ghostbtn" id="photoAiAnalyzeBtn" disabled>Analisar folha</button>
             </div>
           </div>
           <div class="photo-ai-fields" id="photoAiFields" hidden>
@@ -1078,6 +1079,8 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
   if (typeof window.initAuthGate === 'function') window.initAuthGate();
 </script>
 
+<script src="photo-ai-contract.js"></script>
+<script src="photo-ai-config.js"></script>
 <script>
 'use strict';
 
@@ -1105,6 +1108,7 @@ function initAuthGate(){
       }
     }else{
       // sem sessão → mostra o login, esconde a app
+      clearPhotoAiSession();
       document.getElementById('loginScreen').classList.remove('hidden');
     }
   });
@@ -1622,8 +1626,20 @@ function doSearch(){
 
 let photoAiSession=null;
 
+function discardPhotoAiImage(session){
+  if(!session)return;
+  if(session.objectUrl)URL.revokeObjectURL(session.objectUrl);
+  session.objectUrl=null;session.file=null;
+  if(photoAiSession===session){
+    $('photoAiImage').removeAttribute('src');$('photoAiPreview').hidden=true;
+    ['photoAiCameraInput','photoAiGalleryInput'].forEach(id=>{$(id).value='';});
+  }
+}
+
 function clearPhotoAiSession({closePanel=true}={}){
-  if(photoAiSession&&photoAiSession.objectUrl)URL.revokeObjectURL(photoAiSession.objectUrl);
+  if(photoAiSession)photoAiSession.controller?.abort();
+  discardPhotoAiImage(photoAiSession);
+  setPhotoAiBusy(false);
   photoAiSession=null;
   ['photoAiCameraInput','photoAiGalleryInput'].forEach(id=>{$(id).value='';});
   $('photoAiImage').removeAttribute('src');$('photoAiPreview').hidden=true;
@@ -1641,7 +1657,7 @@ function preparePhotoAiPanel(){
   $('photoAiStatus').value='';
   $('photoAiWork').value='';$('photoAiNotes').value='';$('photoAiAnomaly').value='';
   $('photoAiDateConfidence').value='Não confirmado';
-  $('photoAiFichaConfidence').value='Reconhecido';
+  $('photoAiFichaConfidence').value='Não confirmado';
   ['photoAiWorkConfidence','photoAiStatusConfidence','photoAiNotesConfidence','photoAiAnomalyConfidence'].forEach(id=>$(id).value='Não confirmado');
   document.querySelector('input[name="photoAiDestination"][value="history"]').checked=true;
   $('photoAiCreateAnomaly').checked=false;
@@ -1654,13 +1670,68 @@ function openPhotoAiPanel(){
 }
 
 function setPhotoAiTemporaryFile(file){
-  if(!file||!file.type.startsWith('image/')){showToast('Seleciona uma imagem válida.','err');return;}
-  clearPhotoAiSession({closePanel:false});
+  if(!file)return;
+  if(photoAiSession?.saving)return;
+  preparePhotoAiPanel();
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>8*1024*1024||!file.size){showToast('Seleciona uma imagem JPEG, PNG ou WebP até 8 MB.','err');return;}
   const objectUrl=URL.createObjectURL(file);
   photoAiSession={file,objectUrl,fichaId:String(modalFicha||''),week};
   $('photoAiImage').src=objectUrl;$('photoAiPreview').hidden=false;
   $('photoAiFields').hidden=false;$('photoAiOptions').hidden=false;$('photoAiConfirmActions').hidden=false;
-  $('photoAiFeedback').textContent='Imagem temporária pronta. A leitura automática ainda não está disponível; confirma os campos manualmente.';
+  const enabled=Boolean(window.PMP_PHOTO_AI?.enabled&&window.PMP_PHOTO_AI.endpoint);
+  $('photoAiAnalyzeBtn').disabled=!enabled;
+  $('photoAiFeedback').textContent=enabled?'Imagem temporária pronta. Seleciona Analisar folha ou preenche os campos manualmente.':'Análise automática desativada até verificação da configuração. Podes preencher os campos manualmente.';
+}
+
+function setPhotoAiBusy(busy){
+  document.querySelectorAll('#photoAiFields input,#photoAiFields textarea,#photoAiFields select,#photoAiOptions input').forEach(el=>el.disabled=busy);
+  $('photoAiConfirmBtn').disabled=busy;
+  $('photoAiAnalyzeBtn').disabled=busy||!photoAiSession?.file||!window.PMP_PHOTO_AI?.enabled;
+}
+
+function photoAiAwait(promise,signal){
+  return new Promise((resolve,reject)=>{
+    const cancel=()=>reject(new DOMException('Análise cancelada.','AbortError'));
+    if(signal.aborted){cancel();return;}
+    signal.addEventListener('abort',cancel,{once:true});
+    Promise.resolve(promise).then(resolve,reject).finally(()=>signal.removeEventListener('abort',cancel));
+  });
+}
+
+async function analyzePhotoAiSheet(){
+  const session=photoAiSession,config=window.PMP_PHOTO_AI;
+  if(!session?.file||session.controller||!config?.enabled)return;
+  const user=window.fbAuth?.auth.currentUser;
+  if(!user){discardPhotoAiImage(session);setPhotoAiBusy(false);$('photoAiFeedback').textContent='Inicia sessão para analisar. Fotografia descartada.';return;}
+  session.controller=new AbortController();setPhotoAiBusy(true);
+  const timer=setTimeout(()=>session.controller.abort(),45000);
+  let bytes,encoded;
+  try{
+    const endpoint=new URL(config.endpoint);
+    if(endpoint.protocol!=='https:'&&!(endpoint.protocol==='http:'&&['localhost','127.0.0.1'].includes(endpoint.hostname)))throw Error('Endpoint de análise inválido.');
+    $('photoAiFeedback').textContent='A analisar a folha…';
+    const token=await photoAiAwait(user.getIdToken(),session.controller.signal);
+    if(session!==photoAiSession||session.controller.signal.aborted)return;
+    bytes=new Uint8Array(await photoAiAwait(session.file.arrayBuffer(),session.controller.signal));
+    let binary='';for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));
+    encoded=btoa(binary);binary='';bytes.fill(0);bytes=null;
+    if(session!==photoAiSession||session.controller.signal.aborted)return;
+    const response=await photoAiAwait(fetch(endpoint.href,{method:'POST',cache:'no-store',credentials:'omit',signal:session.controller.signal,headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({image:encoded,mime:session.file.type,context:{fichaId:session.fichaId,equipment:String(CATALOG[session.fichaId]||''),week:String(session.week)}})}),session.controller.signal);
+    encoded=null;
+    if(!response.ok)throw Error(({401:'Sessão expirada.',403:'Análise não autorizada.',413:'Imagem demasiado grande.',415:'Imagem inválida.',429:'Limite de análises atingido.',503:'Análise desativada ou indisponível.',504:'Tempo de análise excedido.'})[response.status]||'Não foi possível analisar a folha.');
+    const data=PhotoAiContract.validate(await photoAiAwait(response.json(),session.controller.signal));
+    if(session!==photoAiSession||session.controller.signal.aborted||window.fbAuth?.auth.currentUser?.uid!==user.uid)return;
+    const map={date:'Date',work:'Work',status:'Status',notes:'Notes',anomaly:'Anomaly'};
+    for(const [key,id] of Object.entries(map)){
+      const field=data.fields[key];$('photoAi'+id).value=field.value||'';$('photoAi'+id+'Confidence').value=field.confidence;
+    }
+    // A ficha do plano nunca é substituída por texto livre do modelo.
+    $('photoAiFichaConfidence').value='Não confirmado';
+    const details=Object.entries(data.fields).filter(([,f])=>f.reason).map(([k,f])=>({date:'Data',equipment:'Equipamento',work:'Trabalho',status:'Estado',notes:'Observações',anomaly:'Anomalia'}[k]+': '+f.reason));
+    const equipment=data.fields.equipment.value;
+    $('photoAiFeedback').textContent=['Análise terminada. Fotografia descartada. Revê todos os campos.',equipment?'Equipamento lido: '+equipment+'. Confirma a correspondência com a ficha selecionada.':'Equipamento não confirmado na folha.',...data.warnings,...details].join(' ');
+  }catch(error){if(session===photoAiSession)$('photoAiFeedback').textContent=(session.controller.signal.aborted?'Análise cancelada ou tempo excedido.':error.message)+' Fotografia descartada. Podes preencher os campos manualmente.';}
+  finally{clearTimeout(timer);bytes?.fill(0);encoded=null;discardPhotoAiImage(session);if(session===photoAiSession){session.controller=null;setPhotoAiBusy(false);}}
 }
 
 function photoAiValues(){
@@ -1679,33 +1750,45 @@ function hasPhotoAiDuplicateHistory(fichaId,date,status,note){
 
 async function confirmPhotoAiRecord(){
   if(!photoAiSession){$('photoAiFeedback').textContent='Seleciona primeiro uma fotografia temporária.';return;}
+  const session=photoAiSession;
+  if(session.controller||session.saving)return;
+  discardPhotoAiImage(session);
+  const userId=window.fbAuth?.auth.currentUser?.uid;
+  if(!userId){$('photoAiFeedback').textContent='Inicia sessão para confirmar. Fotografia descartada.';return;}
   const values=photoAiValues(),note=photoAiRecordText(values);
   if(!values.date||!values.fichaId||!values.work||!values.status){$('photoAiFeedback').textContent='Confirma data, ficha, trabalho realizado e estado antes de criar o registo.';return;}
   if(values.createAnomaly&&!values.anomaly){$('photoAiFeedback').textContent='Descreve a anomalia ou desmarca essa ação separada.';return;}
   const destinationText=values.destination==='history'?'um registo no Histórico da Ficha':'um Registo Diário que será espelhado automaticamente no Histórico da Ficha';
   const anomalyText=values.createAnomaly?' Será criado também um registo separado de anomalia.':'';
-  const confirmed=await askConfirm(`Vais criar ${destinationText}.${anomalyText} A fotografia será descartada e não ficará guardada. Confirmas?`,{title:'Confirmar registo da folha',okText:'Confirmar registo',danger:false});
-  if(!confirmed)return;
+  session.saving=true;
   const button=$('photoAiConfirmBtn');button.disabled=true;
   try{
+    const confirmed=await askConfirm(`Vais criar ${destinationText}.${anomalyText} A fotografia foi descartada do PMP. Confirmas?`,{title:'Confirmar registo da folha',okText:'Confirmar registo',danger:false});
+    if(!confirmed||photoAiSession!==session)return;
+    if(window.fbAuth?.auth.currentUser?.uid!==userId)throw new Error('Sessão alterada. Inicia sessão novamente.');
     if(!window.fb||!window.firebaseReady)throw new Error('Firebase indisponível.');
-    if(values.destination==='history'){
-      if(hasPhotoAiDuplicateHistory(values.fichaId,values.date,values.status,note))throw new Error('Já existe um registo igual no Histórico da Ficha. Nada foi duplicado.');
-      await addLog(values.fichaId,{date:values.date,week:isoWeek(new Date(values.date+'T12:00:00')),status:values.status,tech:'Folha executada — confirmação humana',note,created:Date.now()});
-    }else{
-      const duplicate=diaryCache.some(entry=>String(entry.fichaId||'')===String(values.fichaId)&&diaryDateOf(entry)===values.date&&String(entry.text||'').trim()===note);
-      if(duplicate)throw new Error('Já existe um Registo Diário igual. Nada foi duplicado.');
-      const severity=values.status==='Pendente'?'aviso':'info';
-      const{db,ref,push,set}=window.fb;
-      await set(push(ref(db,'registos_diarios')),{text:note,severity,date:values.date,timestamp:new Date().toISOString(),fichaId:values.fichaId,fichaNome:CATALOG[values.fichaId]});
+    const fingerprint=JSON.stringify(values);
+    if(session.writePlan&&session.writePlan.fingerprint!==fingerprint)throw new Error('Existe uma gravação por concluir. Repõe os dados confirmados antes de repetir; consulta o Histórico antes de iniciar outra folha.');
+    const{db,ref,push,set}=window.fb;
+    if(!session.writePlan){
+      const duplicateHistory=hasPhotoAiDuplicateHistory(values.fichaId,values.date,values.status,note);
+      const duplicateDiary=diaryCache.some(entry=>String(entry.fichaId||'')===String(values.fichaId)&&diaryDateOf(entry)===values.date&&String(entry.text||'').trim()===note);
+      if(duplicateHistory||duplicateDiary)throw new Error('Já existe um registo igual. Nada foi duplicado.');
+      if(values.createAnomaly&&hasPhotoAiDuplicateHistory(values.fichaId,values.date,'Anomalia',values.anomaly))throw new Error('Já existe uma anomalia igual. Nada foi duplicado.');
+      const historyEntry={date:values.date,week:isoWeek(new Date(values.date+'T12:00:00')),status:values.status,tech:'Folha executada — confirmação humana',note,created:Date.now()};
+      const mainPath=values.destination==='history'?'registos_fichas/'+values.fichaId:'registos_diarios';
+      const mainData=values.destination==='history'?historyEntry:{text:note,severity:values.status==='Pendente'?'aviso':'info',date:values.date,timestamp:new Date().toISOString(),fichaId:values.fichaId,fichaNome:CATALOG[values.fichaId]};
+      session.writePlan={fingerprint,main:{target:push(ref(db,mainPath)),data:mainData},anomaly:values.createAnomaly?{target:push(ref(db,'registos_fichas/'+values.fichaId)),data:{...historyEntry,status:'Anomalia',note:values.anomaly}}:null};
+      if(values.destination==='history')session.writePlan.main.data.id=session.writePlan.main.target.key;
+      if(session.writePlan.anomaly)session.writePlan.anomaly.data.id=session.writePlan.anomaly.target.key;
     }
-    if(values.createAnomaly){
-      if(hasPhotoAiDuplicateHistory(values.fichaId,values.date,'Anomalia',values.anomaly))throw new Error('Já existe uma anomalia igual no Histórico da Ficha. Nada foi duplicado.');
-      await addLog(values.fichaId,{date:values.date,week:isoWeek(new Date(values.date+'T12:00:00')),status:'Anomalia',tech:'Folha executada — confirmação humana',note:values.anomaly,created:Date.now()});
+    // Referências estáveis tornam a repetição idempotente, mesmo após erro de rede incerto.
+    for(const item of [session.writePlan.main,session.writePlan.anomaly].filter(Boolean)){
+      if(!item.done){await set(item.target,item.data);item.done=true;}
     }
-    clearPhotoAiSession();renderLogList();showToast('Registo confirmado. A fotografia temporária foi descartada.');
-  }catch(error){console.error(error);$('photoAiFeedback').textContent=error.message||'Não foi possível criar o registo. A fotografia continua apenas nesta sessão.';}
-  finally{button.disabled=false;}
+    if(photoAiSession===session){clearPhotoAiSession();renderLogList();}showToast('Registo confirmado. A fotografia temporária foi descartada.');
+  }catch(error){if(photoAiSession===session)$('photoAiFeedback').textContent=(error.message||'Não foi possível concluir o registo.')+' Fotografia descartada. Se houve gravação parcial, repete com os mesmos dados.';}
+  finally{session.saving=false;if(photoAiSession===session)button.disabled=false;}
 }
 
 function openModal(f){
@@ -1761,6 +1844,8 @@ $('photoAiGalleryBtn').onclick=()=>$('photoAiGalleryInput').click();
 $('photoAiCameraInput').onchange=e=>{setPhotoAiTemporaryFile(e.target.files&&e.target.files[0]);e.target.value='';};
 $('photoAiGalleryInput').onchange=e=>{setPhotoAiTemporaryFile(e.target.files&&e.target.files[0]);e.target.value='';};
 $('photoAiConfirmBtn').onclick=confirmPhotoAiRecord;
+$('photoAiAnalyzeBtn').onclick=analyzePhotoAiSheet;
+window.addEventListener('pagehide',()=>clearPhotoAiSession());
 
 let reportFilter=new Set();
 let reportDateFrom='',reportDateTo='';
