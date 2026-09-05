@@ -5,7 +5,7 @@
   "workers_dev": true,
   "vars": {
     "NODE_ENV": "staging",
-    "PHOTO_AI_ENABLED": "false",
+    "PHOTO_AI_ENABLED": "true",
     "PHOTO_AI_FREE_ONLY": "true",
     "PHOTO_AI_AUTH_REVOCATION_MODE": "signature-only",
     "FIREBASE_PROJECT_ID": "manutencao-semanal",
