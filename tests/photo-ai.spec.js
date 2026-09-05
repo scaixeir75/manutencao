@@ -39,6 +39,15 @@ async function discarded(page){
   await expect(page.locator('#photoAiGalleryInput')).toHaveValue('');
 }
 test.beforeEach(async({page})=>setup(page));
+test('frontend desativado ou sem endpoint não faz pedido de análise',async({page})=>{
+  for(const config of [{enabled:false,endpoint:'https://proxy.test/v1/photo-ai/analyze'},{enabled:true,endpoint:''}]){
+    await page.evaluate(()=>openPhotoAiPanel());
+    await page.evaluate(config=>window.PMP_PHOTO_AI=config,config);
+    await select(page);await expect(page.locator('#photoAiAnalyzeBtn')).toBeDisabled();
+    expect(await page.evaluate(()=>fetchCount)).toBe(0);
+    await page.locator('#photoAiCancelBtn').click();
+  }
+});
 test('resposta completa, dados editáveis, imagem descartada e sem gravação automática',async({page})=>{
   await select(page);await page.locator('#photoAiAnalyzeBtn').click();await discarded(page);
   await expect(page.locator('#photoAiWork')).toHaveValue('Verificação executada');await expect(page.locator('#photoAiWorkConfidence')).toHaveValue('Reconhecido');await expect(page.locator('#photoAiFichaConfidence')).toHaveValue('Não confirmado');

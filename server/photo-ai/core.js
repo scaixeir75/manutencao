@@ -15,7 +15,7 @@ function readConfig(env){
   const production=env.NODE_ENV!=='development';
   const retention=env.PHOTO_AI_RETENTION;
   if(enabled&&(!['zdr-verified','limited-test-verified'].includes(retention)||(production&&retention!=='zdr-verified')))throw Error('Política de retenção não verificada.');
-  const config={enabled,retention,model:env.OPENAI_MODEL,key:env.OPENAI_API_KEY,projectId:env.FIREBASE_PROJECT_ID,origins:(env.PHOTO_AI_ORIGINS||'').split(',').filter(Boolean),uids:(env.PHOTO_AI_UIDS||'').split(',').filter(Boolean)};
+  const config={enabled,retention,observability:env.PHOTO_AI_OBSERVABILITY==='true',model:env.OPENAI_MODEL,key:env.OPENAI_API_KEY,projectId:env.FIREBASE_PROJECT_ID,origins:(env.PHOTO_AI_ORIGINS||'').split(',').filter(Boolean),uids:(env.PHOTO_AI_UIDS||'').split(',').filter(Boolean)};
   if(enabled&&(!config.model||!config.key||!config.projectId||!config.origins.length||!config.uids.length||!env.REDIS_URL))throw Error('Configuração incompleta.');
   return config;
 }

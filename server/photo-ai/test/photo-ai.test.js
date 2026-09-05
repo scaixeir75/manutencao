@@ -4,7 +4,7 @@ const http=require('node:http');
 const sharp=require('sharp');
 const {validate,names}=require('../../../photo-ai-contract');
 const {readConfig,parseInput,normalizeImage,analyze}=require('../core');
-const {createHandler}=require('../server');
+const {safeReason,createHandler}=require('../server');
 const {quota}=require('../quota');
 const context={fichaId:'41',equipment:'Quadros Eléctricos',week:'36'};
 const field=(value,confidence='Reconhecido')=>({value,confidence,evidence:value,reason:confidence==='Duvidoso'?'Letra pouco legível.':''});
@@ -43,17 +43,23 @@ test('adaptador OpenAI: apenas fetch simulado, store false, JSON estrito e sem f
   }
 });
 async function fixture(t,overrides={}){
-  let releases=0,calls=0,captured;
+  let releases=0,calls=0,captured;const logs=[];
   const config={enabled:true,origins:['http://pmp.test'],uids:['user']};
-  const server=http.createServer(createHandler({config,verifyToken:async token=>{if(token!=='valid')throw Error();return {uid:'user'};},acquire:async()=>async()=>{releases++;},normalize:async b=>Buffer.from(b),provider:async args=>{calls++;captured=args.image;return result();},...overrides}));
+  const server=http.createServer(createHandler({config,verifyToken:async token=>{if(token!=='valid')throw Error();return {uid:'user'};},acquire:async()=>async()=>{releases++;},normalize:async b=>Buffer.from(b),provider:async args=>{calls++;captured=args.image;return result();},logger:entry=>logs.push(entry),...overrides}));
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));t.after(()=>new Promise(resolve=>{server.closeAllConnections();server.close(resolve);}));
-  return {url:`http://127.0.0.1:${server.address().port}/v1/photo-ai/analyze`,state:()=>({releases,calls,captured})};
+  return {url:`http://127.0.0.1:${server.address().port}/v1/photo-ai/analyze`,state:()=>({releases,calls,captured,logs})};
 }
 const headers={Origin:'http://pmp.test',Authorization:'Bearer valid','Content-Type':'application/json'};
 const body=JSON.stringify({image:Buffer.from('synthetic').toString('base64'),mime:'image/png',context});
 test('proxy HTTP: sucesso e limpeza dos buffers; nunca escreve no PMP',async t=>{
   const f=await fixture(t);const response=await fetch(f.url,{method:'POST',headers,body});assert.equal(response.status,200);assert.equal(response.headers.get('cache-control'),'no-store');validate(await response.json());
   assert.equal(f.state().calls,1);assert.equal(f.state().releases,1);assert(f.state().captured.every(b=>b===0));
+});
+test('observabilidade: só dados seguros e motivo genérico',async t=>{
+  const f=await fixture(t,{config:{enabled:true,observability:true,origins:['http://pmp.test'],uids:['user']}});
+  const response=await fetch(f.url,{method:'POST',headers,body});assert.equal(response.status,200);
+  const log=f.state().logs[0];assert.equal(log.status,200);assert.equal(log.reason,'completed');assert.match(log.requestId,/^[0-9a-f-]{36}$/);assert.match(log.uidHash,/^[0-9a-f]{64}$/);assert.equal(typeof log.durationMs,'number');
+  assert.doesNotMatch(JSON.stringify(log),/synthetic|base64|authorization|valid|Quadros/i);assert.equal(safeReason(429),'rate_limited');
 });
 test('proxy: autenticação, autorização, flag, quota, tipo e corpo inválidos',async t=>{
   for(const [overrides,requestHeaders,input,status] of [
