@@ -1,0 +1,23 @@
+{
+  "name": "pmp-photo-ai",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-09-05",
+  "workers_dev": true,
+  "vars": {
+    "NODE_ENV": "staging",
+    "PHOTO_AI_ENABLED": "false",
+    "PHOTO_AI_FREE_ONLY": "true",
+    "PHOTO_AI_AUTH_REVOCATION_MODE": "signature-only",
+    "FIREBASE_PROJECT_ID": "manutencao-semanal",
+    "PHOTO_AI_ORIGINS": "https://scaixeir75.github.io",
+    "PHOTO_AI_MODEL": "@cf/meta/llama-3.2-11b-vision-instruct",
+    "PHOTO_AI_TIMEOUT_MS": "40000",
+    "PHOTO_AI_OBSERVABILITY": "false"
+  },
+  "ai": { "binding": "AI" },
+  "durable_objects": {
+    "bindings": [{ "name": "PHOTO_AI_RATE_LIMITER", "class_name": "PhotoAiRateLimiter" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PhotoAiRateLimiter"] }],
+  "observability": { "logs": { "invocation_logs": false } }
+}

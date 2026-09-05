@@ -1,5 +1,7 @@
 # PHOTO-AI-003 — guia para ativação futura
 
+> **Arquitetura anterior — não usar enquanto `PHOTO_AI_FREE_ONLY=true` estiver ativo.** Este documento conserva a alternativa Cloud Run/OpenAI/Redis para referência histórica; a arquitetura em preparação é Cloudflare Workers AI + Durable Object, documentada em `PHOTO_AI_004_FREE.md`.
+
 Este guia prepara uma ativação controlada. Não executar comandos em produção sem a autorização correspondente, valores confirmados e teste real aprovado. Os valores entre `<…>` são placeholders; não os substituir por segredos em Git, documentação, terminal partilhado ou frontend.
 
 ## Pré-condições e arquitetura

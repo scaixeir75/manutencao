@@ -6,7 +6,7 @@
     "test:ai:headed": "playwright test tests/ai-regression.spec.js --headed",
     "test:ai:backtest": "playwright test tests/ai-backtest.spec.js",
     "test:syntax": "node scripts/check-syntax.js",
-    "test:photo-ai": "node --test server/photo-ai/test/photo-ai.test.js && playwright test tests/photo-ai.spec.js --workers=1"
+    "test:photo-ai": "node --test server/photo-ai/test/photo-ai.test.js server/photo-ai-cloudflare/test/*.test.js && playwright test tests/photo-ai.spec.js --workers=1"
   },
   "devDependencies": {
     "@playwright/test": "^1.46.0"

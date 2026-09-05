@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {verifyFirebaseIdToken,resetKeyCache} from '../src/firebase-id-token.js';import {token,keyFetch} from './helpers.js';
+test('JWT Firebase válido valida assinatura e claims',async()=>{resetKeyCache();assert.deepEqual(await verifyFirebaseIdToken(token(),{projectId:'manutencao-semanal',fetchImpl:keyFetch()}),{uid:'allowed-user'});});
+for(const [name,payload,header] of [['assinatura inválida',{sub:'other'},{}],['expirado',{exp:1},{}],['issuer inválido',{iss:'https://invalid'},{}],['audience inválida',{aud:'other'},{}],['alg inválido',{}, {alg:'none'}],['kid ausente',{}, {kid:''}]])test(`JWT ${name} é recusado`,async()=>{resetKeyCache();const value=name==='assinatura inválida'?token(payload).replace(/.$/,'x'):token(payload,header);await assert.rejects(()=>verifyFirebaseIdToken(value,{projectId:'manutencao-semanal',fetchImpl:keyFetch()}));});
