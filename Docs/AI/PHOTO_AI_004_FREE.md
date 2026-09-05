@@ -26,7 +26,7 @@ O Worker valida JWT Firebase com Web Crypto e as chaves públicas Google: format
 
 O Durable Object é particionado pelo hash SHA-256 do UID. A SQLite guarda somente timestamps de pedidos e um lock opaco de 90 segundos: 1 pedido ativo, 5 por minuto e 50 por 24 horas. Erros do DO bloqueiam a análise. O lock é libertado em sucesso, erro, JSON inválido, timeout, abort e exceção.
 
-Wrangler desativa `invocation_logs`. Não há logs aplicacionais por defeito; se `PHOTO_AI_OBSERVABILITY=true`, só é emitido `{requestId, uidHash, status, durationMs, reason}`. Nunca registar corpo, Base64, imagem, output, token ou cabeçalho Authorization.
+Wrangler desativa observabilidade e `invocation_logs`. Não há logs aplicacionais por defeito; se uma futura configuração voltar a permitir `PHOTO_AI_OBSERVABILITY=true`, só pode emitir `{requestId, uidHash, status, durationMs, reason}`. Nunca registar corpo, Base64, imagem, output, token ou cabeçalho Authorization.
 
 Workers AI processa conteúdo como Customer Content. A documentação Cloudflare declara que não usa esse conteúdo para treinar ou melhorar os modelos sem consentimento explícito, mas isto não equivale a uma garantia de retenção zero. A licença Meta para o modelo permanece pendente e o primeiro teste será exclusivamente com folha sintética.
 

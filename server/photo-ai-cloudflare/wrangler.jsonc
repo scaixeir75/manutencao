@@ -1,5 +1,5 @@
 {
-  "name": "pmp-photo-ai",
+  "name": "pmp-photo-ai-staging",
   "main": "src/worker.js",
   "compatibility_date": "2026-09-05",
   "workers_dev": true,
@@ -19,5 +19,5 @@
     "bindings": [{ "name": "PHOTO_AI_RATE_LIMITER", "class_name": "PhotoAiRateLimiter" }]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["PhotoAiRateLimiter"] }],
-  "observability": { "logs": { "invocation_logs": false } }
+  "observability": { "enabled": false, "logs": { "enabled": false, "invocation_logs": false } }
 }
