@@ -840,6 +840,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
           <button class="mic-btn" id="micBtn" title="Ditar texto">🎤</button>
         </div>
         <div class="mic-status" id="micStatus"></div>
+        <div class="ai-helper-text" id="diaryCategorySuggestion" data-state="NO_DESCRIPTION" aria-live="polite">Sem descrição: não há sugestão de categoria.</div>
       </div>
       <div class="ai-helper" id="aiHelper" aria-live="polite">
         <div class="ai-helper-head">
@@ -898,7 +899,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
           <button type="button" class="ai-copy" id="aiUseFichaBtn" style="display:none">Usar ficha sugerida</button>
           <button type="button" class="ai-copy" id="aiDictateBtn">🎙️ Ditar</button>
           <button type="button" class="ai-copy" id="aiGenerateBtn">Perguntar à IA</button>
-          <button type="button" class="ai-copy" id="diaryOcrSimulateBtn">Simular folha diária</button>
+        <button type="button" class="ai-copy" id="diaryOcrSimulateBtn">Preencher dados da folha</button>
           <button type="button" class="ai-copy" id="aiCopyBtn" style="display:none">Copiar sugestão</button>
           <button type="button" class="ai-copy" id="aiClearBtn">Limpar</button>
         </div>
@@ -1000,7 +1001,7 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
         <button class="savebtn" type="submit">GUARDAR REGISTO</button>
       </form>
       <section class="photo-ai-section" id="photoAiSection">
-        <button type="button" class="ghostbtn" id="photoAiOpenBtn">📷 Ler folha executada</button>
+        <button type="button" class="ghostbtn" id="photoAiOpenBtn">📝 Preencher dados da folha</button>
         <div id="photoAiPanel" hidden>
           <p class="photo-ai-note">A fotografia nunca é guardada pelo PMP. É descartada após a análise ou ao cancelar. O processamento externo depende da política de retenção verificada para a conta.</p>
           <div class="photo-ai-actions">
@@ -1159,6 +1160,9 @@ if(window.fbAuth)initAuthGate();
 const CATALOG={"1":"Bombas (Hidropressoras, Circuladoras,…)","3":"Botoneiras (Incêndio, Portas e Energia)","8":"Carreteis e Hidrantes de Incêndio","13":"Central Gases Medicinais","22":"Extintores","43":"Registo Anual Consumos (mapa ano anterior)","19":"Elevadores","27":"Iluminação de Emergência [Blocos Aut.]","33":"Pavimentos (PVC, Madeira, Betão, Asfalto)","40":"Postos Transformação e Quadro Geral Baixa Tensão","5":"Caldeiras","20":"Equipamentos de Cozinha","30":"Jardins e Mobiliário de Exterior","36":"Portas Corta-Fogo","37":"Portas e Saídas de Emergência","38":"Portões Corta-Fogo (Cortina Cozinha)","4":"Caixas Esgotos / Pluviais","9":"Carro de Serviço","14":"Chamada Enfermeiro/ Emergência","25":"Gerador de Emergência","29":"Instalações Sanitárias","45":"Sistema CCTV","2":"Bombas de Incêndio","10":"Central Detecção CO (Monóxido Carbono)","11":"Central Detecção de Gás","12":"Central Detecção Incêndio","15":"Chillers e Bombas de Calor","21":"Equipamentos de Lavandaria","28":"Iluminação Geral Edificio (Interior e Exterior)","41":"Quadros Eléctricos","47":"Tectos Falsos, Portas e Janelas","48":"UPS","6":"Caleiras e Ralos (Águas Pluviais)","18":"Controlo de Acessos","24":"Gases Fluorados","31":"Máquinas Dispensadoras de Água","32":"Paineis Solares AQS","23":"Extracção Cozinha (Hotte)","16":"Clarabóias e Clarabóias Desenfumagem","17":"Coberturas, Terraços, Varandas e Fachadas","26":"Gestão Técnica Centralizada","46":"Sistema Automática de Rega","7":"Cancelas e Portões Parques Estacionamento","39":"Portões Garagens"};
 const SCHEDULE={"1":[1,3,8,13,22,43],"2":[19,27,33,40,43],"3":[5,13,20,30,36,37,38],"4":[4,9,14,25,29,45],"5":[2,10,11,12,15,21,28,41,47,48],"6":[1,3,6,8,13,18,22,24,31],"7":[6,19,20,24,27,32,33,40],"8":[4,5,9,13,14,25,29,30,36,37,38,45],"9":[2,10,11,12,21,23,28,47,48],"10":[1,3,8,13,16,17,22],"11":[19,20,26,27,33,40,46],"12":[4,5,9,13,14,25,29,30,36,37,38,45],"13":[2,10,11,12,21,28,47,48],"14":[1,3,8,13,22],"15":[19,27,33,40,46],"16":[5,13,20,30],"17":[7,9,14,25,29,36,37,38,39,45],"18":[2,10,11,12,21,23,28,41,47,48],"19":[1,3,8,13,17,22,31],"20":[19,20,27,32,33,40,46],"21":[4,5,9,13,14,25,29,30,36,37,38,45],"22":[2,10,11,12,21,28,47,48],"23":[1,3,8,13,22],"24":[19,20,26,27,33,40,46],"25":[5,9,13,14,25,29,30,36,37,38,45],"26":[2,10,11,12,21,23,28,47,48],"27":[1,3,8,13,22],"28":[19,33,40,46],"29":[5,13,20,27,30],"30":[4,9,14,25,29,36,37,38,45],"31":[2,10,11,12,15,21,28,41,47,48],"32":[1,3,8,13,18,22,31],"33":[19,20,27,32,33,40,46],"34":[5,9,13,14,25,29,30,36,37,38,45],"35":[2,10,11,12,21,23,28,47,48],"36":[1,3,8,13,16,17,22],"37":[19,20,26,27,33,40,46],"38":[4,5,9,13,14,25,29,30,36,37,38,45],"39":[2,10,11,12,21,28,47,48],"40":[1,3,6,8,13,22],"41":[6,19,20,27,33,40],"42":[5,7,9,13,14,25,29,30,36,37,38,39,45],"43":[2,10,11,12,23,28,47,48],"44":[1,3,8,18,21,31,41],"45":[13,22,27,32,33],"46":[5,19,30,40],"47":[9,13,14,20,25,29,36,37,38,45],"48":[2,10,11,12,21,28,47,48],"49":[1,3,8,13,22],"50":[27,33,40],"51":[5,9,13,14,19,20,25,26,29,30,36,37,38,45],"52":[2,10,11,12,21,23,28,47,48]};
 const MONTHS=[['JAN',1,4],['FEV',5,8],['MAR',9,13],['ABR',14,17],['MAI',18,22],['JUN',23,26],['JUL',27,31],['AGO',32,35],['SET',36,39],['OUT',40,44],['NOV',45,48],['DEZ',49,52]];
+
+// A Rotina Diária tem associação ao Diário, embora não pertença à escala semanal.
+CATALOG['44']='Rotina Diária';
 
 function askConfirm(message,{title='Confirmar',okText='Apagar',danger=true}={}){
   return new Promise(resolve=>{
@@ -1389,11 +1393,12 @@ function buildDiaryMirrorEntry(entry){
     status:getDiaryMirrorStatus(entry),
     tech:'Registo Diário',
     note:entry.text||'',
-    created:entry.timestamp?new Date(entry.timestamp).getTime():Date.now()
+    created:entry.timestamp?new Date(entry.timestamp).getTime():Date.now(),
+    ...(entry.structuredData?{structuredData:entry.structuredData}:{})
   };
 }
 function sameDiaryMirrorEntry(a,b){
-  return !!a&&!!b&&a.date===b.date&&a.week===b.week&&a.status===b.status&&a.tech===b.tech&&a.note===b.note&&a.created===b.created&&a.diaryId===b.diaryId&&a.source===b.source;
+  return !!a&&!!b&&a.date===b.date&&a.week===b.week&&a.status===b.status&&a.tech===b.tech&&a.note===b.note&&a.created===b.created&&a.diaryId===b.diaryId&&a.source===b.source&&JSON.stringify(a.structuredData||null)===JSON.stringify(b.structuredData||null);
 }
 function mergedLogsFor(f){
   const merged=new Map();
@@ -1637,6 +1642,7 @@ function discardPhotoAiImage(session){
 }
 
 function clearPhotoAiSession({closePanel=true}={}){
+  document.getElementById('assistedRoutineModal')?.closeAssisted?.();
   if(photoAiSession)photoAiSession.controller?.abort();
   discardPhotoAiImage(photoAiSession);
   setPhotoAiBusy(false);
@@ -1792,6 +1798,7 @@ async function confirmPhotoAiRecord(){
 }
 
 function openModal(f){
+  $('photoAiOpenBtn').hidden=String(f)!=='44';
   modalFicha=f;$('mBadge').textContent=f;$('mFicha').textContent='FICHA Nº '+f;$('mNome').textContent=CATALOG[f];
   clearPhotoAiSession();
   $('fData').value=new Date().toISOString().slice(0,10);$('fEstado').value='Concluído';$('fTecnico').value='';$('fObs').value='';
@@ -1837,7 +1844,7 @@ $('logForm').addEventListener('submit',async e=>{
 $('mClose').onclick=closeModal;
 $('mGoReport').onclick=()=>{closeModal();showReport(modalFicha);};
 $('overlay').addEventListener('click',e=>{if(e.target===$('overlay'))closeModal();});
-$('photoAiOpenBtn').onclick=openPhotoAiPanel;
+$('photoAiOpenBtn').onclick=()=>openAssistedRoutineForm(modalFicha||null);
 $('photoAiCancelBtn').onclick=()=>clearPhotoAiSession();
 $('photoAiCameraBtn').onclick=()=>$('photoAiCameraInput').click();
 $('photoAiGalleryBtn').onclick=()=>$('photoAiGalleryInput').click();
@@ -2294,6 +2301,10 @@ function buildOcrManualPreviewRecord(){
 }
 
 async function saveOcrManualPreview(record,button,feedback,warning){
+  feedback.textContent='Pré-visualização experimental desativada. Use o preenchimento estruturado assistido.';
+  warning.textContent='Nenhum dado foi gravado. A fotografia não é persistida.';
+  return;
+  /* legado experimental, mantido apenas como referência histórica
   const confirmed=await askConfirm('Vais guardar apenas esta pré-visualização manual no histórico técnico. A fotografia não será carregada nem guardada e os valores permanecem por confirmar.',{title:'Guardar histórico técnico',okText:'Confirmar gravação',danger:false});
   if(!confirmed)return;
   button.disabled=true;
@@ -2314,6 +2325,7 @@ async function saveOcrManualPreview(record,button,feedback,warning){
   }finally{
     button.disabled=false;
   }
+  */
 }
 
 function operationalEntryIdFor(entry){
@@ -2322,15 +2334,25 @@ function operationalEntryIdFor(entry){
   return `daily_operational_${(hash>>>0).toString(36)}`;
 }
 
+function canEditAssistedEntry(entry){const age=Date.now()-new Date(entry.timestamp).getTime();return Number.isFinite(age)&&age>=0&&age<7*24*60*60*1000;}
+function openAssistedRoutineForm(contextFicha=null,existing=null){
+  if(!window.PmpAssistedForm){showToast('Formulário a carregar.');return;}
+  return window.PmpAssistedForm.openAssistedForm({existing,fichaId:String(contextFicha||'44'),fichaName:CATALOG['44'],
+    canEdit:canEditAssistedEntry,canSave:()=>!!(window.firebaseReady&&window.fbAuth?.auth?.currentUser),
+    date:$('diaryDate')?.value||new Date().toISOString().slice(0,10),confirm:message=>askConfirm(message,{title:'Guardar dados da folha',okText:'Guardar',danger:false}),
+    allocateId:()=>window.fb.push(window.fb.ref(window.fb.db,'registos_diarios')).key,
+    save:(entry,id)=>saveDiaryCanonical(entry,id),notify:showToast});
+}
+
 function getOcrOperationalFormData(panel){
   const text=panel.querySelector('[data-ocr-operational-text]').value.trim().replace(/\s+/g,' ');
   const choice=panel.querySelector('[data-ocr-operational-severity]').value;
-  const severity=choice==='anomaly'?'urgente':choice==='important'?'aviso':choice;
+  const severity=choice==='important'?'urgente':choice;
   const date=panel.querySelector('[data-ocr-operational-date]').value;
   const fichaId=panel.querySelector('[data-ocr-operational-ficha]').value;
-  const labels={info:'Tarefa simples',aviso:'Visita',important:'Importante',anomaly:'Anomalia'};
-  const severityLabels={info:'info',aviso:'aviso',important:'aviso — acompanhamento operacional',anomaly:'urgente — situação anómala'};
-  const operationalIntents={info:'task',aviso:'visit',important:'important',anomaly:'anomaly'};
+  const labels={info:'Tarefa',aviso:'Visita',important:'Importante'};
+  const severityLabels={info:'Tarefa',aviso:'Visita',important:'Importante'};
+  const operationalIntents={info:'task',aviso:'visit',important:'important'};
   return {text,severity,date,fichaId,fichaNome:fichaId?CATALOG[fichaId]:null,operationalIntent:operationalIntents[choice]||'task',destination:labels[choice]||'Registo Diário',severityLabel:severityLabels[choice]||severity};
 }
 
@@ -2361,10 +2383,10 @@ function getOcrOperationalSignals(text){
 function getOcrOperationalBaseClassification(text){
   const signals=getOcrOperationalSignals(text);
   if(!signals.normalized)return null;
+  if(signals.problem&&signals.pending)return {choice:'important',label:'Importante',severity:'urgente',reason:'problema técnico pendente ou sem resolução confirmada'};
   if(signals.external)return {choice:'aviso',label:'Visita',severity:'aviso',reason:'presença ou intervenção externa identificada'};
-  if(signals.problem&&signals.pending)return {choice:'anomaly',label:'Anomalia',severity:'urgente',reason:'problema técnico pendente ou sem resolução confirmada'};
-  if(signals.resolved&&signals.technical)return {choice:'important',label:'Importante',severity:'aviso',reason:'intervenção técnica relevante já resolvida'};
-  if(signals.routine||signals.resolved)return {choice:'info',label:'Tarefa simples',severity:'info',reason:'tarefa rotineira ou intervenção pouco crítica'};
+  if(signals.resolved&&signals.technical)return {choice:'important',label:'Importante',severity:'urgente',reason:'intervenção técnica relevante já resolvida'};
+  if(signals.routine||signals.resolved)return {choice:'info',label:'Tarefa',severity:'info',reason:'tarefa rotineira ou intervenção pouco crítica'};
   return null;
 }
 
@@ -2385,8 +2407,8 @@ function getOcrOperationalHistoryMatches(text){
 
 function getOcrHistoricalCategory(row){
   const signals=getOcrOperationalSignals(`${row.text||''} ${row.status||''}`);
+  if(signals.problem&&signals.pending)return 'important';
   if(signals.external)return 'aviso';
-  if(signals.problem&&signals.pending)return 'anomaly';
   if(signals.resolved&&signals.technical)return 'important';
   if(signals.routine||signals.resolved)return 'info';
   return '';
@@ -2398,11 +2420,11 @@ function suggestOcrOperationalClassification(text){
   const matches=getOcrOperationalHistoryMatches(text);
   const supporting=matches.filter(row=>getOcrHistoricalCategory(row)===base.choice);
   const examples=(supporting.length?supporting:matches).map(row=>`${row.date||'Sem data'} — ${String(row.text||'').replace(/\s+/g,' ').slice(0,120)} (${row.source})`);
-  const confidence=supporting.length>=2?'high':supporting.length===1?'medium':'low';
+  const supportLevel=supporting.length>=2?'forte':supporting.length===1?'moderado':'fraco';
   const reason=supporting.length
     ? `${base.reason}; compatível com ${supporting.length} registo(s) semelhante(s) no histórico carregado`
     : `${base.reason}; histórico semelhante insuficiente para confirmar a categoria`;
-  return {...base,confidence,reason,examples};
+  return {...base,supportLevel,reason,examples};
 }
 
 function updateOcrOperationalClassification(panel){
@@ -2410,7 +2432,7 @@ function updateOcrOperationalClassification(panel){
   const output=panel.querySelector('[data-ocr-operational-classification]');
   if(!output)return;
   output.textContent=suggestion
-    ? `Sugestão baseada no histórico (confiança ${suggestion.confidence}): ${suggestion.label} (${suggestion.severity}) — ${suggestion.reason}.${suggestion.examples.length?` Exemplos: ${suggestion.examples.join(' | ')}.`:''} Confirma a categoria antes de criar.`
+    ? `Sugestão baseada no histórico (apoio ${suggestion.supportLevel}): ${suggestion.label} (${suggestion.severity}) — ${suggestion.reason}.${suggestion.examples.length?` Exemplos: ${suggestion.examples.join(' | ')}.`:''} Confirma a categoria antes de criar.`
     : 'Classificação por confirmar: o texto não permite sugerir categoria com segurança. Confirma com o técnico antes de criar.';
 }
 
@@ -2426,7 +2448,7 @@ function renderOcrOperationalCreatePreview(panel,data){
     <div><strong>Destino:</strong> Registo Diário — ${escapeHtml(data.destination)}.</div>
     <div><strong>Severidade:</strong> ${escapeHtml(data.severityLabel)} · <strong>Data:</strong> ${escapeHtml(entry.date)}.</div>
     <div><strong>Ficha:</strong> ${data.fichaId?`Ficha ${escapeHtml(data.fichaId)} — ${escapeHtml(data.fichaNome)}`:'Não associada'}.</div>
-    <div><strong>Sugestão do histórico:</strong> ${suggestion?`${escapeHtml(suggestion.label)} (${escapeHtml(suggestion.severity)}) · confiança ${escapeHtml(suggestion.confidence)}`:'Por confirmar'}.</div>
+    <div><strong>Sugestão do histórico:</strong> ${suggestion?`${escapeHtml(suggestion.label)} (${escapeHtml(suggestion.severity)}) · apoio ${escapeHtml(suggestion.supportLevel)}`:'Por confirmar'}.</div>
     ${suggestion&&suggestion.examples.length?`<div><strong>Exemplos do histórico:</strong><ul>${suggestion.examples.map(example=>`<li>${escapeHtml(example)}</li>`).join('')}</ul></div>`:''}
     <div>Será criado um Registo Diário. Se existir ficha associada, poderá ser espelhado no Histórico da Ficha pelo fluxo já existente.</div>
     <button type="button" class="ai-copy" data-ocr-action="create-operational-record">Criar Registo Diário</button>`;
@@ -2475,7 +2497,7 @@ function renderOcrOperationalPreview(container,report,record){
     <label class="ai-helper-label">TEXTO OPERACIONAL CONFIRMADO PELO TÉCNICO</label>
     <textarea class="ai-helper-input" data-ocr-operational-text rows="3" placeholder="Escreva ou confirme o texto operacional lido">${escapeHtml(text)}</textarea>
     <label class="ai-helper-label">DESTINO E SEVERIDADE</label>
-    <select class="ai-helper-input" data-ocr-operational-severity><option value="info">Tarefa simples</option><option value="aviso">Visita</option><option value="important">Importante (acompanhamento)</option><option value="anomaly">Anomalia (severidade urgente)</option></select>
+    <select class="ai-helper-input" data-ocr-operational-severity><option value="info">Tarefa</option><option value="aviso">Visita</option><option value="important">Importante</option></select>
     <label class="ai-helper-label">DATA E FICHA (OPCIONAL)</label>
     <input class="ai-helper-input" data-ocr-operational-date type="date" value="${record.date}">
     <select class="ai-helper-input" data-ocr-operational-ficha><option value="">— Nenhuma ficha associada —</option>${fichas}</select>
@@ -2493,7 +2515,6 @@ function renderOcrOperationalPreview(container,report,record){
     const feedback=panel.querySelector('[data-ocr-operational-feedback]');
     if(!data.text){feedback.textContent='Texto operacional não confirmado. Confirme o texto antes de criar ação.';return;}
     if(!data.date){feedback.textContent='Indique a data antes de criar ação.';return;}
-    if(data.operationalIntent==='anomaly'&&!/\b(problema|avaria|falha|fuga|equipamento parado|nao funciona|sem funcionar|situacao anomala)\b/.test(norm(data.text))){feedback.textContent='Anomalia exige indicação de problema técnico, avaria, falha, fuga, equipamento parado ou situação anómala.';return;}
     feedback.textContent='';renderOcrOperationalCreatePreview(panel,data);
   };
   updateOcrOperationalClassification(panel);
@@ -2870,6 +2891,9 @@ function buildUnifiedAiAnalysisBase(inputText){
   if(securityResponse)return {intent:'security-block',text:securityResponse};
   if(isIncompleteFichaReference(text))return {intent:'insufficient',text:'Informação insuficiente.'};
   if(isForbiddenAiAction(text))return {intent:'insufficient',text:'Não posso executar alterações automáticas nem alterar dados. Só uso dados reais existentes; qualquer correção ou registo exige ação humana explícita.'};
+  const structuredRows=[...diaryCache,...Object.entries(LOGS).flatMap(([fichaId,entries])=>entries.filter(isDiaryMirrorEntry).map(e=>({...e,fichaId})))];
+  const structured=window.PmpAssisted?.tryStructuredQuery(text,structuredRows,{normalize:normalizeAiTerm});
+  if(structured)return {intent:structured.status==='INSUFFICIENT_DATA'?'insufficient':'quantitative',structured,text:structured.status==='OK'?structured.context:structured.message};
   const genericOnly=/^(problema para identificar|problema para verificar|verificar|ha um problema|anomalia|resolver situacao|precisa de manutencao)$/i.test(normalized);
   const hasTechnicalMatch=findCatalogMatches(text).length>0||/\b(autoclismo|wc|sanita|fuga|gerador|elevador|iluminacao|caldeira|aqs|bomba|quadro eletrico|corte de agua|falta de agua|interrupcao de agua)\b/.test(normalized);
   const hasTermAndPeriod=isAiTermAndPeriodQuery(text);
@@ -2913,7 +2937,7 @@ function getAiResponseQualityDetails(analysis,question){
     ...(analysis&&analysis.facts&&analysis.facts.relatedRecords||[])
   ];
   const hasUnconfirmedPending=!!(analysis&&analysis.pendingData&&analysis.pendingData.pending&&analysis.pendingData.pending.length);
-  const hasRealBasis=historyEntries.length>0
+  const hasRealBasis=analysis?.structured?.status==='OK'||historyEntries.length>0
     ||hasUnconfirmedPending
     ||/\b(?:foi encontrado um registo relevante|foram encontrados?\s+\d+\s+registo|foram encontradas?\s+\d+\s+ocorr|existem\s+\d+\s+anomalia|total:\s*\d+\s+registo)/i.test(text);
   const hasTechnicalMemory=!!(analysis&&Array.isArray(analysis.technicalMemories)&&analysis.technicalMemories.length);
@@ -2944,7 +2968,8 @@ function getAiResponseQuality(analysis,question){
 }
 function buildUnifiedAiAnalysis(inputText){
   const question=cleanAiInput(inputText);
-  const analysis=applyTechnicalMemoryContext(buildUnifiedAiAnalysisBase(inputText),question);
+  const base=buildUnifiedAiAnalysisBase(inputText);
+  const analysis=base.structured?base:applyTechnicalMemoryContext(base,question);
   const responseQualityDetails=getAiResponseQualityDetails(analysis,question);
   return {...analysis,responseQuality:responseQualityDetails.level,responseQualityDetails};
 }
@@ -4109,9 +4134,10 @@ $('planAiMicBtn').onclick=()=>startAiDictation({
   status:$('planAiState')
 });
 $('planAiGenerateBtn').onclick=generatePlanAiSuggestion;
-$('planOcrSimulateBtn').onclick=()=>renderOcrManualPreview('plan');
+$('planOcrSimulateBtn').hidden=true;
+$('planOcrSimulateBtn').onclick=null;
 $('planAiClearBtn').onclick=()=>resetPlanAssistant({clearInput:true});
-$('diaryOcrSimulateBtn').onclick=()=>renderOcrManualPreview('diary');
+$('diaryOcrSimulateBtn').onclick=()=>openAssistedRoutineForm($('diaryFicha')?.value||null);
 document.querySelectorAll('.ai-copy-mini').forEach(btn=>btn.onclick=()=>copyAiBoxText(btn));
 $('diaryAiEditSuggestionBtn').onclick=()=>editAiLearningSuggestion('diary');
 $('planAiEditSuggestionBtn').onclick=()=>editAiLearningSuggestion('plan');
@@ -4138,6 +4164,8 @@ function initDiaryListener(){
 }
 window.initDiaryListener=initDiaryListener;
 
+async function saveDiaryCanonical(entry,id=null){const{db,ref,push,set}=window.fb;const target=id?ref(db,'registos_diarios/'+id):push(ref(db,'registos_diarios'));await set(target,entry);return id||target.key;}
+window.saveDiaryCanonical=saveDiaryCanonical;
 $('diarySave').onclick=async()=>{
   const text=$('diaryText').value.trim();
   if(!text){alert('Por favor escreva ou dite a descrição.');return;}
@@ -4148,7 +4176,7 @@ $('diarySave').onclick=async()=>{
   const entry={text,severity:currentSeverity,timestamp:new Date().toISOString(),date:$('diaryDate').value,...(fichaId&&{fichaId,fichaNome:CATALOG[fichaId]})};
   if(pendingPhotos.length)entry.photos=pendingPhotos.slice();
   try{
-    const{db,ref,push,set}=window.fb;await set(push(ref(db,'registos_diarios')),entry);
+    await saveDiaryCanonical(entry);
     $('diaryText').value='';baseText='';interimText='';
     $('diaryDate').value=new Date().toISOString().slice(0,10);
     if($('diaryFicha'))$('diaryFicha').value='';
@@ -4224,27 +4252,31 @@ window.startEditDiary=startEditDiary;
 
 async function saveEditDiary(id){
   const e=diaryCache.find(x=>x.id===id);
-  if(!e)return;
+  if(!e||!canEditAssistedEntry(e))return;
   const newText=$('editText-'+id).value.trim();
   if(!newText){alert('A descrição não pode ficar vazia.');return;}
   const newDate=$('editDate-'+id).value;
   const newSev=$('editSev-'+id).value;
   const newFichaId=$('editFicha-'+id)&&$('editFicha-'+id).value?$('editFicha-'+id).value:'';
   try{
-    const{db,ref,set}=window.fb;
     const updated={
+      ...e,
       text:newText,
       severity:newSev,
       date:newDate,
       timestamp:e.timestamp,        // mantém a data/hora original de registo
       editedAt:new Date().toISOString()  // marca quando foi editado
     };
+    delete updated.id;
+    delete updated.fichaId;
+    delete updated.fichaNome;
     if(newFichaId){
       updated.fichaId=newFichaId;
-      updated.fichaNome=CATALOG[newFichaId];
+      updated.fichaNome=String(e.fichaId)===newFichaId?(e.fichaNome||CATALOG[newFichaId]):CATALOG[newFichaId];
     }
     if(Array.isArray(e.photos)&&e.photos.length)updated.photos=e.photos; // preserva fotos
-    await set(ref(db,'registos_diarios/'+id),updated);
+    if(e.structuredData)updated.structuredData=e.structuredData; // preserva dados estruturados assistidos
+    await saveDiaryCanonical(updated,id);
     showToast('Alterações guardadas');
     // a lista actualiza-se sozinha via onValue
   }catch(err){console.error(err);alert('Erro ao guardar as alterações. Verifique a ligação.');}
@@ -4358,7 +4390,7 @@ function renderDiary(){
       <div class="de-top">
         <div class="de-meta">
           <span class="date">${e.date?fmtDate(e.date):fmtDiaryDate(e.timestamp)}</span>
-          ${e.date&&e.date!==e.timestamp.slice(0,10)?`<span class="reg-ts"> · registado em ${fmtDiaryDate(e.timestamp)}</span>`:''}
+          ${e.date&&e.timestamp&&e.date!==e.timestamp.slice(0,10)?`<span class="reg-ts"> · registado em ${fmtDiaryDate(e.timestamp)}</span>`:''}
         </div>
         <span class="de-badge ${e.severity}">${SEV_LABELS[e.severity]||e.severity}</span>
       </div>
@@ -4368,6 +4400,7 @@ function renderDiary(){
       ${e.editedAt?`<div class="de-edited">editado em ${fmtDiaryDate(e.editedAt)}</div>`:''}
       <div class="de-actions">
         ${editavel?`<button class="de-edit" onclick="startEditDiary('${e.id}')">✏️ Editar</button>`:''}
+        ${e.structuredData&&editavel&&String(e.fichaId)==='44'?`<button class="de-edit" onclick="openAssistedRoutineForm('${e.fichaId||''}',diaryCache.find(x=>x.id==='${e.id}'))">📝 Dados da folha</button>`:''}
         <button class="de-del" onclick="deleteDiary('${e.id}')">🗑 Eliminar</button>
         ${!editavel?`<span class="de-locked">🔒 Bloqueado (>7 dias)</span>`:''}
       </div>
@@ -4535,5 +4568,5 @@ if('serviceWorker' in navigator){
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)navigator.serviceWorker.getRegistration().then(r=>r&&r.update());});
 }
 </script>
-</body>
+<script type="module">import * as AssistedCore from "./photo-ai-assisted-core.mjs"; import * as AssistedForm from "./photo-ai-assisted-form.mjs"; import * as DiaryClassification from "./diary-classification.mjs"; window.PmpAssisted=AssistedCore; window.PmpAssistedForm=AssistedForm; window.PmpDiaryClassification=DiaryClassification; DiaryClassification.bindDiaryClassification();</script></body>
 </html>

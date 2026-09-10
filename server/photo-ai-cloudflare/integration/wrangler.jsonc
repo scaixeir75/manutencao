@@ -1,0 +1,7 @@
+{
+  "name": "pmp-photo-ai-staging",
+  "compatibility_date": "2026-09-05",
+  "ai": { "binding": "AI", "remote": true },
+  "vars": { "PHOTO_AI_FREE_ONLY": "true", "NODE_ENV": "staging" },
+  "observability": { "enabled": false }
+}

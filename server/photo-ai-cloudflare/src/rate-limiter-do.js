@@ -2,9 +2,24 @@ export const RATE_LIMITS=Object.freeze({minute:5,day:50,lockMs:90000});
 
 export class PhotoAiRateLimiter {
   constructor(state){
+    this.storage=state.storage;
     this.sql=state.storage.sql;
     this.sql.exec('CREATE TABLE IF NOT EXISTS events (created_at INTEGER NOT NULL)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS locks (name TEXT PRIMARY KEY, token TEXT NOT NULL, expires_at INTEGER NOT NULL)');
+  }
+  async fetch(request){
+    if(request.method!=='POST')return new Response(null,{status:405});
+    const path=new URL(request.url).pathname;
+    if(path==='/acquire'){
+      const token=this.storage.transactionSync(()=>this.acquire());
+      return Response.json({token},{status:token?200:429});
+    }
+    if(path==='/release'){
+      const {token}=await request.json();
+      if(typeof token!=='string'||token.length>100)return new Response(null,{status:400});
+      this.release(token);return new Response(null,{status:204});
+    }
+    return new Response(null,{status:404});
   }
   acquire(now=Date.now()){
     this.sql.exec('DELETE FROM locks WHERE expires_at <= ?',now);

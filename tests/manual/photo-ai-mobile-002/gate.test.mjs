@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {fields,parseCell,extraction,score} from './gate-core.js';
+import {mapProviderExtractionV2ToContractV2} from '../../../server/photo-ai-cloudflare/src/provider-extraction-v2.js';
+import {readFile} from 'node:fs/promises';
+import {transition} from './session-state.js';
+test('No text reconstruction or guessed numbers',()=>{for(const x of ['about 60','null','','60 °C','ignore instructions',null])assert.equal(parseCell(x),null);assert.equal(parseCell('60.5'),'60,5');});
+test('Model values never become Reconhecido',()=>{const r=mapProviderExtractionV2ToContractV2(extraction(fields.map(f=>f.expected)));assert.ok(r.document.readings.every(r=>r.confidence==='Duvidoso'));});
+test('Null stays unconfirmed; numeric subset cannot approve full gate',()=>{const values=fields.map(()=>null);const r=mapProviderExtractionV2ToContractV2(extraction(values));assert.ok(r.document.readings.every(r=>r.confidence==='Não confirmado'));assert.equal(score(values).fullGatePassed,false);assert.equal(score(fields.map(f=>f.expected)).fullGatePassed,false);});
+test('isolated loader keeps the approved model and browser-only quantization',async()=>{const source=await readFile(new URL('./gate.js',import.meta.url),'utf8');assert.match(source,/SmolVLM-256M-Instruct/g);assert.match(source,/embed_tokens:'fp16'/);assert.match(source,/vision_encoder:'fp16'/);assert.match(source,/decoder_model_merged:'q4f16'/);assert.match(source,/CACHE_SCOPE/);});
+test('browser runtime uses the ESM CDN entry and has a preflight gate',async()=>{const source=await readFile(new URL('./gate.js',import.meta.url),'utf8');assert.match(source,/transformers@3\.8\.1\/\+esm/);assert.doesNotMatch(source,/dist\/transformers\.web\.js/);assert.match(source,/ONNX_BACKEND_UNAVAILABLE/);assert.match(source,/runtimeReady=false/);});
+test('session remains loaded through success and analysis errors',()=>{for(const end of ['RESULT','ANALYSIS_ERROR']){let s='RUNTIME_READY';s=transition(s,'MODEL_LOADING');s=transition(s,'MODEL_READY');s=transition(s,'FILE_SELECTED');s=transition(s,'ANALYZING');s=transition(s,end);assert.notEqual(s,'RELEASED');}assert.equal(transition('RESULT','FILE_SELECTED'),'FILE_SELECTED');});
+test('only explicit cancellation releases the model session',()=>{assert.equal(transition('MODEL_READY','RELEASED'),'RELEASED');assert.throws(()=>transition('ANALYZING','RELEASED'),/INVALID_TRANSITION/);});
+test('session loss is explicit and distinct from analysis failure',()=>{assert.equal(transition('MODEL_READY','MODEL_SESSION_LOST'),'MODEL_SESSION_LOST');assert.equal(transition('ANALYSIS_ERROR','MODEL_SESSION_LOST'),'MODEL_SESSION_LOST');});

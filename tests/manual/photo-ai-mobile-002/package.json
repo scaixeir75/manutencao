@@ -1,0 +1,1 @@
+{"private":true,"type":"module","scripts":{"test":"node --test gate.test.mjs","build":"esbuild gate.js --bundle --format=esm --platform=browser --outfile=dist/gate.js"},"devDependencies":{"esbuild":"0.25.9"}}

@@ -26,6 +26,7 @@ async function setup(page){
     window.fetch=async(url,options)=>{window.fetchCount++;window.lastRequest=JSON.parse(options.body);return {ok:true,json:async()=>window.reply};};
     ${photoCode}
     ${events}
+    $('photoAiOpenBtn').onclick=openPhotoAiPanel;
     window.photoState=()=>({session:!!photoAiSession,file:!!photoAiSession?.file,url:photoAiSession?.objectUrl||null,busy:!!photoAiSession?.controller});
     $('loginScreen').classList.add('hidden');$('overlay').classList.add('open');openPhotoAiPanel();
   `});
@@ -128,7 +129,7 @@ test('página completa: arranque, fluxo real de eventos e logout com Firebase si
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.route('http://pmp.test/**',route=>{
     const filename=new URL(route.request().url()).pathname.slice(1);
-    if(['photo-ai-contract.js','photo-ai-config.js'].includes(filename))return route.fulfill({contentType:'text/javascript',body:fs.readFileSync(path.join(__dirname,'..',filename),'utf8')});
+    if(['photo-ai-contract.js','photo-ai-config.js','photo-ai-assisted-core.mjs','photo-ai-assisted-form.mjs','diary-classification.mjs'].includes(filename))return route.fulfill({contentType:'text/javascript',body:fs.readFileSync(path.join(__dirname,'..',filename),'utf8')});
     return route.fulfill({contentType:'text/html',body:html});
   });
   await page.route('https://www.gstatic.com/firebasejs/**',route=>route.fulfill({contentType:'text/javascript',body:`

@@ -12,3 +12,4 @@ tests/.auth/
 playwright/.auth/
 tests/reports/
 test-results/
+server/photo-ai-cloudflare/integration/.tmp/

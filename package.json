@@ -9,6 +9,8 @@
     "test:photo-ai": "node --test tests/photo-ai-contract.test.js server/photo-ai/test/photo-ai.test.js server/photo-ai-cloudflare/test/*.test.js && playwright test tests/photo-ai.spec.js --workers=1"
   },
   "devDependencies": {
-    "@playwright/test": "^1.46.0"
+    "@playwright/test": "^1.46.0",
+    "@tesseract.js-data/eng": "^1.0.0",
+    "tesseract.js": "^5.1.1"
   }
 }
