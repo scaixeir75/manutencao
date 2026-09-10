@@ -56,10 +56,32 @@ O Playwright simula a redução do viewport, mas não reproduz a animação, os
 insets e o teclado físico do Galaxy S25. Essa validação física continua
 necessária antes da publicação mobile.
 
-## Próximo bloco
+## UX-MOBILE-004 — Histórico e Fichas
 
-- **UX-MOBILE-004 — Histórico e Fichas:** filtros de relatório, conteúdo longo,
-  bottom sheet, scroll e fotografias.
+Concluído nesta linha:
+
+- a faixa de datas do Histórico quebra de forma fluida abaixo de 560 px, sem
+  criar um breakpoint próprio para 420 px;
+- cartões com texto longo, filtros, datas e contexto da Ficha foram validados
+  a 390 × 844, 420 × 900, 560 × 900 e desktop sem overflow horizontal;
+- o bottom sheet conserva a altura do viewport, o scroll interno e os controlos
+  de fechar, relatório e apagar com alvos confortáveis em mobile;
+- a estratégia de foco do UX-MOBILE-003 também cobre os campos editáveis da
+  Ficha quando o viewport reduz.
+
+As fotografias normais continuam a ser visualizadas pelo lightbox global, cujo
+fecho e limites de viewport foram validados. As entradas próprias do Histórico
+da Ficha não introduzem armazenamento de fotografias nesta linha.
+
+O Playwright simula a redução do viewport, mas não reproduz os insets, a
+animação e o teclado físico do Galaxy S25. Essa validação física continua a
+ser a última confirmação antes de publicar alterações mobile.
+
+## Estado da linha UX-MOBILE
+
+- **UX-MOBILE-002 — concluído**
+- **UX-MOBILE-003 — concluído**
+- **UX-MOBILE-004 — concluído**
 
 ## Critérios de aceitação mobile
 

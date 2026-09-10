@@ -607,6 +607,18 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
   .diary-entry .de-del,.de-edit{min-height:44px;padding:10px 12px}
   .de-save,.de-cancel{min-height:44px}
   .diary-form textarea,.de-editbox textarea,.de-editbox input,.de-editbox select{scroll-margin-block:16px}
+  .report-dates{flex-wrap:wrap}
+  .report-dates .report-date-field{min-width:0}
+  .report-dates .report-date-field input{min-width:0}
+  #rDateClear{width:44px;min-height:44px}
+  .modal{max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom)}
+  .mhead{align-items:flex-start}
+  .mhead .close,#mGoReport{min-width:44px;min-height:44px}
+  .mhead>div:last-child{flex-wrap:wrap;justify-content:flex-end}
+  .mbody{overscroll-behavior:contain}
+  .logform input,.logform select,.logform textarea{scroll-margin-block:16px}
+  .savebtn{min-height:44px}
+  .logentry .del,.resolve-anomaly{min-width:44px;min-height:44px}
 }
 </style>
 </head>
@@ -803,13 +815,13 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
             <button class="dsp-quickbtn" data-rsort="anomalia" style="font-size:11px;padding:7px 10px"><span style="color:var(--bad)">▲</span> Anomalia</button>
           </div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <div style="flex:1;background:#0A0E13;border:1px solid var(--border);border-radius:9px;padding:10px 12px">
+        <div class="report-dates" style="display:flex;gap:8px;align-items:center">
+          <div class="report-date-field" style="flex:1;background:#0A0E13;border:1px solid var(--border);border-radius:9px;padding:10px 12px">
             <div style="color:var(--muted);font-size:10px;font-weight:800;letter-spacing:1.5px;margin-bottom:4px">DE</div>
             <input type="date" id="rDateFrom" style="width:100%;background:none;border:none;color:var(--text);font-size:13px;outline:none;font-family:inherit;color-scheme:dark;display:block">
           </div>
           <span style="color:var(--muted);font-size:18px;flex:0 0 auto">—</span>
-          <div style="flex:1;background:#0A0E13;border:1px solid var(--border);border-radius:9px;padding:10px 12px">
+          <div class="report-date-field" style="flex:1;background:#0A0E13;border:1px solid var(--border);border-radius:9px;padding:10px 12px">
             <div style="color:var(--muted);font-size:10px;font-weight:800;letter-spacing:1.5px;margin-bottom:4px">ATÉ</div>
             <input type="date" id="rDateTo" style="width:100%;background:none;border:none;color:var(--text);font-size:13px;outline:none;font-family:inherit;color-scheme:dark;display:block">
           </div>
@@ -4068,7 +4080,7 @@ $('photoCamInput').onchange=async(e)=>{await handlePhotoFiles(e.target.files,$('
 function keepMobileDiaryFocusVisible(){
   if(!matchMedia('(max-width:560px)').matches)return;
   const field=document.activeElement;
-  if(!field?.matches('#diaryText,.de-editbox textarea,.de-editbox input,.de-editbox select'))return;
+  if(!field?.matches('#diaryText,.de-editbox textarea,.de-editbox input,.de-editbox select,.logform input,.logform select,.logform textarea'))return;
   requestAnimationFrame(()=>field.scrollIntoView({block:'center',inline:'nearest'}));
 }
 document.addEventListener('focusin',keepMobileDiaryFocusVisible);
