@@ -37,10 +37,27 @@ Concluído nesta linha:
 - o calendário mantém quatro colunas abaixo de 560 px; não foi necessário
   criar breakpoint a 420 px.
 
-## Próximos blocos
+## UX-MOBILE-003 — Registos Diários
 
-- **UX-MOBILE-003 — Registos Diários:** formulário, edição, classificação,
-  fotografias, filtros e teclado.
+Concluído nesta linha:
+
+- o campo de descrição e os campos de edição voltam ao centro visível do
+  viewport móvel quando o foco coincide com uma redução de altura; a regra usa
+  `resize`/`visualViewport` e não introduz uma API de teclado;
+- os alvos isolados de microfone, remoção de fotografia, ações da edição e
+  filtros têm dimensão confortável abaixo de 560 px;
+- formulário, sugestão visual de classificação, miniaturas, remoção, lightbox,
+  filtros, edição, cancelamento e preservação de `structuredData` foram
+  validados a 390 × 844, 420 × 900, 560 × 900 e desktop;
+- a seleção humana mantém-se a fonte de verdade: uma sugestão de Visita não
+  altera automaticamente a opção Tarefa.
+
+O Playwright simula a redução do viewport, mas não reproduz a animação, os
+insets e o teclado físico do Galaxy S25. Essa validação física continua
+necessária antes da publicação mobile.
+
+## Próximo bloco
+
 - **UX-MOBILE-004 — Histórico e Fichas:** filtros de relatório, conteúdo longo,
   bottom sheet, scroll e fotografias.
 

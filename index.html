@@ -599,6 +599,15 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
   border-radius:8px;color:var(--text);font-size:13px;font-weight:700;letter-spacing:.5px;
   padding:12px;cursor:pointer;margin-top:4px;transition:all .15s}
 .diary-more:hover{border-color:var(--accent);color:var(--accent)}
+@media(max-width:560px){
+  .mic-btn{width:45px;height:45px}
+  .photo-thumb{width:84px;height:84px}
+  .photo-thumb .pt-remove{width:44px;height:44px;font-size:16px}
+  .dh-searchbtn,.diary-filter,.dsp-reset,.dsp-quickbtn{min-height:44px}
+  .diary-entry .de-del,.de-edit{min-height:44px;padding:10px 12px}
+  .de-save,.de-cancel{min-height:44px}
+  .diary-form textarea,.de-editbox textarea,.de-editbox input,.de-editbox select{scroll-margin-block:16px}
+}
 </style>
 </head>
 <body>
@@ -4055,6 +4064,16 @@ async function handlePhotoFiles(files,sourceBtn){
 }
 $('photoInput').onchange=async(e)=>{await handlePhotoFiles(e.target.files,$('photoAddBtn'));e.target.value='';};
 $('photoCamInput').onchange=async(e)=>{await handlePhotoFiles(e.target.files,$('photoCamBtn'));e.target.value='';};
+
+function keepMobileDiaryFocusVisible(){
+  if(!matchMedia('(max-width:560px)').matches)return;
+  const field=document.activeElement;
+  if(!field?.matches('#diaryText,.de-editbox textarea,.de-editbox input,.de-editbox select'))return;
+  requestAnimationFrame(()=>field.scrollIntoView({block:'center',inline:'nearest'}));
+}
+document.addEventListener('focusin',keepMobileDiaryFocusVisible);
+addEventListener('resize',keepMobileDiaryFocusVisible);
+visualViewport?.addEventListener('resize',keepMobileDiaryFocusVisible);
 
 /* ── Lightbox (ver foto ampliada) ── */
 function openLightbox(src){$('lbImg').src=src;$('lightbox').classList.add('open');}
