@@ -40,7 +40,7 @@ async function seedEditableDiary(page){
       metadata:{source:'ux-mobile'},structuredData:{source:'assisted_form',metadata:{template:'rotina'},measurements:[{section:'aqs',item:'01',type:'temperature',value:55,unit:'°C',status:'OK'},{section:'aqs',item:'02',type:'temperature',value:60,unit:'°C'},{section:'generator',item:'fuel',type:'level',value:'3/4'}],checks:[{section:'aqs',item:'01',status:'OK'}],reportItems:['Item independente']}
     });
   });
-  await page.locator('#diaryHistoryToggle').click();
+  if(!await page.locator('#diaryHistorySection').isVisible())await page.locator('#diaryHistoryToggle').click();
   await expect(page.locator('.diary-entry[data-id="mobile-edit"]')).toBeVisible();
 }
 
@@ -97,6 +97,57 @@ test('UX-MOBILE-003: fotografias, edição e dados estruturados preservam-se',as
   const lightbox=await page.locator('#lightbox').evaluate(node=>{const r=node.getBoundingClientRect(),button=node.querySelector('.lb-close').getBoundingClientRect();return {r:{left:r.left,right:r.right,top:r.top,bottom:r.bottom},button:{width:button.width,height:button.height}};});
   expect(isInside(lightbox.r,390,844)).toBe(true);expect(lightbox.button.width).toBeGreaterThanOrEqual(44);expect(lightbox.button.height).toBeGreaterThanOrEqual(44);
   await page.locator('#lbClose').click();await expect(page.locator('#lightbox')).not.toHaveClass(/open/);
+});
+
+test('UX-DIARY-TEXTAREA-001: a descrição cresce, limita o scroll e reduz em criação e edição',async({page})=>{
+  await openLocal(page);
+  const longText=Array.from({length:14},(_,index)=>`Linha ${index+1} com texto suficiente para testar o crescimento.`).join('\n');
+  const veryLongText=Array.from({length:80},(_,index)=>`Linha longa ${index+1} para atingir o limite da caixa.`).join('\n');
+  for(const viewport of [{width:390,height:844},{width:1280,height:900}]){
+    await page.setViewportSize(viewport);
+    const description=page.locator('#diaryText');
+    await description.fill('Texto curto');
+    const minimum=await description.evaluate(node=>node.getBoundingClientRect().height);
+    await description.fill('Linha única longa para confirmar que a largura inteira da textarea é usada antes de existir uma quebra automática provocada apenas pelo conteúdo. '.repeat(4));
+    const singleLine=await description.evaluate(node=>{const style=getComputedStyle(node);return {scrollWidth:node.scrollWidth,clientWidth:node.clientWidth,paddingLeft:parseFloat(style.paddingLeft),paddingRight:parseFloat(style.paddingRight)};});
+    expect(singleLine.scrollWidth).toBeLessThanOrEqual(singleLine.clientWidth);
+    expect(singleLine.paddingRight).toBe(singleLine.paddingLeft);
+    await description.fill(longText);
+    const grown=await description.evaluate(node=>node.getBoundingClientRect().height);
+    expect(grown).toBeGreaterThan(minimum);
+    await description.fill(veryLongText);
+    const capped=await description.evaluate(node=>{const style=getComputedStyle(node),wrapper=node.parentElement.getBoundingClientRect(),rect=node.getBoundingClientRect();return {height:rect.height,width:rect.width,scrollHeight:node.scrollHeight,overflowY:style.overflowY,paddingLeft:parseFloat(style.paddingLeft),paddingRight:parseFloat(style.paddingRight),paddingBottom:parseFloat(style.paddingBottom),wrapperWidth:wrapper.width};});
+    expect(capped.height).toBeLessThanOrEqual(280);
+    expect(capped.scrollHeight).toBeGreaterThan(capped.height);
+    expect(capped.overflowY).toBe('auto');
+    const microphone=await page.locator('#micBtn').evaluate(node=>({height:node.getBoundingClientRect().height,width:node.getBoundingClientRect().width}));
+    expect(capped.paddingRight).toBe(capped.paddingLeft);
+    expect(capped.paddingRight).toBeLessThan(microphone.width);
+    expect(capped.width).toBeCloseTo(capped.wrapperWidth,1);
+    expect(capped.paddingBottom).toBeGreaterThanOrEqual(microphone.height+10);
+    await description.fill('');
+    const reduced=await description.evaluate(node=>({height:node.getBoundingClientRect().height,overflowY:getComputedStyle(node).overflowY}));
+    expect(reduced.height).toBeLessThan(grown);
+    expect(reduced.overflowY).toBe('hidden');
+    const layout=await page.evaluate(()=>({scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth}));
+    expect(layout.scrollWidth).toBeLessThanOrEqual(layout.viewport);
+
+    await seedEditableDiary(page);
+    await page.locator('.diary-entry[data-id="mobile-edit"]').getByRole('button',{name:'✏️ Editar',exact:true}).click();
+    const editText=page.locator('#editText-mobile-edit');
+    const editMinimum=await editText.evaluate(node=>node.getBoundingClientRect().height);
+    await editText.fill(longText);
+    const editGrown=await editText.evaluate(node=>node.getBoundingClientRect().height);
+    expect(editGrown).toBeGreaterThan(editMinimum);
+    await editText.fill(veryLongText);
+    const editCapped=await editText.evaluate(node=>({height:node.getBoundingClientRect().height,scrollHeight:node.scrollHeight,overflowY:getComputedStyle(node).overflowY}));
+    expect(editCapped.height).toBeLessThanOrEqual(280);
+    expect(editCapped.scrollHeight).toBeGreaterThan(editCapped.height);
+    expect(editCapped.overflowY).toBe('auto');
+    await editText.fill('');
+    expect(await editText.evaluate(node=>node.getBoundingClientRect().height)).toBeLessThan(editGrown);
+    await page.locator('.de-cancel').click();
+  }
 });
 
 test('UX-MOBILE-003: filtros e miniaturas não criam overflow nas quatro larguras',async({page})=>{

@@ -139,6 +139,63 @@ test('shared Assistant uses actual pipeline, dates, canonical preference and amb
  await page.evaluate(()=>{switchView('diary');document.getElementById('aiDiaryInput').value='média AQS 01 em agosto de 2026';generateDiaryAiSuggestion();});await expect(page.locator('#aiGeneralResponse')).toContainText('55 °C');
 });
 
+test('respostas determinísticas respeitam o escopo pedido',async({page})=>{
+ const answers=await page.evaluate(()=>{
+  diaryCache=[
+   {id:'sal-1',date:'2026-02-10',timestamp:'2026-02-10T10:00:00.000Z',text:'Coloquei 10 kg de sal no descalcificador.'},
+   {id:'sal-2',date:'2026-08-20',timestamp:'2026-08-20T10:00:00.000Z',text:'Coloquei 12 kg de sal no descalcificador.'}
+  ];
+  LOGS={};
+  return [
+   'Quantas vezes coloquei sal em 2026?',
+   'Quantos kg de sal coloquei em 2026?',
+   'Em que datas coloquei sal em 2026?',
+   'Mostra os registos de sal em 2026'
+  ].map(question=>buildUnifiedAiAnalysis(question).text);
+ });
+ expect(answers[0]).toBe('2x');
+ expect(answers[1]).toBe('22 kg.');
+ expect(answers[1]).not.toMatch(/Origem|Detalhe|registo/i);
+ expect(answers[2]).toBe('2026-02-10\n2026-08-20');
+ expect(answers[2]).not.toMatch(/Origem|Detalhe|kg/i);
+ expect(answers[3]).toContain('Detalhe:');
+ expect(answers[3]).toContain('2026-02-10');
+});
+
+test('referências temporais relativas usam o período atual sem pedir ficha',async({page})=>{
+ const answers=await page.evaluate(()=>{
+  diaryCache=[
+   {id:'sal-1',date:'2026-02-10',timestamp:'2026-02-10T10:00:00.000Z',text:'Coloquei 10 kg de sal no descalcificador.'},
+   {id:'sal-2',date:'2026-08-20',timestamp:'2026-08-20T10:00:00.000Z',text:'Coloquei 12 kg de sal no descalcificador.'}
+  ];
+  LOGS={};
+  const questions=['Quantas vezes coloquei sal no ano corrente?','Quantas vezes coloquei sal este ano?','Quantas vezes coloquei sal neste ano?','Quantas vezes coloquei sal em 2026?'];
+  return {answers:questions.map(question=>buildUnifiedAiAnalysis(question).text),ambiguous:buildUnifiedAiAnalysis('Quantas vezes coloquei sal no ano?').text,temporal:['mês corrente','hoje'].map(question=>getAiTemporalFilter(question))};
+ });
+ expect(answers.answers).toEqual(['2x','2x','2x','2x']);
+ expect(answers.ambiguous).toBe('Indica o ano pretendido.');
+ expect(answers.temporal[0]).toMatchObject({kind:'current-month',year:2026,month:9,day:null});
+ expect(answers.temporal[1]).toMatchObject({kind:'today',year:2026,month:9,day:14});
+});
+
+test('contagem separa a ação explícita do contexto comprovado',async({page})=>{
+ const result=await page.evaluate(()=>{
+  diaryCache=[
+   {id:'sal-cozinha-1',date:'2026-02-10',fichaId:'20',text:'Colocação de sal no descalcificador.'},
+   {id:'sal-cozinha-2',date:'2026-08-20',fichaId:'20',text:'Colocação de sal no descalcificador.'},
+   {id:'cozinha-sem-sal',date:'2026-04-01',fichaId:'20',text:'Limpeza do equipamento de cozinha.'},
+   {id:'sal-contexto-incompativel',date:'2026-05-01',fichaId:'29',text:'Colocação de sal nas instalações sanitárias.'},
+   {id:'sal-contexto-desconhecido',date:'2026-06-01',text:'Colocação de sal.'}
+  ];
+  LOGS={};
+  const question='Quantas vezes coloquei sal na cozinha?';
+  const facts=collectAiLocalFacts(question);
+  return {answer:buildUnifiedAiAnalysis(question).text,ids:facts.relatedDiary.map(record=>record.id)};
+ });
+ expect(result.answer).toBe('2x');
+ expect(result.ids).toEqual(['sal-cozinha-1','sal-cozinha-2']);
+});
+
 test('mobile 390: form, preview and back fit the viewport',async({page})=>{await page.setViewportSize({width:390,height:844});await open(page);expect(await page.locator('#assistedRoutineModal .confirm-box').evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);await field(page,'aqs1').fill('55');await action(page,'preview').click();await action(page,'back').click();await expect(field(page,'aqs1')).toHaveValue('55');});
 
 test('descrição no Diário sugere categoria sem alterar a seleção humana',async({page})=>{
