@@ -1,0 +1,193 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "registos_diarios": {
+      ".read": "auth != null",
+      "$diaryId": {
+        ".write": "auth != null",
+        ".validate": "!newData.exists() || (newData.hasChildren(['text', 'severity']) && newData.child('text').isString() && (newData.child('severity').val() === 'info' || newData.child('severity').val() === 'aviso' || newData.child('severity').val() === 'urgente'))",
+        "text": { ".validate": "!newData.exists() || newData.isString()" },
+        "severity": { ".validate": "!newData.exists() || newData.val() === 'info' || newData.val() === 'aviso' || newData.val() === 'urgente'" },
+        "timestamp": { ".validate": "!newData.exists() || newData.isString()" },
+        "date": { ".validate": "!newData.exists() || newData.isString()" },
+        "editedAt": { ".validate": "!newData.exists() || newData.isString()" },
+        "fichaId": { ".validate": "!newData.exists() || newData.isString() || newData.isNumber()" },
+        "fichaNome": { ".validate": "!newData.exists() || newData.isString()" },
+        "origin": { ".validate": "!newData.exists() || newData.isString()" },
+        "createdByHuman": { ".validate": "!newData.exists() || newData.isBoolean()" },
+        "operationalIntent": { ".validate": "!newData.exists() || newData.val() === 'task' || newData.val() === 'visit' || newData.val() === 'important'" },
+        "sourceContext": { ".validate": "!newData.exists() || newData.isString()" },
+        "source": { ".validate": "!newData.exists() || newData.val() === 'daily_sheet_operational_report'" },
+        "metadata": {
+          "$field": { ".validate": "newData.isString() || newData.isNumber() || newData.isBoolean()" }
+        },
+        "photos": {
+          "$photo": { ".validate": "newData.isString()" }
+        },
+        "structuredData": {
+          ".validate": "!newData.exists() || (newData.hasChildren(['templateId', 'source', 'measurements', 'checks', 'reportItems']) && newData.child('templateId').isString() && newData.child('source').val() === 'assisted_form')",
+          "templateId": { ".validate": "!newData.exists() || newData.isString()" },
+          "source": { ".validate": "!newData.exists() || newData.val() === 'assisted_form'" },
+          "metadata": {
+            "$field": { ".validate": "newData.isString() || newData.isNumber() || newData.isBoolean()" }
+          },
+          "measurements": {
+            "$index": {
+              ".validate": "newData.hasChildren(['section', 'item', 'type']) && newData.child('section').isString() && newData.child('item').isString() && newData.child('type').isString()",
+              "section": { ".validate": "!newData.exists() || newData.isString()" },
+              "item": { ".validate": "!newData.exists() || newData.isString()" },
+              "type": { ".validate": "!newData.exists() || newData.isString()" },
+              "value": { ".validate": "!newData.exists() || newData.isNumber() || newData.val() === '1/4' || newData.val() === '2/4' || newData.val() === '3/4' || newData.val() === '4/4'" },
+              "unit": { ".validate": "!newData.exists() || newData.isString()" },
+              "status": { ".validate": "!newData.exists() || newData.val() === 'OK' || newData.val() === 'NOK' || newData.val() === 'Não registado'" },
+              "printedUnit": { ".validate": "!newData.exists() || newData.isString()" },
+              "recordedUnit": { ".validate": "!newData.exists() || newData.isString()" },
+              "$other": { ".validate": false }
+            }
+          },
+          "checks": {
+            "$index": {
+              ".validate": "newData.hasChildren(['section', 'item', 'status']) && newData.child('section').isString() && newData.child('item').isString() && (newData.child('status').val() === 'OK' || newData.child('status').val() === 'NOK' || newData.child('status').val() === 'Não registado')",
+              "section": { ".validate": "!newData.exists() || newData.isString()" },
+              "item": { ".validate": "!newData.exists() || newData.isString()" },
+              "status": { ".validate": "!newData.exists() || newData.val() === 'OK' || newData.val() === 'NOK' || newData.val() === 'Não registado'" },
+              "$other": { ".validate": false }
+            }
+          },
+          "reportItems": {
+            "$index": { ".validate": "newData.isString()" }
+          },
+          "$other": { ".validate": false }
+        },
+        "$other": { ".validate": false }
+      }
+    },
+
+    "registos_fichas": {
+      ".read": "auth != null",
+      "$fichaId": {
+        "$entryId": {
+          ".write": "auth != null",
+          ".validate": "!newData.exists() || ((!newData.child('source').exists() && !newData.child('diaryId').exists() && (newData.hasChildren(['date', 'week', 'status', 'tech', 'note', 'created']) || (newData.child('origin').val() === 'Correção de anomalia' && newData.child('confirmation').isString() && (newData.child('resolvesAnomalyId').isString() || newData.child('resolvesAnomalyId').isNumber()) && newData.child('status').val() === 'Concluído' && newData.child('tech').val() === 'Correção de anomalia' && newData.hasChildren(['date', 'week', 'status', 'tech', 'note']))) || (newData.child('source').val() === 'diary' && newData.hasChildren(['id', 'diaryId', 'date', 'week', 'status', 'tech', 'note', 'created']) && newData.child('id').val() === 'diary_' + newData.child('diaryId').val())))",
+          "id": { ".validate": "!newData.exists() || (newData.isString() && newData.val() === $entryId)" },
+          "diaryId": { ".validate": "!newData.exists() || newData.isString()" },
+          "source": { ".validate": "!newData.exists() || newData.val() === 'diary'" },
+          "date": { ".validate": "!newData.exists() || newData.isString()" },
+          "week": { ".validate": "!newData.exists() || newData.isNumber()" },
+          "status": { ".validate": "!newData.exists() || newData.val() === 'Concluído' || newData.val() === 'Pendente' || newData.val() === 'Anomalia'" },
+          "tech": { ".validate": "!newData.exists() || newData.isString()" },
+          "note": { ".validate": "!newData.exists() || newData.isString()" },
+          "created": { ".validate": "!newData.exists() || newData.isNumber()" },
+          "confirmation": { ".validate": "!newData.exists() || (!newData.parent().child('source').exists() && !newData.parent().child('diaryId').exists() && newData.isString())" },
+          "origin": { ".validate": "!newData.exists() || (!newData.parent().child('source').exists() && !newData.parent().child('diaryId').exists() && newData.val() === 'Correção de anomalia')" },
+          "resolvesAnomalyId": { ".validate": "!newData.exists() || (!newData.parent().child('source').exists() && !newData.parent().child('diaryId').exists() && (newData.isString() || newData.isNumber()))" },
+          "structuredData": {
+            ".validate": "!newData.exists() || (newData.hasChildren(['templateId', 'source', 'measurements', 'checks', 'reportItems']) && newData.child('templateId').isString() && newData.child('source').val() === 'assisted_form')",
+            "templateId": { ".validate": "!newData.exists() || newData.isString()" },
+            "source": { ".validate": "!newData.exists() || newData.val() === 'assisted_form'" },
+            "metadata": { "$field": { ".validate": "newData.isString() || newData.isNumber() || newData.isBoolean()" } },
+            "measurements": { "$index": { ".validate": "newData.hasChildren(['section', 'item', 'type']) && newData.child('section').isString() && newData.child('item').isString() && newData.child('type').isString()", "section": { ".validate": "!newData.exists() || newData.isString()" }, "item": { ".validate": "!newData.exists() || newData.isString()" }, "type": { ".validate": "!newData.exists() || newData.isString()" }, "value": { ".validate": "!newData.exists() || newData.isNumber() || newData.val() === '1/4' || newData.val() === '2/4' || newData.val() === '3/4' || newData.val() === '4/4'" }, "unit": { ".validate": "!newData.exists() || newData.isString()" }, "status": { ".validate": "!newData.exists() || newData.val() === 'OK' || newData.val() === 'NOK' || newData.val() === 'Não registado'" }, "printedUnit": { ".validate": "!newData.exists() || newData.isString()" }, "recordedUnit": { ".validate": "!newData.exists() || newData.isString()" }, "$other": { ".validate": false } } },
+            "checks": { "$index": { ".validate": "newData.hasChildren(['section', 'item', 'status']) && newData.child('section').isString() && newData.child('item').isString() && (newData.child('status').val() === 'OK' || newData.child('status').val() === 'NOK' || newData.child('status').val() === 'Não registado')", "section": { ".validate": "!newData.exists() || newData.isString()" }, "item": { ".validate": "!newData.exists() || newData.isString()" }, "status": { ".validate": "!newData.exists() || newData.val() === 'OK' || newData.val() === 'NOK' || newData.val() === 'Não registado'" }, "$other": { ".validate": false } } },
+            "reportItems": { "$index": { ".validate": "newData.isString()" } },
+            "$other": { ".validate": false }
+          },
+          "$other": { ".validate": false }
+        }
+      }
+    },
+
+    "memoria_tecnica": {
+      ".read": "auth != null",
+      "$memoryId": {
+        ".write": "auth != null && !data.exists()",
+        ".validate": "newData.hasChildren(['id', 'status', 'approvedByHuman', 'ruleText', 'basisText', 'createdAt', 'approvedAt', 'version', 'source', 'sourceQuestion', 'sourceRecords']) && newData.child('id').val() === $memoryId && newData.child('status').val() === 'approved' && newData.child('approvedByHuman').val() === true && newData.child('ruleText').isString() && newData.child('basisText').isString() && newData.child('createdAt').isString() && newData.child('approvedAt').isString() && newData.child('version').isNumber() && newData.child('source').val() === 'ai_suggestion' && newData.child('sourceQuestion').isString()",
+        "id": { ".validate": "newData.isString() && newData.val() === $memoryId" },
+        "status": { ".validate": "newData.val() === 'approved'" },
+        "approvedByHuman": { ".validate": "newData.val() === true" },
+        "ruleText": { ".validate": "newData.isString()" },
+        "basisText": { ".validate": "newData.isString()" },
+        "createdAt": { ".validate": "newData.isString()" },
+        "approvedAt": { ".validate": "newData.isString()" },
+        "version": { ".validate": "newData.isNumber()" },
+        "source": { ".validate": "newData.val() === 'ai_suggestion'" },
+        "fichaId": { ".validate": "!newData.exists() || newData.isString() || newData.isNumber()" },
+        "fichaNome": { ".validate": "!newData.exists() || newData.isString()" },
+        "sourceQuestion": { ".validate": "newData.isString()" },
+        "sourceRecords": {
+          "$index": {
+            ".validate": "newData.hasChildren(['text'])",
+            "date": { ".validate": "!newData.exists() || newData.isString()" },
+            "text": { ".validate": "!newData.exists() || newData.isString()" },
+            "severity": { ".validate": "!newData.exists() || newData.isString()" },
+            "origin": { ".validate": "!newData.exists() || newData.isString()" },
+            "recordId": { ".validate": "!newData.exists() || newData.isString() || newData.isNumber()" },
+            "$other": { ".validate": false }
+          }
+        },
+        "$other": { ".validate": false }
+      }
+    },
+
+    "historico_tecnico_diario": {
+      ".read": "auth != null",
+      "$entryId": {
+        ".write": "auth != null && !data.exists()",
+        ".validate": "newData.hasChildren(['id', 'schemaVersion', 'source', 'extractionMode', 'date', 'sheetDateConfirmed', 'imageStored', 'imageDiscarded', 'validatedByHuman', 'requiresHumanReview', 'createdAt', 'readings', 'checks', 'operationalReport']) && newData.child('id').val() === $entryId && newData.child('schemaVersion').val() === 1 && newData.child('source').val() === 'manual_preview' && newData.child('extractionMode').val() === 'manual_simulation' && newData.child('date').isString() && newData.child('sheetDateConfirmed').isBoolean() && newData.child('imageStored').val() === false && newData.child('imageDiscarded').val() === true && newData.child('validatedByHuman').val() === true && newData.child('requiresHumanReview').val() === true && newData.child('createdAt').isString()",
+        "id": { ".validate": "newData.isString() && newData.val() === $entryId" },
+        "schemaVersion": { ".validate": "newData.val() === 1" },
+        "source": { ".validate": "newData.val() === 'manual_preview'" },
+        "extractionMode": { ".validate": "newData.val() === 'manual_simulation'" },
+        "date": { ".validate": "newData.isString()" },
+        "sheetDateConfirmed": { ".validate": "newData.isBoolean()" },
+        "technicianName": { ".validate": "!newData.exists() || newData.isString()" },
+        "imageStored": { ".validate": "newData.val() === false" },
+        "imageDiscarded": { ".validate": "newData.val() === true" },
+        "validatedByHuman": { ".validate": "newData.val() === true" },
+        "requiresHumanReview": { ".validate": "newData.val() === true" },
+        "createdAt": { ".validate": "newData.isString()" },
+        "readings": {
+          "generatorFuelLevel": { ".validate": "newData.hasChildren(['label', 'confidence', 'requiresHumanReview'])" },
+          "electricityMeter": { ".validate": "newData.hasChildren(['label', 'confidence', 'requiresHumanReview'])" },
+          "waterMeter": { ".validate": "newData.hasChildren(['label', 'confidence', 'requiresHumanReview'])" },
+          "gasMeter": { ".validate": "newData.hasChildren(['label', 'confidence', 'requiresHumanReview'])" },
+          "aqsTemperatures": { "$index": { ".validate": "newData.hasChildren(['label', 'confidence', 'requiresHumanReview'])" } },
+          "dishwasherTemperature": { ".validate": "newData.hasChildren(['label', 'confidence', 'requiresHumanReview'])" },
+          "medicalVacuum": { ".validate": "newData.hasChildren(['label', 'confidence', 'requiresHumanReview'])" },
+          "waterAnalysis": {
+            "freeChlorine": { ".validate": "newData.hasChildren(['label', 'confidence', 'requiresHumanReview'])" },
+            "totalChlorine": { ".validate": "newData.hasChildren(['label', 'confidence', 'requiresHumanReview'])" },
+            "ph": { ".validate": "newData.hasChildren(['label', 'confidence', 'requiresHumanReview'])" },
+            "$other": { ".validate": false }
+          },
+          "$other": { ".validate": false }
+        },
+        "checks": {
+          "$index": {
+            ".validate": "newData.hasChildren(['area', 'status', 'confidence', 'requiresHumanReview']) && newData.child('area').isString() && newData.child('status').isString() && newData.child('confidence').isString() && newData.child('requiresHumanReview').isBoolean()",
+            "area": { ".validate": "!newData.exists() || newData.isString()" },
+            "status": { ".validate": "!newData.exists() || newData.isString()" },
+            "rawMark": { ".validate": "!newData.exists() || newData.isString()" },
+            "confidence": { ".validate": "!newData.exists() || newData.isString()" },
+            "requiresHumanReview": { ".validate": "!newData.exists() || newData.isBoolean()" },
+            "$other": { ".validate": false }
+          }
+        },
+        "operationalReport": {
+          ".validate": "newData.hasChildren(['confidence', 'requiresHumanReview', 'suggestedDestinations', 'humanConfirmationRequired']) && newData.child('confidence').isString() && newData.child('requiresHumanReview').isBoolean() && newData.child('humanConfirmationRequired').isBoolean()",
+          "rawText": { ".validate": "!newData.exists() || newData.isString()" },
+          "normalizedText": { ".validate": "!newData.exists() || newData.isString()" },
+          "confidence": { ".validate": "!newData.exists() || newData.isString()" },
+          "requiresHumanReview": { ".validate": "!newData.exists() || newData.isBoolean()" },
+          "suggestedDestinations": { "$index": { ".validate": "newData.isString()" } },
+          "suggestedCategory": { ".validate": "!newData.exists() || newData.isString()" },
+          "suggestedVisibleAction": { ".validate": "!newData.exists() || newData.isString()" },
+          "humanConfirmationRequired": { ".validate": "!newData.exists() || newData.isBoolean()" },
+          "$other": { ".validate": false }
+        },
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}

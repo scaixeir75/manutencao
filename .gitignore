@@ -13,3 +13,6 @@ playwright/.auth/
 tests/reports/
 test-results/
 server/photo-ai-cloudflare/integration/.tmp/
+Downloads/
+database-debug.log
+tests/manual/photo-ai/

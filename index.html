@@ -2812,7 +2812,7 @@ async function markAnomalyAsResolved(fichaId,anomaly){
     : {confirmed:await askConfirm('Queres marcar esta anomalia como corrigida?',{title:'Corrigir anomalia',okText:'Confirmar',danger:false}),date:today};
   if(!correction.confirmed)return;
   const chosen=correction.date;
-  const entry={date:chosen,week:isoWeek(new Date(chosen+'T12:00:00')),status:'Concluído',tech:'Correção de anomalia',note:`Anomalia marcada como corrigida: ${buildAiSummary(anomaly.description)}`,origin:'Correção de anomalia',resolvesAnomalyId:anomaly.id,confirmation:'Confirmação humana'};
+  const entry={date:chosen,week:isoWeek(new Date(chosen+'T12:00:00')),status:'Concluído',tech:'Correção de anomalia',note:`Anomalia marcada como corrigida: ${buildAiSummary(anomaly.description)}`,created:Date.now(),origin:'Correção de anomalia',resolvesAnomalyId:anomaly.id,confirmation:'Confirmação humana'};
   try{await addLog(fichaId,entry);render();if(modalFicha)renderLogList();showToast('Anomalia marcada como corrigida.');}catch(err){console.error(err);showToast('Erro ao registar a correção.','err');}
 }
 
