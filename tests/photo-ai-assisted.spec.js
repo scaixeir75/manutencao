@@ -163,7 +163,8 @@ test('respostas determinísticas respeitam o escopo pedido',async({page})=>{
 });
 
 test('referências temporais relativas usam o período atual sem pedir ficha',async({page})=>{
- const answers=await page.evaluate(()=>{
+  await page.clock.install({time:new Date('2026-09-14T12:00:00.000Z')});
+  const answers=await page.evaluate(()=>{
   diaryCache=[
    {id:'sal-1',date:'2026-02-10',timestamp:'2026-02-10T10:00:00.000Z',text:'Coloquei 10 kg de sal no descalcificador.'},
    {id:'sal-2',date:'2026-08-20',timestamp:'2026-08-20T10:00:00.000Z',text:'Coloquei 12 kg de sal no descalcificador.'}

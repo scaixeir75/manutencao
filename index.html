@@ -1225,7 +1225,7 @@ let toastTimer=null;
 function showToast(msg,type='ok'){
   const t=$('toast');if(!t)return;
   t.className=type==='err'?'err':'';
-  t.innerHTML=`<span class="ti">${type==='err'?'⚠️':'✓'}</span><span>${msg}</span>`;
+  const icon=document.createElement('span'),text=document.createElement('span');icon.className='ti';icon.textContent=type==='err'?'⚠️':'✓';text.textContent=String(msg||'');t.replaceChildren(icon,text);
   t.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>t.classList.remove('show'),2500);
@@ -1517,6 +1517,7 @@ function initTechnicalMemoryListener(){
     technicalMemoryCache=[];
   });
 }
+function safeLogStatus(value){return ['Concluído','Pendente','Anomalia'].includes(String(value))?String(value):'Pendente';}
 window.initTechnicalMemoryListener=initTechnicalMemoryListener;
 
 async function addLog(ficha,entry){
@@ -1834,7 +1835,9 @@ function renderLogList(){
   entries.forEach(e=>{
     const readOnly=isDiaryMirrorEntry(e);
     const pending=pendingAnomalyForEntry(modalFicha,e);const el=document.createElement('div');el.className='logentry'+(pending?' anomaly-pending':'');
-    el.innerHTML=`<div class="lh"><span class="ld">${fmtDate(e.date)}</span><span class="lw">Semana ${pad(e.week)}</span><span class="status ${e.status}">${e.status.toUpperCase()}</span>${pending?'<button class="resolve-anomaly" type="button">Corrigir</button>':readOnly?'<span class="lw">Registo Diário</span>':'<button class="del" title="Apagar">🗑</button>'}</div>${e.tech?'<div class="lt"></div>':''}${e.note?'<div class="ln"></div>':''}`;
+    const status=safeLogStatus(e.status);
+    el.innerHTML=`<div class="lh"><span class="ld"></span><span class="lw"></span><span class="status ${status}"></span>${pending?'<button class="resolve-anomaly" type="button">Corrigir</button>':readOnly?'<span class="lw">Registo Diário</span>':'<button class="del" title="Apagar">🗑</button>'}</div>${e.tech?'<div class="lt"></div>':''}${e.note?'<div class="ln"></div>':''}`;
+    el.querySelector('.ld').textContent=fmtDate(e.date);el.querySelector('.lw').textContent='Semana '+pad(e.week);el.querySelector('.status').textContent=status.toUpperCase();
     if(e.tech)el.querySelector('.lt').textContent='Técnico: '+e.tech;
     if(e.note)el.querySelector('.ln').textContent=e.note;
     const resolveBtn=el.querySelector('.resolve-anomaly');
@@ -1956,7 +1959,9 @@ function buildReportBody(){
     });
     sortedLogs.forEach(e=>{
       const pending=pendingAnomalyForEntry(f,e);const el=document.createElement('div');el.className='logentry'+(pending?' anomaly-pending':'');
-      el.innerHTML=`<div class="lh"><span class="ld">${fmtDate(e.date)}</span><span class="lw">Semana ${pad(e.week)}</span><span class="status ${e.status}">${e.status.toUpperCase()}</span></div>${e.tech?'<div class="lt"></div>':''}${e.note?'<div class="ln"></div>':''}`;
+      const status=safeLogStatus(e.status);
+      el.innerHTML=`<div class="lh"><span class="ld"></span><span class="lw"></span><span class="status ${status}"></span></div>${e.tech?'<div class="lt"></div>':''}${e.note?'<div class="ln"></div>':''}`;
+      el.querySelector('.ld').textContent=fmtDate(e.date);el.querySelector('.lw').textContent='Semana '+pad(e.week);el.querySelector('.status').textContent=status.toUpperCase();
       if(e.tech)el.querySelector('.lt').textContent='Técnico: '+e.tech;
       if(e.note)el.querySelector('.ln').textContent=e.note;
       if(pending){el.setAttribute('role','button');el.tabIndex=0;const resolve=()=>markAnomalyAsResolved(f,pending);el.onclick=resolve;el.onkeydown=event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();resolve();}};}
@@ -4117,11 +4122,13 @@ function compressImage(file){
 
 function renderPhotoThumbs(){
   const wrap=$('photoThumbs');
-  wrap.innerHTML=pendingPhotos.map((src,i)=>`
-    <div class="photo-thumb">
-      <img src="${src}" alt="Foto ${i+1}">
-      <button type="button" class="pt-remove" onclick="removePendingPhoto(${i})">✕</button>
-    </div>`).join('');
+  wrap.replaceChildren();
+  pendingPhotos.forEach((src,i)=>{
+    if(!isSafePhotoSrc(src))return;
+    const thumb=document.createElement('div'),img=document.createElement('img'),remove=document.createElement('button');
+    thumb.className='photo-thumb';img.src=src;img.alt=`Foto ${i+1}`;remove.type='button';remove.className='pt-remove';remove.textContent='✕';remove.addEventListener('click',()=>removePendingPhoto(i));
+    thumb.append(img,remove);wrap.appendChild(thumb);
+  });
 }
 function removePendingPhoto(i){pendingPhotos.splice(i,1);renderPhotoThumbs();resetDiaryAssistant();}
 window.removePendingPhoto=removePendingPhoto;
@@ -4175,7 +4182,8 @@ document.addEventListener('input',event=>{
 resizeDiaryTextarea($('diaryText'));
 
 /* ── Lightbox (ver foto ampliada) ── */
-function openLightbox(src){$('lbImg').src=src;$('lightbox').classList.add('open');}
+function isSafePhotoSrc(src){return typeof src==='string'&&/^data:image\/(?:png|jpe?g|webp|gif);base64,[a-z0-9+/=\s]+$/i.test(src);}
+function openLightbox(src){if(!isSafePhotoSrc(src))return;$('lbImg').src=src;$('lightbox').classList.add('open');}
 window.openLightbox=openLightbox;
 $('lbClose').onclick=()=>{$('lightbox').classList.remove('open');$('lbImg').src='';};
 $('lightbox').onclick=(e)=>{if(e.target===$('lightbox')){$('lightbox').classList.remove('open');$('lbImg').src='';}};
@@ -4332,7 +4340,7 @@ function startEditDiary(id){
     alert('Este registo já não pode ser editado (mais de 7 dias).');
     renderDiary();return;
   }
-  const card=document.querySelector(`.diary-entry[data-id="${id}"]`);
+  const card=[...document.querySelectorAll('.diary-entry')].find(node=>node.dataset.id===String(id));
   if(!card)return;
   const textDiv=card.querySelector('.de-text');
   const actions=card.querySelector('.de-actions');
@@ -4341,45 +4349,33 @@ function startEditDiary(id){
   actions.style.display='none';
   const box=document.createElement('div');
   box.className='de-editbox';
-  box.innerHTML=`
-    <textarea id="editText-${id}"></textarea>
-    <div class="de-editrow">
-      <input type="date" id="editDate-${id}">
-      <select id="editSev-${id}">
-        <option value="info">✅ Tarefa</option>
-        <option value="aviso">👁️ Visita</option>
-        <option value="urgente">🚨 Importante</option>
-      </select>
-    </div>
-    <div class="de-editrow">
-      <select id="editFicha-${id}">
-        <option value="">— Nenhum —</option>
-      </select>
-    </div>
-    <div class="de-editbtns">
-      <button class="de-save" onclick="saveEditDiary('${id}')">GUARDAR</button>
-      <button class="de-cancel" onclick="cancelEditDiary('${id}')">Cancelar</button>
-    </div>`;
+  const editText=document.createElement('textarea'),dateRow=document.createElement('div'),editDate=document.createElement('input'),editSev=document.createElement('select'),fichaRow=document.createElement('div'),editFicha=document.createElement('select'),buttons=document.createElement('div'),save=document.createElement('button'),cancel=document.createElement('button');
+  editText.id='editText-'+id;editDate.id='editDate-'+id;editFicha.id='editFicha-'+id;editSev.id='editSev-'+id;editDate.type='date';dateRow.className='de-editrow';fichaRow.className='de-editrow';buttons.className='de-editbtns';save.className='de-save';save.textContent='GUARDAR';cancel.className='de-cancel';cancel.textContent='Cancelar';
+  [['info','✅ Tarefa'],['aviso','👁️ Visita'],['urgente','🚨 Importante']].forEach(([value,label])=>{const option=document.createElement('option');option.value=value;option.textContent=label;editSev.appendChild(option);});
+  const emptyOption=document.createElement('option');emptyOption.value='';emptyOption.textContent='— Nenhum —';editFicha.appendChild(emptyOption);
+  dateRow.append(editDate,editSev);fichaRow.appendChild(editFicha);buttons.append(save,cancel);box.append(editText,dateRow,fichaRow,buttons);
+  save.addEventListener('click',()=>saveEditDiary(id,box));cancel.addEventListener('click',()=>cancelEditDiary(id));
   card.appendChild(box);
-  populateFichaSelect($('editFicha-'+id));
-  const editText=$('editText-'+id);
+  populateFichaSelect(editFicha);
   editText.value=e.text||'';
   resizeDiaryTextarea(editText);
-  $('editDate-'+id).value=e.date||(e.timestamp?e.timestamp.slice(0,10):'');
-  $('editSev-'+id).value=e.severity||'info';
-  $('editFicha-'+id).value=e.fichaId||'';
+  editDate.value=e.date||(e.timestamp?e.timestamp.slice(0,10):'');
+  editSev.value=e.severity||'info';
+  editFicha.value=e.fichaId||'';
   editText.focus();
 }
 window.startEditDiary=startEditDiary;
 
-async function saveEditDiary(id){
+async function saveEditDiary(id,box=null){
   const e=diaryCache.find(x=>x.id===id);
   if(!e||!canEditAssistedEntry(e))return;
-  const newText=$('editText-'+id).value.trim();
+  const form=box||document;
+  const newText=(form.querySelector('.de-editbox textarea')||$('editText-'+id)).value.trim();
   if(!newText){alert('A descrição não pode ficar vazia.');return;}
-  const newDate=$('editDate-'+id).value;
-  const newSev=$('editSev-'+id).value;
-  const newFichaId=$('editFicha-'+id)&&$('editFicha-'+id).value?$('editFicha-'+id).value:'';
+  const newDate=(form.querySelector('.de-editbox input[type="date"]')||$('editDate-'+id)).value;
+  const newSev=(form.querySelector('.de-editbox select')||$('editSev-'+id)).value;
+  const fichaSelect=form.querySelectorAll('.de-editbox select')[1]||$('editFicha-'+id);
+  const newFichaId=fichaSelect&&fichaSelect.value?fichaSelect.value:'';
   try{
     const updated={
       ...e,
@@ -4411,6 +4407,7 @@ function cancelEditDiary(id){
 window.cancelEditDiary=cancelEditDiary;
 
 const SEV_LABELS={info:'✅ Tarefa',aviso:'👁️ Visita',urgente:'🚨 Importante'};
+function safeDiarySeverity(value){return Object.hasOwn(SEV_LABELS,String(value))?String(value):'info';}
 function fmtDiaryDate(iso){const d=new Date(iso);return d.toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit',year:'numeric'})+' às '+d.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'});}
 function escapeHtml(str){const d=document.createElement('div');d.textContent=str;return d.innerHTML;}
 
@@ -4505,29 +4502,27 @@ function renderDiary(){
   const now=Date.now();
   const SETE_DIAS=7*24*60*60*1000;
 
-  list.innerHTML=visible.map((e,i)=>{
-    const editavel=e.timestamp && (now-new Date(e.timestamp).getTime())<SETE_DIAS;
-    return `
-    <div class="diary-entry ${e.severity}" style="animation-delay:${i*22}ms" data-id="${e.id}">
-      <div class="de-top">
-        <div class="de-meta">
-          <span class="date">${e.date?fmtDate(e.date):fmtDiaryDate(e.timestamp)}</span>
-          ${e.date&&e.timestamp&&e.date!==e.timestamp.slice(0,10)?`<span class="reg-ts"> · registado em ${fmtDiaryDate(e.timestamp)}</span>`:''}
-        </div>
-        <span class="de-badge ${e.severity}">${SEV_LABELS[e.severity]||e.severity}</span>
-      </div>
-      ${e.fichaNome?`<div style="color:var(--accent);font-size:11px;font-weight:800;letter-spacing:.5px;margin-bottom:4px">📋 Ficha ${e.fichaId} — ${e.fichaNome}</div>`:''}
-      <div class="de-text" id="detext-${e.id}">${highlight(escapeHtml(e.text),diaryQ)}</div>
-      ${Array.isArray(e.photos)&&e.photos.length?`<div class="de-photos">${e.photos.map(src=>`<div class="de-photo" onclick="openLightbox('${src}')"><img src="${src}" alt="Foto do registo"></div>`).join('')}</div>`:''}
-      ${e.editedAt?`<div class="de-edited">editado em ${fmtDiaryDate(e.editedAt)}</div>`:''}
-      <div class="de-actions">
-        ${editavel?`<button class="de-edit" onclick="startEditDiary('${e.id}')">✏️ Editar</button>`:''}
-        ${e.structuredData&&editavel&&String(e.fichaId)==='44'?`<button class="de-edit" onclick="openAssistedRoutineForm('${e.fichaId||''}',diaryCache.find(x=>x.id==='${e.id}'))">📝 Dados da folha</button>`:''}
-        <button class="de-del" onclick="deleteDiary('${e.id}')">🗑 Eliminar</button>
-        ${!editavel?`<span class="de-locked">🔒 Bloqueado (>7 dias)</span>`:''}
-      </div>
-    </div>`;
-  }).join('');
+  list.replaceChildren();
+  const fragment=document.createDocumentFragment();
+  visible.forEach((e,i)=>{
+    const severity=safeDiarySeverity(e.severity),id=String(e.id||''),editavel=e.timestamp&&(now-new Date(e.timestamp).getTime())<SETE_DIAS;
+    const card=document.createElement('div'),top=document.createElement('div'),meta=document.createElement('div'),date=document.createElement('span'),badge=document.createElement('span'),text=document.createElement('div'),actions=document.createElement('div');
+    card.className='diary-entry '+severity;card.dataset.id=id;card.style.animationDelay=(i*22)+'ms';top.className='de-top';meta.className='de-meta';date.className='date';date.textContent=e.date?fmtDate(e.date):fmtDiaryDate(e.timestamp);badge.className='de-badge '+severity;badge.textContent=SEV_LABELS[severity];meta.appendChild(date);
+    if(e.date&&e.timestamp&&e.date!==e.timestamp.slice(0,10)){const registered=document.createElement('span');registered.className='reg-ts';registered.textContent=' · registado em '+fmtDiaryDate(e.timestamp);meta.appendChild(registered);}
+    top.append(meta,badge);card.appendChild(top);
+    if(e.fichaNome){const ficha=document.createElement('div');ficha.style.cssText='color:var(--accent);font-size:11px;font-weight:800;letter-spacing:.5px;margin-bottom:4px';ficha.textContent=`📋 Ficha ${e.fichaId??''} — ${e.fichaNome}`;card.appendChild(ficha);}
+    text.className='de-text';text.id='detext-'+id;text.innerHTML=highlight(escapeHtml(e.text),diaryQ);card.appendChild(text);
+    const safePhotos=(Array.isArray(e.photos)?e.photos:[]).filter(isSafePhotoSrc);
+    if(safePhotos.length){const photos=document.createElement('div');photos.className='de-photos';safePhotos.forEach(src=>{const photo=document.createElement('div'),img=document.createElement('img');photo.className='de-photo';img.src=src;img.alt='Foto do registo';photo.appendChild(img);photo.addEventListener('click',()=>openLightbox(src));photos.appendChild(photo);});card.appendChild(photos);}
+    if(e.editedAt){const edited=document.createElement('div');edited.className='de-edited';edited.textContent='editado em '+fmtDiaryDate(e.editedAt);card.appendChild(edited);}
+    actions.className='de-actions';
+    if(editavel){const edit=document.createElement('button');edit.className='de-edit';edit.textContent='✏️ Editar';edit.addEventListener('click',()=>startEditDiary(id));actions.appendChild(edit);}
+    if(e.structuredData&&editavel&&String(e.fichaId)==='44'){const assisted=document.createElement('button');assisted.className='de-edit';assisted.textContent='📝 Dados da folha';assisted.addEventListener('click',()=>openAssistedRoutineForm(String(e.fichaId),e));actions.appendChild(assisted);}
+    const remove=document.createElement('button');remove.className='de-del';remove.textContent='🗑 Eliminar';remove.addEventListener('click',()=>deleteDiary(id));actions.appendChild(remove);
+    if(!editavel){const locked=document.createElement('span');locked.className='de-locked';locked.textContent='🔒 Bloqueado (>7 dias)';actions.appendChild(locked);}
+    card.appendChild(actions);fragment.appendChild(card);
+  });
+  list.appendChild(fragment);
 
   if(filtered.length>diaryVisibleCount){
     moreBtn.style.display='block';
