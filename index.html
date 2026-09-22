@@ -1109,29 +1109,74 @@ mark.hl-match{background:rgba(240,165,0,.3);color:var(--text);border-radius:3px;
 
 /* ═══ AUTENTICAÇÃO (porta de entrada) ═══ */
 let authReady=false,diaryListenerStarted=false;
+let authSessionGeneration=0,activeAuthSession=null;
+const firebaseSessionUnsubscribers=new Set();
+function isActiveAuthSession(session){return !!session&&activeAuthSession===session&&session.generation===authSessionGeneration;}
+function cancelFirebaseSessionListeners(){
+  firebaseSessionUnsubscribers.forEach(stop=>{try{stop();}catch(e){}});
+  firebaseSessionUnsubscribers.clear();
+}
+function registerFirebaseSessionListener(session,stop){
+  if(typeof stop!=='function')return;
+  if(!isActiveAuthSession(session)){try{stop();}catch(e){};return;}
+  firebaseSessionUnsubscribers.add(stop);
+}
+function clearAuthenticatedSessionState(){
+  cancelFirebaseSessionListeners();
+  activeAuthSession=null;authSessionGeneration++;
+  diaryListenerStarted=false;fichasListenerStarted=false;technicalMemoryListenerStarted=false;
+  diaryCache=[];LOGS={};technicalMemoryCache=[];modalFicha=null;
+  diaryFichaSyncBusy=false;diaryFichaSyncPending=false;
+  if(isListening)stopListening();
+  if(aiActiveDictation?.rec){try{aiActiveDictation.rec.stop();}catch(e){}}
+  aiActiveDictation=null;aiSuggestionText='';baseText='';interimText='';
+  securityViolationCount=0;isAiSecurityBlocked=false;
+  currentSeverity='info';document.querySelectorAll('.sev-btn').forEach(button=>button.classList.toggle('active',button.dataset.level==='info'));
+  diaryQ='';diaryFrom='';diaryTo='';diaryVisibleCount=DIARY_PAGE_SIZE;
+  reportFilter=new Set();reportDateFrom='';reportDateTo='';
+  document.getElementById('assistedRoutineModal')?.closeAssisted?.();
+  clearPhotoAiSession();pendingPhotos=[];renderPhotoThumbs();
+  ['diaryList','logList','reportBody','searchView'].forEach(id=>$(id)?.replaceChildren());
+  $('overlay')?.classList.remove('open');$('lightbox')?.classList.remove('open');if($('lbImg'))$('lbImg').src='';
+  if($('confirmOverlay')?.classList.contains('open'))$('confirmCancel')?.click();
+  $('confirmOverlay')?.classList.remove('open');
+  if($('diaryText')){$('diaryText').value='';resizeDiaryTextarea($('diaryText'));}
+  if($('diaryFicha'))$('diaryFicha').value='';if($('diaryQuery'))$('diaryQuery').value='';
+  ['diaryFrom','diaryTo'].forEach(id=>{if($(id))$(id).value='';});
+  if($('diaryFilter'))$('diaryFilter').value='';if($('diaryCount'))$('diaryCount').textContent='';
+  resetDiaryAssistant({clearInput:true,forceInitialState:true});resetPlanAssistant({clearInput:true});
+  if($('searchView'))$('searchView').style.display='none';if($('reportView'))$('reportView').style.display='none';if($('planView'))$('planView').style.display='block';
+  setSyncStatus('pending','Sessão terminada');
+}
+window.cleanupAuthenticatedSession=clearAuthenticatedSessionState;
 function initAuthGate(){
   if(!window.fbAuth){setTimeout(initAuthGate,200);return;}
   const{auth,onAuthStateChanged}=window.fbAuth;
   onAuthStateChanged(auth,(user)=>{
     if(user){
+      if(activeAuthSession?.uid!==user.uid){
+        if(activeAuthSession)clearAuthenticatedSessionState();
+        activeAuthSession={uid:user.uid,generation:++authSessionGeneration};
+      }
+      const session=activeAuthSession;
       // sessão iniciada → mostra a app, esconde o login
       document.getElementById('loginScreen').classList.add('hidden');
       // arranca os listeners (fichas + registos diários) só agora, após autenticação
       if(!diaryListenerStarted&&typeof window.initDiaryListener==='function'){
         diaryListenerStarted=true;
-        window.initDiaryListener();
+        window.initDiaryListener(session);
       }
       if(!fichasListenerStarted&&typeof window.initFichasListener==='function'){
         fichasListenerStarted=true;
-        window.initFichasListener();
+        window.initFichasListener(session);
       }
       if(!technicalMemoryListenerStarted&&typeof window.initTechnicalMemoryListener==='function'){
         technicalMemoryListenerStarted=true;
-        window.initTechnicalMemoryListener();
+        window.initTechnicalMemoryListener(session);
       }
     }else{
       // sem sessão → mostra o login, esconde a app
-      clearPhotoAiSession();
+      clearAuthenticatedSessionState();
       document.getElementById('loginScreen').classList.remove('hidden');
     }
   });
@@ -1174,7 +1219,7 @@ function initAuthGate(){
   document.getElementById('loginEmail').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('loginPass').focus();});
   // botão de sair
   const lo=document.getElementById('logoutBtn');
-  if(lo)lo.onclick=async()=>{const ok=await askConfirm('Tens a certeza que queres terminar a sessão?',{title:'Terminar sessão',okText:'Sair',danger:false});if(!ok)return;try{await window.fbAuth.signOut(window.fbAuth.auth);location.reload();}catch(e){}};
+  if(lo)lo.onclick=async()=>{const ok=await askConfirm('Tens a certeza que queres terminar a sessão?',{title:'Terminar sessão',okText:'Sair',danger:false});if(!ok)return;try{await window.fbAuth.signOut(window.fbAuth.auth);}catch(e){}};
 }
 window.initAuthGate=initAuthGate;
 if(window.fbAuth)initAuthGate();
@@ -1437,7 +1482,8 @@ function mergedLogsFor(f){
 const logsFor=f=>mergedLogsFor(String(f));
 const logCount=f=>logsFor(f).length;
 async function syncDiaryEntriesToFichaHistory(){
-  if(!window.fb||!Array.isArray(diaryCache))return;
+  const session=activeAuthSession;
+  if(!isActiveAuthSession(session)||!window.fb||!Array.isArray(diaryCache))return;
   if(diaryFichaSyncBusy){diaryFichaSyncPending=true;return;}
   diaryFichaSyncBusy=true;
   try{
@@ -1455,17 +1501,19 @@ async function syncDiaryEntriesToFichaHistory(){
       });
     });
     for(const[path,entry]of desired){
+      if(!isActiveAuthSession(session))return;
       const current=existing.get(path);
       if(!sameDiaryMirrorEntry(current,entry))await set(ref(db,'registos_fichas/'+path),entry);
     }
     for(const[path]of existing){
+      if(!isActiveAuthSession(session))return;
       if(!desired.has(path))await remove(ref(db,'registos_fichas/'+path));
     }
   }catch(err){
     console.error(err);
   }finally{
     diaryFichaSyncBusy=false;
-    if(diaryFichaSyncPending){diaryFichaSyncPending=false;syncDiaryEntriesToFichaHistory();}
+    if(diaryFichaSyncPending&&isActiveAuthSession(session)){diaryFichaSyncPending=false;syncDiaryEntriesToFichaHistory();}
   }
 }
 
@@ -1476,11 +1524,13 @@ function setSyncStatus(state,text){
   label.textContent=text;
 }
 
-function initFichasListener(){
-  if(!window.fb){setTimeout(initFichasListener,200);return;}
+function initFichasListener(session=activeAuthSession){
+  if(!isActiveAuthSession(session))return;
+  if(!window.fb){setTimeout(()=>initFichasListener(session),200);return;}
   setSyncStatus('pending','A ligar…');
   const{db,ref,onValue}=window.fb;
-  onValue(ref(db,'registos_fichas'),(snap)=>{
+  const stop=onValue(ref(db,'registos_fichas'),(snap)=>{
+    if(!isActiveAuthSession(session))return;
     const raw=snap.val()||{};
     LOGS={};
     for(const[ficha,entries]of Object.entries(raw)){
@@ -1494,16 +1544,20 @@ function initFichasListener(){
     if($('reportView')&&$('reportView').style.display!=='none')buildReportBody();
     syncDiaryEntriesToFichaHistory();
   },(err)=>{
+    if(!isActiveAuthSession(session))return;
     console.error(err);
     setSyncStatus('err','Sem ligação');
   });
+  registerFirebaseSessionListener(session,stop);
 }
 window.initFichasListener=initFichasListener;
 
-function initTechnicalMemoryListener(){
-  if(!window.fb||!window.firebaseReady){setTimeout(initTechnicalMemoryListener,300);return;}
+function initTechnicalMemoryListener(session=activeAuthSession){
+  if(!isActiveAuthSession(session))return;
+  if(!window.fb||!window.firebaseReady){setTimeout(()=>initTechnicalMemoryListener(session),300);return;}
   const{db,ref,onValue}=window.fb;
-  onValue(ref(db,'memoria_tecnica'),snap=>{
+  const stop=onValue(ref(db,'memoria_tecnica'),snap=>{
+    if(!isActiveAuthSession(session))return;
     const raw=snap.val();
     if(!raw||typeof raw!=='object'){technicalMemoryCache=[];return;}
     try{
@@ -1513,9 +1567,11 @@ function initTechnicalMemoryListener(){
       technicalMemoryCache=[];
     }
   },error=>{
+    if(!isActiveAuthSession(session))return;
     console.error(error);
     technicalMemoryCache=[];
   });
+  registerFirebaseSessionListener(session,stop);
 }
 function safeLogStatus(value){return ['Concluído','Pendente','Anomalia'].includes(String(value))?String(value):'Pendente';}
 window.initTechnicalMemoryListener=initTechnicalMemoryListener;
@@ -4276,10 +4332,12 @@ document.addEventListener('click',event=>{
 });
 resetDiaryAssistant({clearInput:false,forceInitialState:true});
 
-function initDiaryListener(){
-  if(!window.firebaseReady){setTimeout(initDiaryListener,300);return;}
+function initDiaryListener(session=activeAuthSession){
+  if(!isActiveAuthSession(session))return;
+  if(!window.firebaseReady){setTimeout(()=>initDiaryListener(session),300);return;}
   const{db,ref,onValue}=window.fb;
-  onValue(ref(db,'registos_diarios'),(snap)=>{
+  const stop=onValue(ref(db,'registos_diarios'),(snap)=>{
+    if(!isActiveAuthSession(session))return;
     const val=snap.val()||{};
     diaryCache=Object.keys(val).map(k=>({id:k,...val[k]}));
     // Ordena sempre por quando foi REGISTADO (timestamp), não pela data da ocorrência.
@@ -4289,6 +4347,7 @@ function initDiaryListener(){
     renderDiary();
     syncDiaryEntriesToFichaHistory();
   });
+  registerFirebaseSessionListener(session,stop);
 }
 window.initDiaryListener=initDiaryListener;
 
