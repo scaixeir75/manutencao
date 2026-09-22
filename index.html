@@ -1127,6 +1127,7 @@ function clearAuthenticatedSessionState(){
   diaryListenerStarted=false;fichasListenerStarted=false;technicalMemoryListenerStarted=false;
   diaryCache=[];LOGS={};technicalMemoryCache=[];modalFicha=null;
   diaryFichaSyncBusy=false;diaryFichaSyncPending=false;
+  clearTimeout(diaryMirrorRetryTimer);diaryMirrorRetryTimer=null;diaryMirrorRetryAttempted=false;diaryMirrorSyncIssue=false;
   if(isListening)stopListening();
   if(aiActiveDictation?.rec){try{aiActiveDictation.rec.stop();}catch(e){}}
   aiActiveDictation=null;aiSuggestionText='';baseText='';interimText='';
@@ -1442,8 +1443,10 @@ let technicalMemoryListenerStarted=false;
 let modalFicha=null;
 let diaryFichaSyncBusy=false;
 let diaryFichaSyncPending=false;
+let diaryMirrorSyncIssue=false,diaryMirrorRetryTimer=null,diaryMirrorRetryAttempted=false;
 function getDiaryMirrorId(diaryId){return 'diary_'+diaryId;}
 function isDiaryMirrorEntry(entry){return !!(entry&&entry.source==='diary'&&entry.diaryId);}
+function isDiaryMirrorKey(entryId){return /^diary_.+/.test(String(entryId||''));}
 function getDiaryMirrorStatus(entry){
   if(entry.severity==='urgente')return 'Anomalia';
   if(entry.severity==='aviso')return 'Pendente';
@@ -1464,8 +1467,13 @@ function buildDiaryMirrorEntry(entry){
     ...(entry.structuredData?{structuredData:entry.structuredData}:{})
   };
 }
+function stableMirrorValue(value){
+  if(Array.isArray(value))return value.map(stableMirrorValue);
+  if(value&&typeof value==='object')return Object.keys(value).sort().reduce((out,key)=>{out[key]=stableMirrorValue(value[key]);return out;},{});
+  return value;
+}
 function sameDiaryMirrorEntry(a,b){
-  return !!a&&!!b&&a.date===b.date&&a.week===b.week&&a.status===b.status&&a.tech===b.tech&&a.note===b.note&&a.created===b.created&&a.diaryId===b.diaryId&&a.source===b.source&&JSON.stringify(a.structuredData||null)===JSON.stringify(b.structuredData||null);
+  return !!a&&!!b&&JSON.stringify(stableMirrorValue(a))===JSON.stringify(stableMirrorValue(b));
 }
 function mergedLogsFor(f){
   const merged=new Map();
@@ -1481,9 +1489,14 @@ function mergedLogsFor(f){
 }
 const logsFor=f=>mergedLogsFor(String(f));
 const logCount=f=>logsFor(f).length;
-async function syncDiaryEntriesToFichaHistory(){
+function scheduleDiaryMirrorRetry(session){
+  if(diaryMirrorRetryTimer||diaryMirrorRetryAttempted||!isActiveAuthSession(session))return;
+  diaryMirrorRetryAttempted=true;
+  diaryMirrorRetryTimer=setTimeout(()=>{diaryMirrorRetryTimer=null;if(isActiveAuthSession(session))syncDiaryEntriesToFichaHistory({notify:true});},1500);
+}
+async function syncDiaryEntriesToFichaHistory({notify=false}={}){
   const session=activeAuthSession;
-  if(!isActiveAuthSession(session)||!window.fb||!Array.isArray(diaryCache))return;
+  if(!isActiveAuthSession(session)||!window.fb||!Array.isArray(diaryCache))return {ok:false,skipped:true};
   if(diaryFichaSyncBusy){diaryFichaSyncPending=true;return;}
   diaryFichaSyncBusy=true;
   try{
@@ -1497,20 +1510,29 @@ async function syncDiaryEntriesToFichaHistory(){
     const existing=new Map();
     Object.entries(LOGS).forEach(([fichaId,entries])=>{
       (entries||[]).forEach(entry=>{
-        if(isDiaryMirrorEntry(entry)&&entry.id)existing.set(String(fichaId)+'/'+entry.id,entry);
+        if(isDiaryMirrorKey(entry.id)&&isDiaryMirrorEntry(entry))existing.set(String(fichaId)+'/'+entry.id,entry);
       });
     });
+    let repaired=0;
     for(const[path,entry]of desired){
       if(!isActiveAuthSession(session))return;
       const current=existing.get(path);
-      if(!sameDiaryMirrorEntry(current,entry))await set(ref(db,'registos_fichas/'+path),entry);
+      if(!sameDiaryMirrorEntry(current,entry)){await set(ref(db,'registos_fichas/'+path),entry);repaired++;}
     }
     for(const[path]of existing){
       if(!isActiveAuthSession(session))return;
-      if(!desired.has(path))await remove(ref(db,'registos_fichas/'+path));
+      if(!desired.has(path)){await remove(ref(db,'registos_fichas/'+path));repaired++;}
     }
+    if(diaryMirrorSyncIssue&&notify)showToast('Histórico derivado sincronizado.');
+    diaryMirrorRetryAttempted=false;
+    diaryMirrorSyncIssue=false;
+    return {ok:true,repaired};
   }catch(err){
     console.error(err);
+    diaryMirrorSyncIssue=true;
+    if(notify)showToast('O Registo Diário foi guardado, mas o Histórico derivado ainda não foi sincronizado.','err');
+    scheduleDiaryMirrorRetry(session);
+    return {ok:false};
   }finally{
     diaryFichaSyncBusy=false;
     if(diaryFichaSyncPending&&isActiveAuthSession(session)){diaryFichaSyncPending=false;syncDiaryEntriesToFichaHistory();}
@@ -1542,7 +1564,7 @@ function initFichasListener(session=activeAuthSession){
     render();
     if(typeof modalFicha!=='undefined'&&modalFicha)renderLogList();
     if($('reportView')&&$('reportView').style.display!=='none')buildReportBody();
-    syncDiaryEntriesToFichaHistory();
+    syncDiaryEntriesToFichaHistory({notify:true});
   },(err)=>{
     if(!isActiveAuthSession(session))return;
     console.error(err);
@@ -4345,7 +4367,7 @@ function initDiaryListener(session=activeAuthSession){
     // da ocorrência seja anterior a outros já existentes.
     diaryCache.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
     renderDiary();
-    syncDiaryEntriesToFichaHistory();
+    syncDiaryEntriesToFichaHistory({notify:true});
   });
   registerFirebaseSessionListener(session,stop);
 }
@@ -4383,7 +4405,7 @@ async function deleteDiary(id){
     await remove(ref(db,'registos_diarios/'+id));
     diaryCache=diaryCache.filter(entry=>entry.id!==id);
     renderDiary();
-    syncDiaryEntriesToFichaHistory();
+    syncDiaryEntriesToFichaHistory({notify:true});
   }
   catch(err){alert('Erro ao eliminar.');}
 }
