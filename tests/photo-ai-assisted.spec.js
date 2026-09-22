@@ -57,7 +57,7 @@ test('real UI: preview/back/correction/save → canonical diary → exactly one 
 });
 
 const editFixture=()=>({
- severity:'aviso',metadata:{reference:'synthetic',revision:2},origin:'existing-origin',photos:['existing-photo'],
+ severity:'aviso',metadata:{reference:'synthetic',revision:2},origin:'existing-origin',photos:['data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aT1sAAAAASUVORK5CYII='],
  structuredData:{source:'assisted_form',templateId:'rotina-diaria-v1',metadata:{document:'synthetic-sheet'},measurements:[
   {section:'aqs',item:'01',type:'temperature',value:55,unit:'°C',status:'OK',printedUnit:'°C',recordedUnit:'°C'},
   {section:'aqs',item:'02',type:'temperature',value:60,unit:'°C'},

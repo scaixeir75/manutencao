@@ -4164,16 +4164,39 @@ document.querySelectorAll('.sev-btn').forEach(b=>{
 let pendingPhotos=[]; // array de strings dataURL (já comprimidas)
 const MAX_PHOTO_DIM=1280;   // lado maior máximo em pixels
 const PHOTO_QUALITY=0.7;    // qualidade JPEG
+const MAX_DIARY_PHOTOS=4;
+const MAX_DIARY_PHOTO_INPUT_BYTES=10*1024*1024;
+const MAX_DIARY_PHOTO_DATA_URL_BYTES=1024*1024;
+const MAX_DIARY_PHOTOS_TOTAL_BYTES=3*1024*1024;
+const DIARY_PHOTO_MIME_TYPES=new Set(['image/png','image/jpeg','image/webp','image/gif']);
+
+function diaryPhotoError(message){const error=new Error(message);error.code='DIARY_PHOTO_LIMIT';return error;}
+function diaryPhotoDataUrlBytes(dataUrl){return new TextEncoder().encode(dataUrl).byteLength;}
+function validateDiaryPhotoSet(photos){
+  if(!Array.isArray(photos))throw diaryPhotoError('Fotografias inválidas.');
+  if(photos.length>MAX_DIARY_PHOTOS)throw diaryPhotoError(`Máximo de ${MAX_DIARY_PHOTOS} fotografias por registo.`);
+  let total=0;
+  for(const photo of photos){
+    if(!isSafePhotoSrc(photo))throw diaryPhotoError('Formato de fotografia não permitido.');
+    const bytes=diaryPhotoDataUrlBytes(photo);
+    if(bytes>MAX_DIARY_PHOTO_DATA_URL_BYTES)throw diaryPhotoError('Uma fotografia continua demasiado grande após o processamento.');
+    total+=bytes;
+  }
+  if(total>MAX_DIARY_PHOTOS_TOTAL_BYTES)throw diaryPhotoError('O conjunto de fotografias é demasiado grande para este registo.');
+  return photos.slice();
+}
+function validateDiaryPhotoFile(file){
+  if(!file||!DIARY_PHOTO_MIME_TYPES.has(file.type))throw diaryPhotoError('Seleciona apenas imagens PNG, JPEG, WebP ou GIF.');
+  if(!file.size)throw diaryPhotoError('A fotografia não contém dados.');
+  if(file.size>MAX_DIARY_PHOTO_INPUT_BYTES)throw diaryPhotoError('A fotografia excede 10 MB antes do processamento.');
+}
 
 // Comprime uma imagem (File) para dataURL JPEG reduzido
 function compressImage(file){
   return new Promise((resolve,reject)=>{
     const reader=new FileReader();
     reader.onload=()=>{
-      const fallback=()=>{
-        if(typeof reader.result==='string'&&reader.result)resolve(reader.result);
-        else reject(new Error('Falha ao ler imagem'));
-      };
+      const fallback=()=>reject(diaryPhotoError('Não foi possível processar esta fotografia.'));
       const img=new Image();
       img.onload=()=>{
         let{width,height}=img;
@@ -4190,7 +4213,7 @@ function compressImage(file){
           fallback();
         }
       };
-      img.onerror=()=>fallback();
+        img.onerror=fallback;
       img.src=reader.result;
     };
     reader.onerror=reject;
@@ -4221,12 +4244,18 @@ async function handlePhotoFiles(files,sourceBtn){
   const orig=sourceBtn.textContent;
   sourceBtn.textContent='A processar…';sourceBtn.disabled=true;
   try{
+    let added=0,firstError='';
     for(const f of files){
-      if(!f.type.startsWith('image/'))continue;
-      const dataUrl=await compressImage(f);
-      pendingPhotos.push(dataUrl);
+      if(pendingPhotos.length>=MAX_DIARY_PHOTOS){firstError=firstError||`Máximo de ${MAX_DIARY_PHOTOS} fotografias por registo.`;break;}
+      try{
+        validateDiaryPhotoFile(f);
+        const dataUrl=await compressImage(f);
+        validateDiaryPhotoSet([...pendingPhotos,dataUrl]);
+        pendingPhotos.push(dataUrl);added++;
+      }catch(error){firstError=firstError||(error?.code==='DIARY_PHOTO_LIMIT'?error.message:'Não foi possível processar esta fotografia.');}
     }
-    renderPhotoThumbs();resetDiaryAssistant();
+    if(added){renderPhotoThumbs();resetDiaryAssistant();}
+    if(firstError)showToast(firstError,'err');
   }catch(err){console.error(err);showToast('Erro ao processar imagem','err');}
   sourceBtn.textContent=orig;sourceBtn.disabled=false;
 }
@@ -4373,7 +4402,7 @@ function initDiaryListener(session=activeAuthSession){
 }
 window.initDiaryListener=initDiaryListener;
 
-async function saveDiaryCanonical(entry,id=null){const{db,ref,push,set}=window.fb;const target=id?ref(db,'registos_diarios/'+id):push(ref(db,'registos_diarios'));await set(target,entry);return id||target.key;}
+async function saveDiaryCanonical(entry,id=null){const{db,ref,push,set}=window.fb;const target=id?ref(db,'registos_diarios/'+id):push(ref(db,'registos_diarios'));const safeEntry=entry?.photos?{...entry,photos:validateDiaryPhotoSet(entry.photos)}:entry;await set(target,safeEntry);return id||target.key;}
 window.saveDiaryCanonical=saveDiaryCanonical;
 $('diarySave').onclick=async()=>{
   const text=$('diaryText').value.trim();
@@ -4393,7 +4422,7 @@ $('diarySave').onclick=async()=>{
     resetDiaryAssistant({clearInput:true});
     currentSeverity='info';document.querySelectorAll('.sev-btn').forEach(x=>x.classList.toggle('active',x.dataset.level==='info'));
     showToast('Registo guardado');
-  }catch(err){console.error(err);alert('Erro ao guardar. Verifique a ligação.');}
+  }catch(err){console.error(err);alert(err?.code==='DIARY_PHOTO_LIMIT'?err.message:'Erro ao guardar. Verifique a ligação.');}
   finally{btn.disabled=false;btn.textContent='GUARDAR REGISTO';}
 };
 
@@ -4478,7 +4507,7 @@ async function saveEditDiary(id,box=null){
     await saveDiaryCanonical(updated,id);
     showToast('Alterações guardadas');
     // a lista actualiza-se sozinha via onValue
-  }catch(err){console.error(err);alert('Erro ao guardar as alterações. Verifique a ligação.');}
+  }catch(err){console.error(err);alert(err?.code==='DIARY_PHOTO_LIMIT'?err.message:'Erro ao guardar as alterações. Verifique a ligação.');}
 }
 window.saveEditDiary=saveEditDiary;
 
