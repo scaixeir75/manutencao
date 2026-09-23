@@ -6,7 +6,7 @@ try{
   for(const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)){
     if(!match[2].trim())continue;const file=path.join(temp,`inline-${count}.${/type=["']module/.test(match[1])?'mjs':'js'}`);fs.writeFileSync(file,match[2]);cp.execFileSync(process.execPath,['--check',file],{stdio:'pipe'});count++;
   }
-  const files=['sw.js','photo-ai-config.js','photo-ai-contract.js',...fs.readdirSync(path.join(root,'server/photo-ai')).filter(f=>f.endsWith('.js')).map(f=>'server/photo-ai/'+f)];
+  const files=['sw.js','photo-ai-config.js','photo-ai-contract.js'];
   for(const file of files){cp.execFileSync(process.execPath,['--check',path.join(root,file)],{stdio:'pipe'});count++;}
   console.log(`Sintaxe válida: ${count} scripts.`);
 }finally{fs.rmSync(temp,{recursive:true,force:true});}

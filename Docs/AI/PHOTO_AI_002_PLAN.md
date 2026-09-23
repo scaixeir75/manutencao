@@ -1,6 +1,6 @@
-# PHOTO-AI-002 — análise de folha executada
+# PHOTO-AI-002 — análise de folha executada (arquivo histórico)
 
-Data: 2026-09-05. Estado: implementação local com testes simulados; envio real desativado. Ver `PHOTO_AI_002_VALIDATION.md` para a auditoria e os resultados da retoma.
+Data: 2026-09-05. Registo da proposta original Cloud Run/OpenAI, removida no `LEGACY-AI-CLEANUP-001`. Não descreve runtime atual; ver `PHOTO_AI_AUTO_DECISION.md`.
 
 ## Bloco 1/2 — arquitetura e contrato
 

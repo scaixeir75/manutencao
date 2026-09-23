@@ -1,6 +1,6 @@
-# PHOTO-AI-002 — retoma e validação local
+# PHOTO-AI-002 — retoma e validação local (arquivo histórico)
 
-Data: 2026-09-05. Sem commit, push, tag, deploy ou pedidos à OpenAI real.
+Data: 2026-09-05. Sem commit, push, tag, deploy ou pedidos à OpenAI real. Os caminhos `server/photo-ai/` mencionados abaixo foram removidos no `LEGACY-AI-CLEANUP-001`; este documento mantém apenas a rastreabilidade da auditoria original.
 
 ## Estado herdado
 

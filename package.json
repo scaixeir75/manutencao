@@ -7,7 +7,7 @@
     "test:ai:backtest": "playwright test tests/ai-backtest.spec.js",
     "test:firebase:rules": "node --test tests/security/firebase-rules.test.mjs",
     "test:syntax": "node scripts/check-syntax.js",
-    "test:photo-ai": "node --test tests/photo-ai-contract.test.js server/photo-ai/test/photo-ai.test.js server/photo-ai-cloudflare/test/*.test.js && playwright test tests/photo-ai.spec.js --workers=1"
+    "test:photo-ai": "node --test tests/photo-ai-contract.test.js server/photo-ai-cloudflare/test/*.test.js && playwright test tests/photo-ai.spec.js --workers=1"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.2",
